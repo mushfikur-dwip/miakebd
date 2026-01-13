@@ -47,6 +47,7 @@
 
         <div class="col-12 lg:col-4">
             <CouponComponent />
+            <WalletRedeemComponent />
             <SummeryComponent />
 
             <div class="max-lg:flex hidden flex-col-reverse sm:flex-row items-center justify-between gap-5 mt-10">
@@ -67,6 +68,7 @@
 import statusEnum from "../../../../enums/modules/statusEnum";
 import SummeryComponent from "../SummeryComponent.vue";
 import CouponComponent from "../CouponComponent.vue";
+import WalletRedeemComponent from "../WalletRedeemComponent.vue";
 import LoadingComponent from "../../components/LoadingComponent.vue";
 import _ from "lodash";
 import alertService from "../../../../services/alertService";
@@ -76,7 +78,7 @@ import ActivityEnum from "../../../../enums/modules/activityEnum";
 
 export default {
     name: "PaymentComponent",
-    components: { CouponComponent, SummeryComponent, LoadingComponent },
+    components: { CouponComponent, WalletRedeemComponent, SummeryComponent, LoadingComponent },
     data() {
         return {
             loading: {
@@ -109,6 +111,13 @@ export default {
         },
         total: function () {
             return this.$store.getters['frontendCart/total'];
+        },
+        appliedWalletAmount: function () {
+            return this.$store.getters['frontendCart/appliedWalletAmount'];
+        },
+        remainingAmount: function () {
+            // Calculate the remaining amount after wallet discount
+            return Math.max(0, this.total);
         },
         orderType: function () {
             return this.$store.getters['frontendCart/orderType'];
@@ -163,7 +172,33 @@ export default {
             this.$store.dispatch("frontendCart/paymentMethod", paymentMethod);
         },
         confirmOrder: function (e) {
+            console.log('\n🟣 [Payment] ========== CONFIRM ORDER CLICKED ==========');
             e.target.disabled = true;
+            
+            console.log('🟣 [Payment] Order Details:');
+            console.log('  - Subtotal:', this.subtotal);
+            console.log('  - Discount:', this.discount);
+            console.log('  - Tax:', this.totalTax);
+            console.log('  - Shipping:', this.shippingCharge);
+            console.log('  - Total:', this.total);
+            console.log('  - Applied Wallet Amount:', this.appliedWalletAmount);
+            console.log('  - Remaining Amount:', this.remainingAmount);
+            
+            // Check if full payment is covered by wallet
+            const isFullyPaidByWallet = this.appliedWalletAmount > 0 && this.remainingAmount === 0;
+            console.log('🟣 [Payment] Is Fully Paid by Wallet?', isFullyPaidByWallet);
+            
+            // If wallet covers full payment, no need to select payment method
+            // If partial wallet payment, require payment method selection for remaining amount
+            if (!isFullyPaidByWallet && Object.keys(this.paymentMethod).length === 0) {
+                console.error('❌ [Payment] Payment method required for remaining amount');
+                e.target.disabled = false;
+                alertService.error(this.$t('message.payment_method_required'));
+                return;
+            }
+            
+            console.log('🟣 [Payment] Selected Payment Method:', this.paymentMethod);
+            
             this.form = {
                 subtotal: this.subtotal,
                 discount: this.discount,
@@ -177,19 +212,49 @@ export default {
                 coupon_id: Object.keys(this.cartCoupon).length > 0 ? this.cartCoupon.id : 0,
                 source: sourceEnum.WEB,
                 payment_method: Object.keys(this.paymentMethod).length > 0 ? this.paymentMethod.id : 0,
+                wallet_discount: this.appliedWalletAmount,
                 products: JSON.stringify(this.products)
             }
 
+            console.log('🟣 [Payment] Submitting order with data:', this.form);
+            
             this.$store.dispatch('frontendOrder/save', this.form).then(orderResponse => {
                 this.loading.isActive = false;
-                let paymentSlug = Object.keys(this.paymentMethod).length > 0 ? this.paymentMethod.slug : '';
-                if (paymentSlug) {
-                    window.location.href = ENV.API_URL + "/payment/" + paymentSlug + "/pay/" + orderResponse.data.data.id;
+                console.log('✅ [Payment] Order created successfully:', orderResponse.data.data);
+                console.log('✅ [Payment] Order ID:', orderResponse.data.data.id);
+                
+                // Refresh wallet balance if wallet was used
+                if (this.appliedWalletAmount > 0) {
+                    console.log('🔄 [Payment] Refreshing wallet balance...');
+                    this.$store.dispatch('frontendCart/fetchWalletBalance').then(() => {
+                        console.log('✅ [Payment] Wallet balance refreshed');
+                    }).catch(err => {
+                        console.error('❌ [Payment] Failed to refresh wallet balance:', err);
+                    });
+                }
+                
+                // If fully paid by wallet, redirect to success page
+                if (isFullyPaidByWallet) {
+                    const successUrl = ENV.API_URL + "/payment/successful/" + orderResponse.data.data.id;
+                    console.log('✅ [Payment] FULL WALLET PAYMENT - Redirecting to success page:', successUrl);
+                    window.location.href = successUrl;
                 } else {
-                    alertService.error(this.$t('message.payment_method_required'));
+                    // If partial wallet payment or no wallet, go to payment gateway
+                    let paymentSlug = Object.keys(this.paymentMethod).length > 0 ? this.paymentMethod.slug : '';
+                    console.log('🟣 [Payment] PARTIAL/NO WALLET PAYMENT - Payment gateway slug:', paymentSlug);
+                    
+                    if (paymentSlug) {
+                        const paymentUrl = ENV.API_URL + "/payment/" + paymentSlug + "/pay/" + orderResponse.data.data.id;
+                        console.log('✅ [Payment] Redirecting to payment gateway:', paymentUrl);
+                        window.location.href = paymentUrl;
+                    } else {
+                        console.error('❌ [Payment] No payment method selected');
+                        alertService.error(this.$t('message.payment_method_required'));
+                    }
                 }
             }).catch((err) => {
                 this.loading.isActive = false;
+                e.target.disabled = false;
                 if (typeof err.response.data.errors === 'object') {
                     _.forEach(err.response.data.errors, (error) => {
                         alertService.error(error[0]);

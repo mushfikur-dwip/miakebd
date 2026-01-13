@@ -25,6 +25,10 @@
                 <i class="lab lab-line-truck-check text-sm"></i>
                 {{ $t("menu.shipping_setup") }}
             </router-link>
+            <router-link :to="{ name: 'admin.settings.walletSetting' }" class="db-tab-btn">
+                <i class="lab lab-fill-wallet text-sm"></i>
+                {{ $t("menu.wallet_management") }}
+            </router-link>
             <router-link :to="{ name: 'admin.settings.otp' }" class="db-tab-btn">
                 <i class="lab lab-line-otp text-sm"></i>
                 {{ $t("menu.otp") }}

@@ -22,6 +22,8 @@ use App\Listeners\SendOrderGotSmsNotification;
 use App\Listeners\SendOrderGotMailNotification;
 use App\Listeners\SendOrderGotPushNotification;
 use App\Listeners\SendVerifyEmailCodeNotification;
+use App\Models\Order;
+use App\Observers\OrderObserver;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -60,9 +62,6 @@ class EventServiceProvider extends ServiceProvider
         SendOrderGotPush::class         => [
             SendOrderGotPushNotification::class
         ],
-        SendVerifyEmailCode::class              => [
-            SendVerifyEmailCodeNotification::class
-        ],
     ];
 
     /**
@@ -70,7 +69,7 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Order::observe(OrderObserver::class);
     }
 
     /**

@@ -67,8 +67,19 @@
         </div>
 
         <div class="col-12 lg:col-4">
-            <CouponComponent/>
-            <SummeryComponent/>
+            <!-- Mobile View: Summary > Wallet > Coupon -->
+            <div class="lg:hidden flex flex-col gap-4">
+                <SummeryComponent/>
+                <WalletRedeemComponent/>
+                <CouponComponent/>
+            </div>
+
+            <!-- Desktop View: Coupon > Wallet > Summary -->
+            <div class="hidden lg:flex flex-col gap-4">
+                <CouponComponent/>
+                <WalletRedeemComponent/>
+                <SummeryComponent/>
+            </div>
 
             <div class="max-lg:flex hidden flex-col-reverse sm:flex-row items-center justify-between gap-5 mt-10">
                 <router-link :to="{ name: 'frontend.checkout.cartList' }"
@@ -89,6 +100,7 @@ import orderTypeEnum from "../../../../enums/modules/orderTypeEnum";
 import AddressComponent from "./AddressComponent.vue";
 import SummeryComponent from "../SummeryComponent.vue";
 import CouponComponent from "../CouponComponent.vue";
+import WalletRedeemComponent from "../WalletRedeemComponent.vue";
 import router from "../../../../router";
 import alertService from "../../../../services/alertService";
 import LoadingComponent from "../../components/LoadingComponent.vue";
@@ -97,7 +109,7 @@ import statusEnum from "../../../../enums/modules/statusEnum";
 
 export default {
     name: "CheckoutComponent",
-    components: {CouponComponent, SummeryComponent, AddressComponent, LoadingComponent},
+    components: {CouponComponent, WalletRedeemComponent, SummeryComponent, AddressComponent, LoadingComponent},
     data() {
         return {
             loading: {

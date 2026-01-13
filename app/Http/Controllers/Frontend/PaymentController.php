@@ -100,6 +100,12 @@ class PaymentController extends Controller
     public function successful(Order $order): \Illuminate\Foundation\Application|\Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse|\Illuminate\Contracts\Foundation\Application
     {
         try {
+            // If order is fully paid by wallet (wallet_discount covers total), mark as paid
+            if ($order->wallet_discount > 0 && $order->wallet_discount >= $order->total && $order->payment_status === PaymentStatus::UNPAID) {
+                $order->payment_status = PaymentStatus::PAID;
+                $order->save();
+            }
+            
             SendOrderMail::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
             SendOrderSms::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
             SendOrderPush::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);

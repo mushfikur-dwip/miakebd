@@ -25,6 +25,11 @@
                 <span class="font-medium">{{ currencyFormat(discount, setting.site_digit_after_decimal_point,
                     setting.site_default_currency_symbol, setting.site_currency_position) }}</span>
             </li>
+            <li v-if="walletDiscount > 0" class="flex items-center justify-between">
+                <span class="capitalize">{{ $t('label.wallet_discount') }}</span>
+                <span class="font-medium text-success">-{{ currencyFormat(walletDiscount, setting.site_digit_after_decimal_point,
+                    setting.site_default_currency_symbol, setting.site_currency_position) }}</span>
+            </li>
         </ul>
         <div class="p-4">
             <dl class="flex items-center justify-between">
@@ -50,6 +55,9 @@ export default {
         },
         discount: function () {
             return this.$store.getters['frontendCart/discount'];
+        },
+        walletDiscount: function () {
+            return this.$store.getters['frontendCart/walletDiscount'];
         },
         totalTax: function () {
             return this.$store.getters['frontendCart/totalTax'];

@@ -17,10 +17,14 @@ class FrontendWalletController extends Controller
     {
         $user = $request->user();
         
+        // Get wallet balance from users.balance column
+        $balance = $user->balance ?? 0;
+        
         return response()->json([
+            'status' => true,
             'data' => [
-                'balance' => $user->balance ?? 0,
-                'currency_balance' => AppLibrary::currencyAmountFormat($user->balance ?? 0)
+                'balance' => $balance,
+                'currency_balance' => AppLibrary::currencyAmountFormat($balance)
             ]
         ]);
     }

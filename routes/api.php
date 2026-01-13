@@ -78,6 +78,7 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RefreshTokenController;
 use App\Http\Controllers\Auth\SignupController;
+use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Frontend\AddressController as FrontendAddressController;
 use App\Http\Controllers\Frontend\BenefitController as FrontendBenefitController;
 use App\Http\Controllers\Frontend\CookiesController as FrontendCookiesController;
@@ -152,8 +153,8 @@ Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name
     });
 
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/logout', [LoginController::class, 'logout']);
-        Route::post('/delete-account', [DeactivateController::class, 'deleteAccount']);
+        Route::post('/logout', [LoginController::class, 'logout'])->middleware(['auth:sanctum', 'throttle:60,1']);
+        Route::post('/deactivate', [DeactivateController::class, 'deactivate'])->middleware(['auth:sanctum', 'throttle:60,1']);
     });
 
     Route::post('/authcheck', function () {
@@ -234,6 +235,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::prefix('shipping-setup')->name('shipping-setup.')->group(function () {
             Route::get('/', [ShippingSetupController::class, 'index']);
             Route::match(['put', 'patch'], '/', [ShippingSetupController::class, 'update']);
+        });
+
+        Route::prefix('wallet-setting')->name('wallet-setting.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\WalletSettingController::class, 'show']);
+            Route::match(['put', 'patch'], '/', [\App\Http\Controllers\Admin\WalletSettingController::class, 'update']);
         });
 
         Route::prefix('order-area')->name('order-area.')->group(function () {
@@ -740,7 +746,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
     });
 });
 
-Route::prefix('frontend')->name('frontend.')->middleware(['installed', 'apiKey', 'localization'])->group(function () {
+Route::prefix('checkout')->middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    Route::get('/', [CheckoutController::class, 'list']);
+    Route::post('/order', [CheckoutController::class, 'order']);
+    Route::get('/{order}/{paymentGateway}/payment', [CheckoutController::class, 'payment']);
+    Route::get('/{order}/{paymentGateway}/success', [CheckoutController::class, 'success']);
+    Route::get('/{order}/{paymentGateway}/fail', [CheckoutController::class, 'fail']);
+    Route::get('/{order}/{paymentGateway}/cancel', [CheckoutController::class, 'cancel']);
+});
+
+Route::group(['prefix' => 'frontend', 'as' => 'frontend.'], function () {
+    Route::get('language/{code}', [FrontendLanguageController::class, 'language']);
+    Route::get('overview', [OverviewController::class, 'index']);
+
     Route::prefix('setting')->name('setting.')->group(function () {
         Route::get('/', [FrontendSettingController::class, 'index']);
     });

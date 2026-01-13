@@ -30,7 +30,7 @@ export default {
         getBalance: function (context) {
             context.commit('loading', true);
             return new Promise((resolve, reject) => {
-                axios.get('frontend/wallet/balance').then((res) => {
+                axios.get('/frontend/wallet/balance').then((res) => {
                     context.commit('balance', res.data.data.balance);
                     context.commit('currencyBalance', res.data.data.currency_balance);
                     resolve(res);
@@ -44,7 +44,7 @@ export default {
         getTransactions: function (context, payload) {
             context.commit('loading', true);
             return new Promise((resolve, reject) => {
-                let url = 'frontend/wallet/transactions';
+                let url = '/frontend/wallet/transactions';
                 if (payload && payload.page) {
                     url += `?page=${payload.page}`;
                 }

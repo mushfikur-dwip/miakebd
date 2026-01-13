@@ -40,4 +40,10 @@ Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(fun
     Route::get('/successful/{order}', [PaymentController::class, 'successful'])->name('successful');
 });
 
-Route::get('/{any}', [RootController::class, 'index'])->middleware(['installed'])->where(['any' => '.*']);
+Route::fallback(function(\Illuminate\Http\Request $request) {
+    // Don't catch API routes
+    if ($request->is('api/*')) {
+        abort(404);
+    }
+    return app(RootController::class)->index($request->path());
+})->middleware(['installed']);

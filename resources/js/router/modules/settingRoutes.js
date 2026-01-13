@@ -47,6 +47,7 @@ const SupplierComponent = () =>  import("../../components/admin/settings/Supplie
 const SupplierListComponent = () =>  import("../../components/admin/settings/Supplier/SupplierListComponent");
 const SupplierShowComponent = () =>  import("../../components/admin/settings/Supplier/SupplierShowComponent");
 const ShippingSetupComponent = () =>  import("../../components/admin/settings/ShippingSetup/ShippingSetupComponent");
+const WalletSettingComponent = () =>  import("../../components/admin/settings/WalletSetting/WalletSettingComponent");
 const NotificationAlertComponent = () =>  import("../../components/admin/settings/NotificationAlert/NotificationAlertComponent");
 const ReturnReasonComponent = () =>  import("../../components/admin/settings/ReturnReason/ReturnReasonComponent");
 const ReturnReasonListComponent = () =>  import("../../components/admin/settings/ReturnReason/ReturnReasonListComponent"); 
@@ -116,6 +117,17 @@ export default [
                     auth: true,
                     permissionUrl: "settings",
                     breadcrumb: "shipping_setup",
+                },
+            },
+            {
+                path: "wallet-setting",
+                component: WalletSettingComponent,
+                name: "admin.settings.walletSetting",
+                meta: {
+                    isFrontend: false,
+                    auth: true,
+                    permissionUrl: "settings",
+                    breadcrumb: "wallet_management",
                 },
             },
             {

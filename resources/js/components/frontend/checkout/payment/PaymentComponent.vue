@@ -2,7 +2,7 @@
     <LoadingComponent :props="loading" />
     <div class="row">
         <div class="col-12 lg:col-8">
-            <div class="mb-6 rounded-2xl shadow-card">
+            <div v-if="remainingAmount > 0" class="mb-6 rounded-2xl shadow-card">
                 <h4 class="font-bold capitalize p-4 border-b border-gray-100">
                     {{ $t('label.select_payment_method') }}
                 </h4>
@@ -16,7 +16,7 @@
                         <span class="text-xs font-medium">{{ cashOnDelivery.name }}</span>
                     </div>
 
-                    <div v-if="profile.balance >= total" @click.prevent="selectPaymentMethod(credit)"
+                    <div v-if="appliedWalletAmount === 0" @click.prevent="selectPaymentMethod(credit)"
                         :class="Object.keys(paymentMethod).length > 0 && credit.id === paymentMethod.id ? 'border-primary/50 bg-[#FFF4F1]' : 'border-white bg-white'"
                         class="flex flex-col items-center justify-center gap-2.5 py-4 rounded-lg shadow-xs cursor-pointer border">
                         <img class="h-6" :src="credit.image" alt="payment" />
@@ -115,8 +115,12 @@ export default {
         appliedWalletAmount: function () {
             return this.$store.getters['frontendCart/appliedWalletAmount'];
         },
+        totalBeforeWallet: function () {
+            // Total before wallet discount (for backend)
+            return this.total + this.appliedWalletAmount;
+        },
         remainingAmount: function () {
-            // Calculate the remaining amount after wallet discount
+            // Amount remaining after wallet discount
             return Math.max(0, this.total);
         },
         orderType: function () {
@@ -204,7 +208,8 @@ export default {
                 discount: this.discount,
                 tax: this.totalTax,
                 shipping_charge: this.shippingCharge,
-                total: this.total,
+                total: this.totalBeforeWallet, // Send total BEFORE wallet discount
+                total_amount_for_cashback: this.remainingAmount, // Amount after wallet discount for cashback calculation
                 order_type: this.orderType,
                 shipping_id: Object.keys(this.getShippingAddress).length > 0 ? this.getShippingAddress.id : 0,
                 billing_id: Object.keys(this.getBillingAddress).length > 0 ? this.getBillingAddress.id : 0,

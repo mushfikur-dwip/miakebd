@@ -25,6 +25,7 @@ return [
         'sku'                        => 'SKU',
         'discount'                   => 'ছাড়',
         'discount_type'              => 'ছাড়ের ধরণ',
+        'wallet_discount'            => 'ওয়ালেট ছাড়',
         'start_date'                 => 'শুরুর তারিখ',
         'end_date'                   => 'শেষ তারিখ',
         'amount'                     => 'পরিমাণ',

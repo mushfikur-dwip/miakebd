@@ -173,11 +173,26 @@ export default {
         // Fetch user's wallet balance only if logged in
         if (this.isLoggedIn) {
             console.log('🟢 [Wallet Component] Fetching wallet balance...');
-            this.$store.dispatch('frontendCart/fetchWalletBalance').catch((error) => {
+            this.$store.dispatch('frontendCart/fetchWalletBalance').then(() => {
+                console.log('🟢 [Wallet Component] Balance fetched. Current state:');
+                console.log('  - walletBalance:', this.walletBalance);
+                console.log('  - walletApplied:', this.walletApplied);
+                console.log('  - appliedWalletAmount:', this.appliedWalletAmount);
+                console.log('  - total:', this.total);
+                console.log('  - maxWalletAmount:', this.maxWalletAmount);
+            }).catch((error) => {
                 console.error('❌ [Wallet Component] Failed to fetch wallet balance:', error);
             });
         } else {
             console.log('⚠️ [Wallet Component] User not logged in, skipping wallet balance fetch');
+        }
+    },
+    watch: {
+        walletBalance(newVal, oldVal) {
+            console.log('🔄 [Wallet Component] walletBalance changed from', oldVal, 'to', newVal);
+        },
+        walletApplied(newVal, oldVal) {
+            console.log('🔄 [Wallet Component] walletApplied changed from', oldVal, 'to', newVal);
         }
     }
 }

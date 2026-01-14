@@ -158,6 +158,15 @@
                             <span class="text-sm leading-6 capitalize">{{ $t('label.discount') }}</span>
                             <span class="text-sm leading-6 capitalize">{{ order.discount_currency_price }}</span>
                         </li>
+                        <li class="flex items-center justify-between text-heading" v-if="order.wallet_discount > 0">
+                            <span class="text-sm leading-6 capitalize flex items-center gap-1">
+                                <i class="lab-fill-wallet text-shopperz-blue"></i>
+                                {{ $t('label.wallet_discount') }}
+                            </span>
+                            <span class="text-sm leading-6 capitalize font-semibold text-shopperz-blue">
+                                -{{ order.wallet_discount_currency_price }}
+                            </span>
+                        </li>
                         <li class="flex items-center justify-between text-heading">
                             <span class="text-sm leading-6 capitalize">{{ $t('label.shipping_charge') }}</span>
                             <span class="text-sm leading-6 capitalize font-semibold text-[#1AB759]">

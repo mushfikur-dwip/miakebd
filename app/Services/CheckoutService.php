@@ -28,6 +28,13 @@ class CheckoutService
 {
     public function order($request)
     {
+        \Log::info('🛍️ [Checkout] Order request received', [
+            'total' => $request->total,
+            'wallet_discount' => $request->wallet_discount,
+            'payment_method' => $request->payment_method,
+            'user_id' => Auth::id()
+        ]);
+        
         $order = DB::transaction(function () use ($request) {
             $authUSer = Auth::user();
             $order    = Order::create([
@@ -46,6 +53,13 @@ class CheckoutService
                 'payment_status'            => PaymentStatus::UNPAID,
                 'status'                    => OrderStatus::PENDING,
                 'source'                    => Source::WEB,
+            ]);
+
+            \Log::info('🛒 [Checkout] Order Created', [
+                'order_id' => $order->id,
+                'wallet_discount' => $order->wallet_discount,
+                'total' => $order->total,
+                'payment_method' => $order->payment_method
             ]);
 
             if ($request->order_type == OrderType::DELIVERY) {
@@ -88,11 +102,24 @@ class CheckoutService
                 }
             }
 
+            // Log wallet discount for debugging
+            \Log::info('💰 [Checkout] Wallet Discount', [
+                'wallet_discount' => $request->wallet_discount,
+                'user_balance_before' => $authUSer->balance,
+                'order_id' => $order->id
+            ]);
+
             if ($request->wallet_discount > 0) {
                 // Use users.balance instead of wallets table
                 $balanceBefore = $authUSer->balance;
                 $authUSer->balance -= $request->wallet_discount;
                 $authUSer->save();
+                
+                \Log::info('✅ [Checkout] Wallet Balance Deducted', [
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $authUSer->balance,
+                    'deducted_amount' => $request->wallet_discount
+                ]);
                 
                 // Create wallet transaction record
                 Transaction::create([

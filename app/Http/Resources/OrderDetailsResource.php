@@ -23,6 +23,8 @@ class OrderDetailsResource extends JsonResource
             "subtotal_currency_price"        => AppLibrary::currencyAmountFormat($this->subtotal),
             "tax_currency_price"             => AppLibrary::currencyAmountFormat($this->tax),
             "discount_currency_price"        => AppLibrary::currencyAmountFormat($this->discount),
+            "wallet_discount_currency_price" => AppLibrary::currencyAmountFormat($this->wallet_discount ?? 0),
+            "wallet_discount"                => $this->wallet_discount ?? 0,
             "total_currency_price"           => AppLibrary::currencyAmountFormat($this->total),
             "total_amount_price"             => AppLibrary::flatAmountFormat($this->total),
             "shipping_charge_currency_price" => AppLibrary::currencyAmountFormat($this->shipping_charge),

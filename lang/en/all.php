@@ -25,6 +25,7 @@ return [
         'sku'                        => 'SKU',
         'discount'                   => 'Discount',
         'discount_type'              => 'Discount Type',
+        'wallet_discount'            => 'Wallet Discount',
         'start_date'                 => 'Start Date',
         'end_date'                   => 'End Date',
         'amount'                     => 'Amount',

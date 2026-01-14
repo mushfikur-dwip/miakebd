@@ -22,6 +22,8 @@ class OrderResource extends JsonResource
             'user_id'              => $this->user_id,
             "total_amount_price"   => AppLibrary::flatAmountFormat($this->total),
             "total_currency_price" => AppLibrary::currencyAmountFormat($this->total),
+            "wallet_discount"      => $this->wallet_discount,
+            "wallet_discount_currency_price" => AppLibrary::currencyAmountFormat($this->wallet_discount),
             'payment_status'       => $this->payment_status,
             'status'               => $this->status,
             'status_name'          => trans('orderStatus.' . $this->status),

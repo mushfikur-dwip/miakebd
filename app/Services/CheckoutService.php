@@ -115,12 +115,6 @@ class CheckoutService
                 $authUSer->balance -= $request->wallet_discount;
                 $authUSer->save();
                 
-                \Log::info('✅ [Checkout] Wallet Balance Deducted', [
-                    'balance_before' => $balanceBefore,
-                    'balance_after' => $authUSer->balance,
-                    'deducted_amount' => $request->wallet_discount
-                ]);
-                
                 // Create wallet transaction record
                 Transaction::create([
                     'order_id' => $order->id,
@@ -128,9 +122,10 @@ class CheckoutService
                     'amount' => $request->wallet_discount,
                     'payment_method' => 'wallet',
                     'type' => 'payment',
-                    'sign' => '-',
-                    'user_id' => $authUSer->id,
-                    'note' => 'Wallet payment for order #' . $order->order_serial_no,
+                    'sign'           => '-',
+                    'user_id'        => $authUSer->id,
+                    'admin_id'       => null,
+                    'note'           => 'Wallet payment for order #' . $order->order_serial_no,
                     'balance_before' => $balanceBefore,
                     'balance_after' => $authUSer->balance,
                 ]);

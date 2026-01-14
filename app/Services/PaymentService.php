@@ -35,13 +35,18 @@ class PaymentService
             DB::transaction(function () use ($order, $gatewaySlug, $transactionNo) {
                 $transaction = Transaction::where(['order_id' => $order->id])->first();
                 if (!$transaction) {
+                    $user = User::find($order->user_id);
+                    $balanceAfter = $user ? $user->balance : 0;
+                    
                     $transaction = Transaction::create([
                         'order_id'       => $order->id,
                         'transaction_no' => $transactionNo,
                         'amount'         => $order->total,
                         'payment_method' => $gatewaySlug,
                         'sign'           => '+',
-                        'type'           => 'payment'
+                        'type'           => 'payment',
+                        'user_id'        => $order->user_id,
+                        'balance_after'  => $balanceAfter
                     ]);
                 }
                 $this->transaction     = $transaction;
@@ -70,20 +75,24 @@ class PaymentService
     {
         $transaction = Transaction::where(['order_id' => $order->id])->first();
         if ($transaction) {
+            $user = User::find($order->user_id);
+            $balanceAfter = 0;
+            if ($user) {
+                $user->balance = ($user->balance + $order->total);
+                $user->save();
+                $balanceAfter = $user->balance;
+            }
+
             $transaction = Transaction::create([
                 'order_id'       => $order->id,
                 'transaction_no' => $transactionNo,
                 'amount'         => $order->total,
                 'payment_method' => $gatewaySlug,
                 'sign'           => '-',
-                'type'           => 'cash_back'
+                'type'           => 'cash_back',
+                'user_id'        => $order->user_id,
+                'balance_after'  => $balanceAfter
             ]);
-
-            $user = User::find($order->user_id);
-            if ($user) {
-                $user->balance = ($user->balance + $order->total);
-                $user->save();
-            }
         }
 
         return $transaction;

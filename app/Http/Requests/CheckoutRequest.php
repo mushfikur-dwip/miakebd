@@ -30,6 +30,7 @@ class CheckoutRequest extends FormRequest
             'total'           => 'required|numeric',
             'order_type'      => 'required|numeric',
             'payment_method'  => 'required|numeric',
+            'wallet_discount' => 'nullable|numeric',
         ];
     }
 }

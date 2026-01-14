@@ -61,6 +61,7 @@ const StateListComponent = () =>  import("../../components/admin/settings/states
 const CityComponent = () =>  import("../../components/admin/settings/cities/CityComponent");
 const CityListComponent = () =>  import("../../components/admin/settings/cities/CityListComponent");
 const LocationSetupComponent = () =>  import("../../components/admin/settings/LocationSetup/LocationSetupComponent");
+const MobileSectionListComponent = () =>  import("../../components/admin/mobileSection/MobileSectionListComponent");
 
 export default [
     {
@@ -220,6 +221,17 @@ export default [
                     auth: true,
                     permissionUrl: "settings",
                     breadcrumb: "theme",
+                },
+            },
+            {
+                path: "mobile-section",
+                component: MobileSectionListComponent,
+                name: "admin.settings.mobile.section",
+                meta: {
+                    isFrontend: false,
+                    auth: true,
+                    permissionUrl: "settings",
+                    breadcrumb: "mobile_section",
                 },
             },
             {

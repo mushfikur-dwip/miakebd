@@ -439,6 +439,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::match(['put', 'patch'], '/{outlet}', [OutletController::class, 'update']);
             Route::delete('/{outlet}', [OutletController::class, 'destroy']);
         });
+
+        Route::prefix('mobile-section')->name('mobile-section.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\MobileSectionController::class, 'index']);
+            Route::post('/button', [\App\Http\Controllers\Admin\MobileSectionController::class, 'storeButton']);
+            Route::match(['put', 'patch'], '/button/{id}', [\App\Http\Controllers\Admin\MobileSectionController::class, 'updateButton']);
+            Route::delete('/button/{id}', [\App\Http\Controllers\Admin\MobileSectionController::class, 'deleteButton']);
+            Route::post('/background', [\App\Http\Controllers\Admin\MobileSectionController::class, 'updateBackground']);
+        });
     });
 
     Route::prefix('product')->name('product.')->group(function () {
@@ -784,6 +792,10 @@ Route::group(['prefix' => 'frontend', 'as' => 'frontend.'], function () {
 
     Route::prefix('slider')->name('slider.')->group(function () {
         Route::get('/', [FrontendSliderController::class, 'index']);
+    });
+    
+    Route::prefix('mobile-section')->name('mobile-section.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\MobileSectionController::class, 'index']);
     });
 
     Route::prefix('product-category')->name('product-category.')->group(function () {

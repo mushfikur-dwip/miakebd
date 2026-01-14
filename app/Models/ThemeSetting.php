@@ -11,6 +11,7 @@ class ThemeSetting extends Model implements HasMedia
     use InteractsWithMedia;
 
     protected $table = "settings";
+    protected $guarded = [];
 
     public function getLogoAttribute(): string
     {

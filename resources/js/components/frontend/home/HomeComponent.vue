@@ -1,6 +1,8 @@
 <template>
     <SliderComponent />
 
+    <MobileSectionComponent />
+
     <CategoryComponent />
 
     <PromotionComponent />
@@ -17,8 +19,8 @@
 </template>
 
 <script>
-
 import SliderComponent from "./SliderComponent.vue";
+import MobileSectionComponent from "./MobileSectionComponent.vue";
 import CategoryComponent from "./CategoryComponent.vue";
 import PromotionComponent from "./PromotionComponent.vue";
 import BenefitComponent from "./BenefitComponent.vue";
@@ -34,10 +36,11 @@ export default {
         FlashSaleComponent,
         BenefitComponent,
         SliderComponent,
+        MobileSectionComponent,
         CategoryComponent,
         PromotionComponent,
         ProductSectionComponent,
-        ProductBrandComponent
-    }
+        ProductBrandComponent,
+    },
 };
 </script>

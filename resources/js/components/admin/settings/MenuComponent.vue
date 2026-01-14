@@ -57,6 +57,10 @@
                 <i class="lab lab-line-theme text-sm"></i>
                 {{ $t("menu.theme") }}
             </router-link>
+            <router-link :to="{ name: 'admin.settings.mobile.section' }" class="db-tab-btn">
+                <i class="lab lab-line-mobile text-sm"></i>
+                {{ $t("menu.mobile_section") }}
+            </router-link>
             <router-link :to="{ name: 'admin.settings.slider' }" class="db-tab-btn">
                 <i class="lab lab-line-sliders text-sm"></i>
                 {{ $t("menu.sliders") }}

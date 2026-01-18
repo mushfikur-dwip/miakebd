@@ -53,6 +53,17 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="form-col-12 sm:form-col-6">
+                            <label class="db-field-title">{{ $t('label.featured') }}</label>
+                            <div class="flex items-center gap-3 h-12">
+                                <div class="custom-checkbox">
+                                    <input v-model="props.form.is_featured" id="is_featured" type="checkbox"
+                                        class="custom-checkbox-field">
+                                    <i class="lab lab-fill-check custom-checkbox-icon lab-font-size-10"></i>
+                                </div>
+                                <label for="is_featured" class="db-field-label cursor-pointer">{{ $t('label.mark_as_featured') }}</label>
+                            </div>
+                        </div>
                         <div class="form-col-12 sm:form-col-12">
                             <label for="image" class="db-field-title">{{ $t('label.image') }} (960px,1440px)</label>
                             <input @change="changeImage" v-bind:class="errors.image ? 'invalid' : ''" id="image"
@@ -147,7 +158,8 @@ export default {
                 name: "",
                 parent_id: null,
                 description: "",
-                status: statusEnum.ACTIVE
+                status: statusEnum.ACTIVE,
+                is_featured: false
             }
             if (this.image) {
                 this.image = "";
@@ -161,6 +173,7 @@ export default {
                 fd.append('parent_id', (this.props.form.parent_id === null ? 'NULL' : this.props.form.parent_id));
                 fd.append('status', this.props.form.status);
                 fd.append('description', this.props.form.description);
+                fd.append('is_featured', this.props.form.is_featured ? 1 : 0);
                 if (this.image) {
                     fd.append('image', this.image);
                 }
@@ -179,6 +192,7 @@ export default {
                         parent_id: null,
                         description: "",
                         status: statusEnum.ACTIVE,
+                        is_featured: false,
                     }
                     this.image = "";
                     this.errors = {};

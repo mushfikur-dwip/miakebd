@@ -14,17 +14,35 @@ class MenuSectionTableSeeder extends Seeder
      */
     public function run()
     {
-        MenuSection::insert([
-            [
-                'name'          => 'Support Section',
-                'created_at'       => now(),
-                'updated_at'       => now()
-            ],
-            [
-                'name'          => 'Legal Section',
-                'created_at'       => now(),
-                'updated_at'       => now()
-            ],
-        ]);
+        // Only add if not exists
+        if (MenuSection::count() == 0) {
+            MenuSection::insert([
+                [
+                    'name'          => 'Support Section',
+                    'created_at'       => now(),
+                    'updated_at'       => now()
+                ],
+                [
+                    'name'          => 'Legal Section',
+                    'created_at'       => now(),
+                    'updated_at'       => now()
+                ],
+                [
+                    'name'          => 'Help Section',
+                    'created_at'       => now(),
+                    'updated_at'       => now()
+                ],
+            ]);
+        } else {
+            // Add Help Section if it doesn't exist (ID 3)
+            if (!MenuSection::find(3)) {
+                MenuSection::create([
+                    'id'            => 3,
+                    'name'          => 'Help Section',
+                    'created_at'    => now(),
+                    'updated_at'    => now()
+                ]);
+            }
+        }
     }
 }

@@ -385,6 +385,19 @@
                     </div>
 
                     <div class="form-col-12">
+                        <label for="site_offer_banner_text" class="db-field-title">
+                            {{ $t("label.offer_banner_text") }}
+                        </label>
+                        <textarea v-model="form.site_offer_banner_text"
+                            v-bind:class="errors.site_offer_banner_text ? 'invalid' : ''"
+                            id="site_offer_banner_text" class="db-field-control" rows="2"
+                            :placeholder="$t('label.offer_banner_text_placeholder')"></textarea>
+                        <small class="db-field-alert" v-if="errors.site_offer_banner_text">
+                            {{ errors.site_offer_banner_text[0] }}
+                        </small>
+                    </div>
+
+                    <div class="form-col-12">
                         <button type="submit" class="db-btn text-white bg-primary">
                             <i class="lab lab-fill-save"></i>
                             <span>{{ $t("button.save") }}</span>
@@ -438,6 +451,7 @@ export default {
                 site_default_sms_gateway: null,
                 site_non_purchase_product_maximum_quantity: null,
                 site_is_return_product_price_add_to_credit: null,
+                site_offer_banner_text: null,
             },
             enums: {
                 dateFormatEnum: dateFormatEnum,
@@ -498,6 +512,8 @@ export default {
         list: function () {
             this.loading.isActive = true;
             this.$store.dispatch('site/lists').then(res => {
+                console.log('📥 Site Settings Response:', res.data.data);
+                console.log('🎯 Offer Banner Text from API:', res.data.data.site_offer_banner_text);
                 this.form = {
                     site_date_format: res.data.data.site_date_format,
                     site_time_format: res.data.data.site_time_format,
@@ -519,7 +535,10 @@ export default {
                     site_default_sms_gateway: res.data.data.site_default_sms_gateway === 0 ? null : res.data.data.site_default_sms_gateway,
                     site_non_purchase_product_maximum_quantity: res.data.data.site_non_purchase_product_maximum_quantity,
                     site_is_return_product_price_add_to_credit: res.data.data.site_is_return_product_price_add_to_credit,
+                    site_offer_banner_text: res.data.data.site_offer_banner_text,
                 }
+                console.log('✅ Form after loading:', this.form);
+                console.log('🎯 Offer Banner in form:', this.form.site_offer_banner_text);
                 this.loading.isActive = false;
             }).catch((err) => {
                 this.loading.isActive = false;
@@ -528,11 +547,15 @@ export default {
         },
         save: function () {
             try {
+                console.log('💾 Saving Site Settings...');
+                console.log('📤 Form data being sent:', this.form);
+                console.log('🎯 Offer Banner Text being sent:', this.form.site_offer_banner_text);
                 if ((this.demo === 'true' || this.demo === 'TRUE' || this.demo === 'True' || this.demo === '1' || this.demo === 1) && this.form.site_app_debug === activityEnum.ENABLE) {
                     alertService.error(this.$t("message.app_debug_disabled"));
                 }
                 this.loading.isActive = true;
                 this.$store.dispatch("site/save", this.form).then((res) => {
+                    console.log('✅ Save Response:', res);
                     this.loading.isActive = false;
                     alertService.successFlip(res.config.method === "put" ?? 0, this.$t("menu.site"));
                     this.list();

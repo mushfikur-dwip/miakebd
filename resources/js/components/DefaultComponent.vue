@@ -4,6 +4,11 @@
     </div>
 
     <div v-if="theme === 'frontend'">
+        <!-- Offer Banner for Mobile -->
+        <div v-if="setting.site_offer_banner_text" class="lg:hidden w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-2.5 px-4 text-center animate-slideDown">
+            <p class="text-sm font-medium">{{ setting.site_offer_banner_text }}</p>
+        </div>
+
         <FrontendNavbarComponent />
         <FrontendCartComponent />
         <router-view></router-view>
@@ -88,6 +93,9 @@ export default {
         },
         displayMode: function () {
             return this.$store.getters['globalState/lists'].display_mode;
+        },
+        setting: function () {
+            return this.$store.getters['frontendSetting/lists'];
         },
     },
     methods: {

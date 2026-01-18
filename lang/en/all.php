@@ -74,6 +74,12 @@ return [
         "rating"                     => "Rating",
         "review"                     => "Review",
         "product"                    => "Product",
+        "featured"                   => "Featured",
+        "mark_as_featured"           => "Mark as Featured",
+        "active"                     => "Active",
+        "inactive"                   => "Inactive",
+        "top_categories"             => "Top Categories",
+        "help"                       => "Help",
     ],
     'message' => [
         'validation_error'                 => 'Validation Error.',

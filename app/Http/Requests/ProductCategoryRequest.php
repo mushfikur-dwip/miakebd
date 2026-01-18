@@ -36,6 +36,7 @@ class ProductCategoryRequest extends FormRequest
             'parent_id'   => ['nullable', 'string', 'max:900'],
             'description' => ['nullable', 'string', 'max:900'],
             'status'      => ['required', 'numeric', 'max:24'],
+            'is_featured' => ['nullable', 'boolean'],
             'image'       => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048']
         ];
     }

@@ -142,6 +142,7 @@ export default {
                     description: "",
                     parent_id: null,
                     status: statusEnum.ACTIVE,
+                    is_featured: false,
                 },
                 search: {
                     paginate: 1,
@@ -192,7 +193,8 @@ export default {
                 name: productCategory.name,
                 parent_id: productCategory.parent_id === 0 ? null : productCategory.parent_id,
                 status: productCategory.status,
-                description: productCategory.description
+                description: productCategory.description,
+                is_featured: productCategory.is_featured || false
             };
             this.loading.isActive = false;
         },

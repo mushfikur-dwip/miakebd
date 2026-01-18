@@ -44,6 +44,7 @@ class SiteRequest extends FormRequest
             'site_cash_on_delivery'                       => ['required', 'numeric'],
             'site_non_purchase_product_maximum_quantity'  => ['required', 'numeric'],
             'site_is_return_product_price_add_to_credit' => ['required', 'numeric'],
+            'site_offer_banner_text'                      => ['nullable', 'string', 'max:500'],
         ];
     }
 }

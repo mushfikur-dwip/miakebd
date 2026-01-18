@@ -1,4 +1,8 @@
 <template>
+    <!-- Offer Banner -->
+    <div v-if="setting.site_offer_banner_text" class="hidden lg:block w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-2.5 px-4 text-center animate-slideDown">
+        <p class="text-sm sm:text-base font-medium">{{ setting.site_offer_banner_text }}</p>
+    </div>
 
     <header
         :class="isSticky === true ? 'fixed top-0 left-0 z-30 w-full mb-5 sm:mb-8 shadow-xs bg-white' : 'mb-5 sm:mb-8 shadow-xs bg-white'">

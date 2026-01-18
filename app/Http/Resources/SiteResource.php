@@ -46,6 +46,7 @@ class SiteResource extends JsonResource
             "site_cash_on_delivery"                      => $this->info['site_cash_on_delivery'],
             "site_non_purchase_product_maximum_quantity" => $this->info['site_non_purchase_product_maximum_quantity'],
             "site_is_return_product_price_add_to_credit" => $this->info['site_is_return_product_price_add_to_credit'],
+            "site_offer_banner_text"                     => $this->info['site_offer_banner_text'] ?? null,
         ];
     }
 }

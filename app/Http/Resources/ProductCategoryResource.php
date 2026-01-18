@@ -23,6 +23,7 @@ class ProductCategoryResource extends JsonResource
             'parent_category' => optional($this->parent_category)->name,
             'status'          => $this->status,
             'parent_id'       => $this->parent_id,
+            'is_featured'     => $this->is_featured,
             'thumb'           => $this->thumb,
             'cover'           => $this->cover
         ];

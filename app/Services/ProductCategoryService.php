@@ -20,7 +20,8 @@ class ProductCategoryService
         'slug',
         'description',
         'status',
-        'parent_id'
+        'parent_id',
+        'is_featured'
     ];
 
     protected array $exceptFilter = [

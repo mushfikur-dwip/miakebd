@@ -78,7 +78,11 @@ export default {
                     })
                     .catch((err) => {
                         this.loading.isActive = false;
-                        this.errors = err.response.data.errors;
+                        if (err.response && err.response.data && err.response.data.errors) {
+                            this.errors = err.response.data.errors;
+                        } else {
+                            alertService.error(err.response?.data?.message || err.message || "An error occurred");
+                        }
                     });
             } catch (err) {
                 this.loading.isActive = false;

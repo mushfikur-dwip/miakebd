@@ -152,10 +152,8 @@ Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name
         Route::post('/register-validation', [SignupController::class, 'validateRegister']);
     });
 
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/logout', [LoginController::class, 'logout'])->middleware(['auth:sanctum', 'throttle:60,1']);
-        Route::post('/deactivate', [DeactivateController::class, 'deactivate'])->middleware(['auth:sanctum', 'throttle:60,1']);
-    });
+    Route::post('/logout', [LoginController::class, 'logout'])->middleware(['auth:sanctum', 'throttle:60,1']);
+    Route::post('/deactivate', [DeactivateController::class, 'deactivate'])->middleware(['auth:sanctum', 'throttle:60,1']);
 
     Route::post('/authcheck', function () {
         if (Auth::check()) {

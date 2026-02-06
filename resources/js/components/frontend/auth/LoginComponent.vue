@@ -282,7 +282,11 @@ export default {
                     })
                     .catch((err) => {
                         this.loading.isActive = false;
-                        this.errors = err.response.data.errors;
+                        if (err.response && err.response.data && err.response.data.errors) {
+                            this.errors = err.response.data.errors;
+                        } else {
+                            this.errors = { validation: "An error occurred. Please try again." };
+                        }
                     });
             } catch (err) {
                 this.loading.isActive = false;

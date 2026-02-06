@@ -20,7 +20,7 @@
                                 :to="action.route"
                                 @click="hideTarget('mobile-category-canvas', 'canvas-active')"
                                 class="flex items-center justify-center gap-2 p-3 bg-white rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-50 active:scale-95 border border-gray-100">
-                        <i :class="action.icon"></i>
+                        <!-- <i :class="action.icon"></i> -->
                         <span>{{ action.name }}</span>
                     </router-link>
                 </div>

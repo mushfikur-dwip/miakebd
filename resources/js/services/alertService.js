@@ -2,7 +2,7 @@ import {useToast} from "vue-toastification";
 /*
  * Position
  * --------------
- * top-right
+ * bottom-right
  * top-center
  * top-left
  * bottom-right
@@ -10,42 +10,42 @@ import {useToast} from "vue-toastification";
  * bottom-left
  * */
 export default {
-    default: function (message = "Default", position = "top-right") {
+    default: function (message = "Default", position = "bottom-right") {
         const toast = useToast();
         toast(message, {
             position: position,
         });
     },
 
-    success: function (message = "Success", position = "top-right") {
+    success: function (message = "Success", position = "bottom-right") {
         const toast = useToast();
         toast.success(message, {
             position: position,
         });
     },
 
-    info: function (message = "Info", position = "top-right") {
+    info: function (message = "Info", position = "bottom-right") {
         const toast = useToast();
         toast.info(message, {
             position: position,
         });
     },
 
-    warning: function (message = "Warning", position = "top-right") {
+    warning: function (message = "Warning", position = "bottom-right") {
         const toast = useToast();
         toast.warning(message, {
             position: position,
         });
     },
 
-    error: function (message = "Error", position = "top-right") {
+    error: function (message = "Error", position = "bottom-right") {
         const toast = useToast();
         toast.error(message, {
             position: position,
         });
     },
 
-    successFlip: function (status = null, message = "", position = "top-right") {
+    successFlip: function (status = null, message = "", position = "bottom-right") {
         const toast = useToast();
         if (status != null) {
             if (status) {
@@ -62,7 +62,7 @@ export default {
         });
     },
 
-    successInfo: function (status = null, message = "", position = "top-right") {
+    successInfo: function (status = null, message = "", position = "bottom-right") {
         const toast = useToast();
         toast.success(message, {
             position: position,

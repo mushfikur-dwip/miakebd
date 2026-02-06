@@ -1,10 +1,10 @@
 <template>
-    <div v-if="loading" class="mb-4">
+    <div v-if="loading" class="mb-4 lg:hidden">
         <!-- Skeleton? -->
     </div>
     <div
         v-else-if="buttons.length > 0"
-        class="w-full bg-cover bg-center bg-no-repeat mb-4 py-4"
+        class="w-full bg-cover bg-center bg-no-repeat mb-4 py-4 lg:hidden"
         :style="backgroundStyle"
     >
         <div class="container">

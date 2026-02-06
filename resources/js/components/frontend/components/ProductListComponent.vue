@@ -96,6 +96,10 @@ export default {
             });
         },
         addToCart: function (product) {
+            // Determine the correct price based on whether it's an offer
+            const finalPrice = product.is_offer ? (product.flat_discounted_price || 0) : (product.flat_price || 0);
+            const oldPrice = product.flat_price || 0;
+            
             const productArray = {
                 name: product.name,
                 product_id: product.id,
@@ -108,9 +112,9 @@ export default {
                 shipping: product.shipping || {},
                 quantity: 1,
                 discount: product.discount || 0,
-                price: product.flat_price || 0,
-                old_price: product.old_flat_price || 0,
-                total_price: product.flat_price || 0,
+                price: finalPrice,
+                old_price: oldPrice,
+                total_price: finalPrice,
                 maximum_purchase_quantity: product.maximum_purchase_quantity || 999
             };
 

@@ -268,6 +268,11 @@ class AppLibrary
     }
     public static function defaultMenu($menus, $defaulPermission): array
     {
+        // Handle empty permission object
+        if (!isset($defaulPermission->url)) {
+            return [];
+        }
+        
         foreach ($menus as $menu) {
             if (isset($menu['url']) && $menu['url'] === $defaulPermission->url) {
                 return $menu;

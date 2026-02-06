@@ -33,12 +33,14 @@
             </div>
             <form class="w-full p-5" @submit.prevent="save">
                 <div class="form-row">
-                    <div class="form-col-12 sm:form-col-6">
+                    <!-- Row 1: Full Name (Full Width) -->
+                    <div class="form-col-12">
                         <label
                             for="full_name"
                             class="text-sm font-medium capitalize mb-1 field-title required"
                             >{{ $t("label.full_name") }}</label
-                        ><input
+                        >
+                        <input
                             type="text"
                             v-model="props.form.full_name"
                             :class="errors.full_name ? 'invalid' : ''"
@@ -48,23 +50,8 @@
                             {{ errors.full_name[0] }}
                         </small>
                     </div>
-                    <div class="form-col-12 sm:form-col-6">
-                        <label
-                            for="email"
-                            class="text-sm font-medium capitalize mb-1 field-title"
-                            >{{ $t("label.email") }}</label
-                        >
-                        <input
-                            type="email"
-                            v-model="props.form.email"
-                            :class="errors.email ? 'invalid' : ''"
-                            class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
-                        />
-                        <small class="db-field-alert" v-if="errors.email">
-                            {{ errors.email[0] }}
-                        </small>
-                    </div>
 
+                    <!-- Row 2: Phone + Email -->
                     <div class="form-col-12 sm:form-col-6">
                         <label
                             for="phone"
@@ -92,7 +79,6 @@
                                 class="pl-2 text-sm w-full h-full"
                             />
                         </div>
-
                         <small class="db-field-alert" v-if="errors.phone">
                             {{ errors.phone[0] }}
                         </small>
@@ -100,34 +86,27 @@
 
                     <div class="form-col-12 sm:form-col-6">
                         <label
-                            class="text-sm font-medium capitalize mb-1 field-title required"
-                            for="country"
-                            >{{ $t("label.country") }}</label
+                            for="email"
+                            class="text-sm font-medium capitalize mb-1 field-title"
+                            >{{ $t("label.email") }}</label
                         >
-                        <vue-select
-                            class="frontend-select w-full h-12 px-4 rounded-lg text-base capitalize border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500 appearance-none"
-                            id="country"
-                            v-bind:class="errors.country ? 'invalid' : ''"
-                            v-model="props.form.country"
-                            @update:modelValue="callStates($event)"
-                            :options="countries"
-                            label-by="name"
-                            value-by="name"
-                            :closeOnSelect="true"
-                            :searchable="true"
-                            :clearOnClose="true"
-                            placeholder="--"
-                            search-placeholder="--"
+                        <input
+                            type="email"
+                            v-model="props.form.email"
+                            :class="errors.email ? 'invalid' : ''"
+                            class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
                         />
-                        <small class="db-field-alert" v-if="errors.country">
-                            {{ errors.country[0] }}
+                        <small class="db-field-alert" v-if="errors.email">
+                            {{ errors.email[0] }}
                         </small>
                     </div>
+
+                    <!-- Row 3: District (State) + Thana (City) -->
                     <div class="form-col-12 sm:form-col-6">
                         <label
                             class="text-sm font-medium capitalize mb-1 field-title required"
                             for="state"
-                            >{{ $t("label.state") }}</label
+                            >District</label
                         >
                         <vue-select
                             class="frontend-select w-full h-12 px-4 rounded-lg text-base capitalize border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500 appearance-none"
@@ -148,10 +127,11 @@
                             {{ errors.state[0] }}
                         </small>
                     </div>
+
                     <div class="form-col-12 sm:form-col-6">
                         <label
                             class="text-sm font-medium capitalize mb-1 field-title required"
-                            >{{ $t("label.city") }}</label
+                            >Thana</label
                         >
                         <vue-select
                             class="frontend-select w-full h-12 px-4 rounded-lg text-base capitalize border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500 appearance-none"
@@ -171,22 +151,9 @@
                             {{ errors.city[0] }}
                         </small>
                     </div>
-                    <div class="form-col-12 sm:form-col-6">
-                        <label
-                            class="text-sm font-medium capitalize mb-1"
-                            for="zip_code"
-                            >{{ $t("label.zip_code") }} </label
-                        ><input
-                            type="text"
-                            v-model="props.form.zip_code"
-                            :class="errors.zip_code ? 'invalid' : ''"
-                            class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
-                        />
-                        <small class="db-field-alert" v-if="errors.zip_code">
-                            {{ errors.zip_code[0] }}
-                        </small>
-                    </div>
-                    <div class="form-col-12 sm:form-col-6">
+
+                    <!-- Row 4: Street Address (Full Width) -->
+                    <div class="form-col-12">
                         <label
                             class="text-sm font-medium capitalize mb-1 field-title required"
                             for="street_address"
@@ -248,6 +215,9 @@ export default {
         this.loading.isActive = true;
         setTimeout(() => {
             this.callCountry();
+            // Auto-select Bangladesh and load states
+            this.props.form.country = "Bangladesh";
+            this.callStates("Bangladesh");
         }, 300);
         this.props.form.country_code = "+880";
         this.loading.isActive = false;
@@ -304,10 +274,9 @@ export default {
                 email: "",
                 country_code: "+880",
                 phone: "",
-                country: null,
+                country: "Bangladesh",
                 state: null,
                 city: null,
-                zip_code: "",
                 address: "",
             };
             this.$props.props.states = [];
@@ -332,10 +301,9 @@ export default {
                             email: "",
                             country_code: "+880",
                             phone: "",
-                            country: null,
+                            country: "Bangladesh",
                             state: null,
                             city: null,
-                            zip_code: "",
                             address: "",
                         };
                         this.$props.props.states = [];

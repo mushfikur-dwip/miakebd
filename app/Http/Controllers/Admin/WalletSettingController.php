@@ -16,6 +16,7 @@ class WalletSettingController extends Controller
             
             if (!$walletSetting) {
                 $walletSetting = WalletSetting::create([
+                    'wallet_status' => true,
                     'cashback_status' => false,
                     'cashback_rule' => 'cart_wise',
                     'cashback_type' => 'percentage',
@@ -35,6 +36,7 @@ class WalletSettingController extends Controller
     public function update(Request $request)
     {
         $request->validate([
+            'wallet_status' => 'required|boolean',
             'cashback_status' => 'required|boolean',
             'cashback_rule' => 'required|string',
             'cashback_type' => 'required|in:percentage,fixed',

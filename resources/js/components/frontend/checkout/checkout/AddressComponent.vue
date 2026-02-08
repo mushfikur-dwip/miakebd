@@ -199,7 +199,7 @@
                         <label
                             class="text-sm font-medium capitalize mb-1 field-title required"
                         >
-                            Thana
+                            Upzila
                         </label>
                         <vue-select
                             class="w-full h-12 px-4 rounded-lg text-base capitalize border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500 appearance-none"

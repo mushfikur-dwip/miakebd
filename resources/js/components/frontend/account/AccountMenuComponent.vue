@@ -32,6 +32,7 @@
             </router-link>
 
             <router-link
+                v-if="walletStatus"
                 class="profile-link font-medium flex items-center gap-4 capitalize py-3 px-4 group hover:text-primary transition-all duration-500"
                 :to="{ name: 'frontend.account.wallet' }">
                 <i class="lab lab-fill-wallet text-[#A0A3BD] group-hover:text-primary transition-all duration-500"></i>
@@ -73,9 +74,17 @@ export default {
             phone: "",
         };
     },
+    mounted() {
+        // Fetch fresh settings to get updated wallet_status
+        this.$store.dispatch('frontendSetting/lists').catch();
+    },
     computed: {
         profile: function () {
             return this.$store.getters.authInfo;
+        },
+        walletStatus: function () {
+            const settings = this.$store.getters['frontendSetting/lists'];
+            return settings.wallet_status ?? true;
         },
     }
 };

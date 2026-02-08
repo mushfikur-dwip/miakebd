@@ -583,6 +583,7 @@
         "balance": "Balance",
         "type": "Type",
         "date": "Date",
+        "enable_wallet": "Enable Wallet",
         "cashback_reward_program": "Cashback Reward Program",
         "process_cashback": "Process Cashback",
         "cashback_rule": "Cashback Rule",

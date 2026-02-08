@@ -21,7 +21,7 @@
             <h3 class="text-shopperz-purple text-2xl font-bold mb-1">{{ total_returned_orders }}</h3>
             <p class="font-medium text-text">{{ this.$t('label.total_returned') }}</p>
         </div>
-        <div class="p-3 rounded-2xl shadow-xs bg-white">
+        <div v-if="walletStatus" class="p-3 rounded-2xl shadow-xs bg-white">
             <i
                 class="lab-fill-wallet bg-shopperz-blue shadow-blue w-10 h-10 leading-10 rounded-lg text-lg text-center text-white mb-6"></i>
             <h3 class="text-shopperz-blue text-2xl font-bold mb-1">{{ wallet_balance }}</h3>
@@ -183,6 +183,9 @@ export default {
         }
     },
     mounted() {
+        // Fetch fresh settings to get updated wallet_status
+        this.$store.dispatch('frontendSetting/lists').catch();
+        
         const profile = this.$store.getters.authInfo;
         this.name = profile.name;
         this.totalOrders();
@@ -197,6 +200,10 @@ export default {
         },
         orders: function () {
             return this.$store.getters["frontendOrder/lists"];
+        },
+        walletStatus: function () {
+            const settings = this.$store.getters['frontendSetting/lists'];
+            return settings.wallet_status ?? true;
         },
     },
     methods: {

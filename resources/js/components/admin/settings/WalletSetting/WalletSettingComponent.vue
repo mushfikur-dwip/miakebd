@@ -5,10 +5,17 @@
             <div class="db-card-header">
                 <h3 class="db-card-title">{{ $t('menu.wallet_management') }}</h3>
                 <div class="db-card-filter">
+                    <div class="db-field-toggle mr-4">
+                        <label class="db-field-label" for="wallet_status">{{ $t('label.enable_wallet') }}</label>
+                        <div class="toggle">
+                            <input v-model="form.wallet_status" type="checkbox" id="wallet_status" class="toggle-checkbox" />
+                            <label for="wallet_status" class="toggle-label"></label>
+                        </div>
+                    </div>
                     <div class="db-field-toggle">
                         <label class="db-field-label" for="cashback_status">{{ $t('label.cashback_reward_program') }}</label>
                         <div class="toggle">
-                            <input v-model="form.cashback_status" type="checkbox" id="cashback_status" class="toggle-checkbox" />
+                            <input v-model="form.cashback_status" type="checkbox" id="cashback_status" class="toggle-checkbox" :disabled="!form.wallet_status" />
                             <label for="cashback_status" class="toggle-label"></label>
                         </div>
                     </div>
@@ -114,6 +121,7 @@ export default {
                 isActive: false
             },
             form: {
+                wallet_status: true,
                 cashback_status: false,
                 cashback_rule: 'cart_wise',
                 cashback_type: 'percentage',
@@ -139,6 +147,7 @@ export default {
         this.loading.isActive = true;
         axios.get('admin/setting/wallet-setting').then((res) => {
             this.form = {
+                wallet_status: res.data.data.wallet_status ?? true,
                 cashback_status: res.data.data.cashback_status,
                 cashback_rule: res.data.data.cashback_rule,
                 cashback_type: res.data.data.cashback_type,

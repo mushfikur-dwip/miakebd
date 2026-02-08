@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Dipokhalder\Settings\Facades\Settings;
+use App\Models\WalletSetting;
 
 class SettingService
 {
@@ -16,6 +17,16 @@ class SettingService
         $array = array_merge($array, Settings::group('otp')->all());
         $array = array_merge($array, Settings::group('social_media')->all());
         $array = array_merge($array, Settings::group('notification')->all());
-        return array_merge($array, Settings::group('cookies')->all());
+        $array = array_merge($array, Settings::group('cookies')->all());
+        
+        // Add wallet settings
+        $walletSetting = WalletSetting::first();
+        if ($walletSetting) {
+            $array['wallet_status'] = $walletSetting->wallet_status;
+        } else {
+            $array['wallet_status'] = true;
+        }
+        
+        return $array;
     }
 }

@@ -60,7 +60,7 @@
                         <span>{{ $t('menu.return_orders') }}</span>
                     </router-link>
 
-                    <router-link :class="checkIsPathAndRoutePathSame('/account/wallet') ? '!text-primary' : ''"
+                    <router-link v-if="walletStatus" :class="checkIsPathAndRoutePathSame('/account/wallet') ? '!text-primary' : ''"
                         v-on:click="hideTarget('mobile-profile-canvas', 'canvas-active')"
                         :to="{ name: 'frontend.account.wallet' }"
                         class="profile-link font-medium flex items-center gap-4 capitalize py-3 px-4 group hover:text-primary transition-all duration-500">
@@ -124,6 +124,10 @@ export default {
             currentRoute: "",
         }
     },
+    mounted() {
+        // Fetch fresh settings to get updated wallet_status
+        this.$store.dispatch('frontendSetting/lists').catch();
+    },
     computed: {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
@@ -133,6 +137,10 @@ export default {
         },
         authDefaultPermission: function () {
             return this.$store.getters.authDefaultPermission;
+        },
+        walletStatus: function () {
+            const settings = this.$store.getters['frontendSetting/lists'];
+            return settings.wallet_status ?? true;
         },
     },
     methods: {

@@ -598,6 +598,7 @@
         "message": "الرسالة",
         "created_by": "تم إنشاء بواسطة",
         "created_date": "تاريخ الإنشاء",
+        "enable_wallet": "تفعيل المحفظة",
         "tel": "هاتف",
         "file": "ملف",
         "cheque": "شيك",

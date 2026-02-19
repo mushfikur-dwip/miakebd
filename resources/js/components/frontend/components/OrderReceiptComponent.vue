@@ -173,7 +173,7 @@
             <h5 class="text-[8px] font-normal text-left w-[46px] leading-[10px]">
                 {{ $t('label.powered_by') }}
             </h5>
-            <h6 class="text-xs font-normal leading-4">{{ company.company_name }}</h6>
+            <h6 class="text-xs font-normal leading-4">Mushfikur Rahman | 01303252317</h6>
         </div>
     </div>
 </template>

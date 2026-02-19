@@ -1,5 +1,5 @@
 <template>
-    <div v-if="isLoggedIn" class="mb-6 rounded-2xl border border-[#6366F1] bg-gradient-to-r from-[#F9FAFB] to-[#EEF2FF] overflow-hidden">
+    <div v-if="isLoggedIn && walletStatus" class="mb-6 rounded-2xl border border-[#6366F1] bg-gradient-to-r from-[#F9FAFB] to-[#EEF2FF] overflow-hidden">
         <div class="flex items-center gap-3 p-4">
             <div class="relative flex-shrink-0">
                 <i class="lab-fill-wallet lab-font-size-2xl text-[#6366F1]"></i>
@@ -82,6 +82,10 @@ export default {
         setting: function() {
             return this.$store.getters['frontendSetting/lists'];
         },
+        walletStatus: function() {
+            const settings = this.$store.getters['frontendSetting/lists'];
+            return settings && settings.wallet_status === true;
+        },
         isLoggedIn: function() {
             return this.$store.getters.authStatus;
         },
@@ -112,87 +116,56 @@ export default {
             );
         },
         applyWallet() {
-            console.log('🔵 [Wallet] Apply button clicked');
-            console.log('🔵 [Wallet] Input amount:', this.walletAmount);
-            console.log('🔵 [Wallet] Current wallet balance:', this.walletBalance);
-            console.log('🔵 [Wallet] Current order total:', this.total);
-            
             this.error = '';
             
             const amount = parseFloat(this.walletAmount);
-            console.log('🔵 [Wallet] Parsed amount:', amount);
             
             if (!amount || amount <= 0) {
-                console.error('❌ [Wallet] Invalid amount entered');
                 this.error = this.$t('message.please_enter_valid_amount');
                 return;
             }
             
             if (amount > this.walletBalance) {
-                console.error('❌ [Wallet] Insufficient balance. Requested:', amount, 'Available:', this.walletBalance);
                 this.error = this.$t('message.insufficient_wallet_balance');
                 return;
             }
             
             if (amount > this.total) {
-                console.error('❌ [Wallet] Amount exceeds order total. Requested:', amount, 'Order total:', this.total);
                 this.error = this.$t('message.wallet_amount_exceeds_order_total');
                 return;
             }
             
-            console.log('✅ [Wallet] Validation passed. Applying wallet discount...');
             this.$store.dispatch('frontendCart/applyWalletDiscount', amount).then(() => {
                 this.walletApplied = true;
                 this.appliedWalletAmount = amount;
-                console.log('✅ [Wallet] Wallet discount applied successfully:', amount);
-                console.log('✅ [Wallet] Wallet applied status:', this.walletApplied);
                 alertService.success(this.$t('message.wallet_applied_successfully'));
             }).catch((error) => {
-                console.error('❌ [Wallet] Failed to apply wallet discount:', error);
                 this.error = error.response?.data?.message || this.$t('message.something_went_wrong');
             });
         },
         removeWallet() {
-            console.log('🔴 [Wallet] Remove wallet button clicked');
-            console.log('🔴 [Wallet] Current applied amount:', this.appliedWalletAmount);
-            
             this.$store.dispatch('frontendCart/removeWalletDiscount').then(() => {
                 this.walletApplied = false;
                 this.appliedWalletAmount = 0;
                 this.walletAmount = '';
                 this.error = '';
-                console.log('✅ [Wallet] Wallet discount removed successfully');
                 alertService.success(this.$t('message.wallet_removed_successfully'));
             });
         }
     },
     mounted() {
-        console.log('🟢 [Wallet Component] Mounted');
-        console.log('🟢 [Wallet Component] User logged in:', this.isLoggedIn);
-        
-        // Fetch user's wallet balance only if logged in
-        if (this.isLoggedIn) {
-            console.log('🟢 [Wallet Component] Fetching wallet balance...');
-            this.$store.dispatch('frontendCart/fetchWalletBalance').then(() => {
-                console.log('🟢 [Wallet Component] Balance fetched. Current state:');
-                console.log('  - walletBalance:', this.walletBalance);
-                console.log('  - walletApplied:', this.walletApplied);
-                console.log('  - appliedWalletAmount:', this.appliedWalletAmount);
-                console.log('  - total:', this.total);
-                console.log('  - maxWalletAmount:', this.maxWalletAmount);
-            }).catch((error) => {
-                console.error('❌ [Wallet Component] Failed to fetch wallet balance:', error);
-            });
-        } else {
-            console.log('⚠️ [Wallet Component] User not logged in, skipping wallet balance fetch');
-        }
+        this.$store.dispatch('frontendSetting/lists').then(() => {
+            if (this.isLoggedIn && this.walletStatus) {
+                this.$store.dispatch('frontendCart/fetchWalletBalance').catch(() => {});
+            }
+        }).catch(() => {});
     },
     watch: {
         walletBalance(newVal, oldVal) {
-            console.log('🔄 [Wallet Component] walletBalance changed from', oldVal, 'to', newVal);
+            // Watch for balance changes
         },
         walletApplied(newVal, oldVal) {
-            console.log('🔄 [Wallet Component] walletApplied changed from', oldVal, 'to', newVal);
+            // Watch for applied status changes
         }
     }
 }

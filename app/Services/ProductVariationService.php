@@ -414,7 +414,12 @@ class ProductVariationService
                             }
                         }
 
-                        $sku = AppLibrary::sku(rand(1000000, 9999999));
+                        // Generate a 20-digit random SKU
+                        $sku = '';
+                        for ($i = 0; $i < 20; $i++) {
+                            $sku .= random_int(0, 9);
+                        }
+                        $sku = AppLibrary::sku($sku);
                         $createProductVariation = ProductVariation::create([
                             'product_id'                  => $product->id,
                             'product_attribute_id'        => $variation->product_attribute_id,

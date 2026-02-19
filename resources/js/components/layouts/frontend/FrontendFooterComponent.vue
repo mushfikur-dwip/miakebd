@@ -22,7 +22,7 @@
                     </nav>
                 </div>
                 <div class="col-6 sm:col-6 md:col-3 lg:col-2 mb-4 sm:mb-0">
-                    <h4 class="text-[22px] font-semibold capitalize mb-6 text-white">{{ $t('label.support') }}
+                    <h4 class="text-[22px] font-semibold capitalize mb-6 text-white">Quick Links
                     </h4>
                     <nav v-if="supportPages.length > 0" class="flex flex-col gap-4">
                         <router-link v-for="supportPage in supportPages" :key="supportPage.id"

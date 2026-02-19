@@ -4,7 +4,7 @@
 
 @layer base {
     :root {
-        --primary: 242 62 20;
+        --primary: 34 34 34;
         --primary-light: 255 237 244;
         --primary-slate: 255 244 241;
         --client-font: 'Urbanist', sans-serif;

@@ -610,7 +610,7 @@
         "cash": "Cash",
         "qty": "qty",
         "product_description": "Product Description",
-        "powered_by": "Powered by",
+        "powered_by": "Developed by",
         "order_date_time": "Order Date Time",
         "search_customer": "Search Customer",
         "select_customer": "Select Customer",

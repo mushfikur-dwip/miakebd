@@ -16,7 +16,7 @@
                         <span class="text-xs font-medium">{{ cashOnDelivery.name }}</span>
                     </div>
 
-                    <div v-if="appliedWalletAmount === 0" @click.prevent="selectPaymentMethod(credit)"
+                    <div v-if="appliedWalletAmount === 0 && walletStatus && Object.keys(credit).length > 0" @click.prevent="selectPaymentMethod(credit)"
                         :class="Object.keys(paymentMethod).length > 0 && credit.id === paymentMethod.id ? 'border-primary/50 bg-[#FFF4F1]' : 'border-white bg-white'"
                         class="flex flex-col items-center justify-center gap-2.5 py-4 rounded-lg shadow-xs cursor-pointer border">
                         <img class="h-6" :src="credit.image" alt="payment" />
@@ -47,7 +47,7 @@
 
         <div class="col-12 lg:col-4">
             <CouponComponent />
-            <WalletRedeemComponent />
+            <WalletRedeemComponent v-if="walletStatus" />
             <SummeryComponent />
 
             <div class="max-lg:flex hidden flex-col-reverse sm:flex-row items-center justify-between gap-5 mt-10">
@@ -96,6 +96,10 @@ export default {
     computed: {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
+        },
+        walletStatus: function () {
+            const settings = this.$store.getters['frontendSetting/lists'];
+            return settings && settings.wallet_status === true;
         },
         profile: function () {
             return this.$store.getters.authInfo;
@@ -176,32 +180,18 @@ export default {
             this.$store.dispatch("frontendCart/paymentMethod", paymentMethod);
         },
         confirmOrder: function (e) {
-            console.log('\n🟣 [Payment] ========== CONFIRM ORDER CLICKED ==========');
             e.target.disabled = true;
-            
-            console.log('🟣 [Payment] Order Details:');
-            console.log('  - Subtotal:', this.subtotal);
-            console.log('  - Discount:', this.discount);
-            console.log('  - Tax:', this.totalTax);
-            console.log('  - Shipping:', this.shippingCharge);
-            console.log('  - Total:', this.total);
-            console.log('  - Applied Wallet Amount:', this.appliedWalletAmount);
-            console.log('  - Remaining Amount:', this.remainingAmount);
             
             // Check if full payment is covered by wallet
             const isFullyPaidByWallet = this.appliedWalletAmount > 0 && this.remainingAmount === 0;
-            console.log('🟣 [Payment] Is Fully Paid by Wallet?', isFullyPaidByWallet);
             
             // If wallet covers full payment, no need to select payment method
             // If partial wallet payment, require payment method selection for remaining amount
             if (!isFullyPaidByWallet && Object.keys(this.paymentMethod).length === 0) {
-                console.error('❌ [Payment] Payment method required for remaining amount');
                 e.target.disabled = false;
                 alertService.error(this.$t('message.payment_method_required'));
                 return;
             }
-            
-            console.log('🟣 [Payment] Selected Payment Method:', this.paymentMethod);
             
             this.form = {
                 subtotal: this.subtotal,
@@ -220,40 +210,29 @@ export default {
                 wallet_discount: this.appliedWalletAmount,
                 products: JSON.stringify(this.products)
             }
-
-            console.log('🟣 [Payment] Submitting order with data:', this.form);
             
             this.$store.dispatch('frontendOrder/save', this.form).then(orderResponse => {
                 this.loading.isActive = false;
-                console.log('✅ [Payment] Order created successfully:', orderResponse.data.data);
-                console.log('✅ [Payment] Order ID:', orderResponse.data.data.id);
                 
                 // Refresh wallet balance if wallet was used
                 if (this.appliedWalletAmount > 0) {
-                    console.log('🔄 [Payment] Refreshing wallet balance...');
-                    this.$store.dispatch('frontendCart/fetchWalletBalance').then(() => {
-                        console.log('✅ [Payment] Wallet balance refreshed');
-                    }).catch(err => {
-                        console.error('❌ [Payment] Failed to refresh wallet balance:', err);
+                    this.$store.dispatch('frontendCart/fetchWalletBalance').catch(err => {
+                        // Silent error handling
                     });
                 }
                 
                 // If fully paid by wallet, redirect to success page
                 if (isFullyPaidByWallet) {
                     const successUrl = ENV.API_URL + "/payment/successful/" + orderResponse.data.data.id;
-                    console.log('✅ [Payment] FULL WALLET PAYMENT - Redirecting to success page:', successUrl);
                     window.location.href = successUrl;
                 } else {
                     // If partial wallet payment or no wallet, go to payment gateway
                     let paymentSlug = Object.keys(this.paymentMethod).length > 0 ? this.paymentMethod.slug : '';
-                    console.log('🟣 [Payment] PARTIAL/NO WALLET PAYMENT - Payment gateway slug:', paymentSlug);
                     
                     if (paymentSlug) {
                         const paymentUrl = ENV.API_URL + "/payment/" + paymentSlug + "/pay/" + orderResponse.data.data.id;
-                        console.log('✅ [Payment] Redirecting to payment gateway:', paymentUrl);
                         window.location.href = paymentUrl;
                     } else {
-                        console.error('❌ [Payment] No payment method selected');
                         alertService.error(this.$t('message.payment_method_required'));
                     }
                 }

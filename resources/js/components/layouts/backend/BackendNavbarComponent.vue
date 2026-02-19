@@ -1,8 +1,8 @@
 <template>
     <div class="backdrop"></div>
     <header class="db-header">
-        <router-link class="w-32 flex-shrink-0" :to="{ name: 'frontend.home' }">
-            <img class="w-full" :src="setting.theme_logo" alt="logo">
+        <router-link class="w-40 flex-shrink-0" :to="{ name: 'frontend.home' }">
+            <h4 class="w-48 text-xl font-bold mb-1">suGlow Cosmetics</h4>
         </router-link>
         <div class="flex items-center justify-end w-full gap-4">
             <div

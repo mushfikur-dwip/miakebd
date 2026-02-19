@@ -436,7 +436,12 @@ class ProductService
     public function generateSku()
     {
         try {
-            return AppLibrary::sku(rand(1000000, 9999999));
+            // Generate a 20-digit random number
+            $sku = '';
+            for ($i = 0; $i < 20; $i++) {
+                $sku .= random_int(0, 9);
+            }
+            return AppLibrary::sku($sku);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

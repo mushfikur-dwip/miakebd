@@ -190,17 +190,12 @@ export const frontendCart = {
         },
         fetchWalletBalance: function (context) {
             return new Promise((resolve, reject) => {
-                console.log('🟡 [Store] Fetching wallet balance from API...');
                 axios.get('/frontend/wallet/balance').then((res) => {
-                    console.log('🟡 [Store] API Response:', res.data);
                     // More defensive response handling
                     const balance = res.data && res.data.data && res.data.data.balance ? parseFloat(res.data.data.balance) : 0;
-                    console.log('✅ [Store] Parsed wallet balance:', balance);
                     context.commit('walletBalance', balance);
                     resolve(res);
                 }).catch((err) => {
-                    console.error('❌ [Store] Wallet balance fetch error:', err);
-                    console.error('❌ [Store] Error details:', err.response?.data);
                     // Set balance to 0 on error
                     context.commit('walletBalance', 0);
                     reject(err);
@@ -210,30 +205,16 @@ export const frontendCart = {
         applyWalletDiscount: function (context, amount) {
             return new Promise((resolve, reject) => {
                 const appliedAmount = parseFloat(amount);
-                console.log('🟡 [Store] Applying wallet discount:', appliedAmount);
-                console.log('🟡 [Store] Current cart total before wallet:', context.state.total);
-                
                 context.commit('walletDiscount', appliedAmount);
                 context.commit('appliedWalletAmount', appliedAmount);
                 context.commit("subtotal");
-                
-                console.log('✅ [Store] Wallet discount applied');
-                console.log('✅ [Store] New cart total after wallet:', context.state.total);
-                console.log('✅ [Store] Wallet discount stored:', context.state.walletDiscount);
-                console.log('✅ [Store] Applied wallet amount stored:', context.state.appliedWalletAmount);
                 resolve();
             });
         },
         removeWalletDiscount: function (context) {
-            console.log('🟡 [Store] Removing wallet discount');
-            console.log('🟡 [Store] Current applied amount:', context.state.appliedWalletAmount);
-            
             context.commit('walletDiscount', 0);
             context.commit('appliedWalletAmount', 0);
             context.commit("subtotal");
-            
-            console.log('✅ [Store] Wallet discount removed');
-            console.log('✅ [Store] New cart total:', context.state.total);
         },
         initOrderType: function (context, payload) {
             context.commit('orderTypeInit', payload);

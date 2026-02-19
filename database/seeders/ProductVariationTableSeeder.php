@@ -74,7 +74,12 @@ class ProductVariationTableSeeder extends Seeder
 
                     if (isset($fashionVariation['children'])) {
                         foreach ($fashionVariation['children'] as $childVariation) {
-                            $sku = rand(100, 999) . date('is');
+                            // Generate a 20-digit random SKU
+                            $sku = '';
+                            for ($i = 0; $i < 20; $i++) {
+                                $sku .= random_int(0, 9);
+                            }
+                            $sku = \App\Libraries\AppLibrary::sku($sku);
                             $productVariation = ProductVariation::create([
                                 'product_id'                  => $product->id,
                                 'product_attribute_id'        => $childVariation['product_attribute_id'],

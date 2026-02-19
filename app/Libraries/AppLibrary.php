@@ -348,7 +348,12 @@ class AppLibrary
         $productVariation = ProductVariation::where(['sku' => $sku])->first();
         $product = Product::where(['sku' => $sku])->first();
         if ($productVariation || $product) {
-            self::sku(rand(1000000, 9999999));
+            // Generate a new 20-digit random number
+            $newSku = '';
+            for ($i = 0; $i < 20; $i++) {
+                $newSku .= random_int(0, 9);
+            }
+            return self::sku($newSku);
         }
         return $sku;
     }

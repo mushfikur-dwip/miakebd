@@ -1,6 +1,6 @@
 <template>
     <LoadingComponent :props="loading" />
-    <section class="mb-10 sm:mb-20">
+    <section class="mb-4 sm:mb-20">
         <div class="container">
             <Swiper
                 v-if="sliders.length > 0"

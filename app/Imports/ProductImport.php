@@ -22,10 +22,16 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 
     public function model(array $row)
     {
+        // Generate a 20-digit random SKU
+        $sku = '';
+        for ($i = 0; $i < 20; $i++) {
+            $sku .= random_int(0, 9);
+        }
+        
         return new Product([
             'name'                       => $this->sanitizeInput($row['name']),
             'slug'                       => Str::slug($this->sanitizeInput($row['name'])) . rand(1, 1000),
-            'sku'                        => AppLibrary::sku(substr(floor(microtime(true) * 1000), -4) . rand(1, max: 999)),
+            'sku'                        => AppLibrary::sku($sku),
             'description'                => $this->sanitizeInput($row['description'] ?? null),
             'product_category_id'        => AppEnum::getCategoryId($row['category']),
             'barcode_id'                 => Barcode::first()->id,

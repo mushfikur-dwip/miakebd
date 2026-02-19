@@ -18,7 +18,7 @@ class MenuSectionTableSeeder extends Seeder
         if (MenuSection::count() == 0) {
             MenuSection::insert([
                 [
-                    'name'          => 'Support Section',
+                    'name'          => 'Quick Links',
                     'created_at'       => now(),
                     'updated_at'       => now()
                 ],

@@ -36,7 +36,7 @@ class ProductRequest extends FormRequest
             'sku'                        => [
                 'required',
                 'numeric',
-                'max_digits:7',
+                'max_digits:20',
                 Rule::unique("products", "sku")->whereNull('deleted_at')->ignore($this->route('product.id'))
             ],
             'product_category_id'        => ['required', 'numeric', 'not_in:0'],

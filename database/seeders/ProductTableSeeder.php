@@ -2836,7 +2836,12 @@ class ProductTableSeeder extends Seeder
         $envService = new EnvEditor();
         if ($envService->getValue('DEMO') && $envService->getValue('DISPLAY_TYPE') == 'fashion') {
             foreach ($fashionProducts as $fashionProduct) {
-                $sku = rand(100, 999) . date('is');
+                // Generate a 20-digit random SKU
+                $sku = '';
+                for ($i = 0; $i < 20; $i++) {
+                    $sku .= random_int(0, 9);
+                }
+                $sku = \App\Libraries\AppLibrary::sku($sku);
                 $productObject = Product::create([
                     'name'                         => $fashionProduct['info']['name'],
                     'slug'                         => Str::slug($fashionProduct['info']['name'] . rand(1, 1000)),

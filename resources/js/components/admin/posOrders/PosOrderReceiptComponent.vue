@@ -109,12 +109,7 @@
                         {{ $t('message.please_come_again') }}
                     </p>
                 </div>
-                <div class="flex flex-col items-end">
-                    <h5 class="text-[8px] font-normal text-left w-[46px] leading-[10px]">
-                        {{ $t('label.powered_by') }}
-                    </h5>
-                    <h6 class="text-xs font-normal leading-4">Mushfikur Rahman | 01303252317</h6>
-                </div>
+                
             </div>
         </div>
     </div>

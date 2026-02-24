@@ -25,7 +25,6 @@
                         <span v-if="address.email">{{ address.email }},</span>
                         <span v-if="address.phone">{{ address.phone }},</span>
                         <span v-if="address.state">{{ address.state }},</span>
-                        <span v-if="address.city">{{ address.city }},</span>
                         <span v-if="address.country">{{ address.country }},</span>
                         <span v-if="address.address">{{ address.address }}<span v-if="address.address">,</span></span>
                         <span v-if="address.zip_code">{{ address.zip_code }}</span>
@@ -68,7 +67,6 @@ export default {
                     phone: "",
                     country: null,
                     state: null,
-                    city: null,
                     zip_code: "",
                     address: "",
                 },
@@ -80,7 +78,6 @@ export default {
                 },
                 flag: "",
                 states: [],
-                cities: []
             },
         }
     },
@@ -114,17 +111,6 @@ export default {
                         .then((res) => {
                             this.address.states = res.data.data;
                         })
-                    await this.$store.dispatch('frontendCountryStateCity/citiesByState', address.state)
-                        .then((res) => {
-                            this.address.cities = res.data.data;
-                        })
-
-                    if (address.city === "") {
-                        this.address.form.city = null;
-                    }
-
-
-
                 } else {
 
                     await this.$store.dispatch('frontendCountryStateCity/statesByCountry', address.country)
@@ -132,7 +118,6 @@ export default {
                                 this.address.states = res.data.data;
                             })
                         this.address.form.state = null;
-                        this.address.form.city = null;
                 }
 
                 setTimeout(() => {
@@ -143,17 +128,12 @@ export default {
                         phone: address.phone,
                         country: address.country,
                         state: address.state,
-                        city: address.city,
                         zip_code: address.zip_code,
                         address: address.address,
                     };
 
                     if (address.state === "") {
                         this.address.form.state = null;
-                    }
-
-                    if (address.city === "") {
-                        this.address.form.city = null;
                     }
 
                 }, 200);

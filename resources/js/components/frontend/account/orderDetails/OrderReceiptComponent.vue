@@ -149,7 +149,6 @@
                                 <td class="pt-1 pb-1 pr-1">{{ $t('label.address') }}:</td>
                                 <td class="pt-1 pb-1">
                                     <span v-if="orderAddress.address">{{ orderAddress.address }},</span>
-                                    <span v-if="orderAddress.city">{{ orderAddress.city }},</span>
                                     <span v-if="orderAddress.state">{{ orderAddress.state }},</span>
                                     <span v-if="orderAddress.country">{{ orderAddress.country }},</span>
                                     <span v-if="orderAddress.zip_code">{{ orderAddress.zip_code }}</span>
@@ -170,7 +169,6 @@
                                 <td class="pt-1 pb-1">
                                     <span v-if="outletAddress.address">{{ outletAddress.address }},</span>
                                     <span v-if="outletAddress.state">{{ outletAddress.state }},</span>
-                                    <span v-if="outletAddress.city">{{ outletAddress.city }},</span>
                                     <span v-if="outletAddress.country">{{ outletAddress.country }},</span>
                                     <span v-if="outletAddress.zip_code">{{ outletAddress.zip_code }}</span>
                                 </td>
@@ -186,12 +184,7 @@
                         {{ $t('message.please_come_again') }}
                     </p>
                 </div>
-                <div class="flex flex-col items-end">
-                    <h5 class="text-[8px] font-normal text-left w-[46px] leading-[10px]">
-                        {{ $t('label.powered_by') }}
-                    </h5>
-                    <h6 class="text-xs font-normal leading-4">Mushfikur Rahman | 01303252317</h6>
-                </div>
+                
             </div>
         </div>
     </div>

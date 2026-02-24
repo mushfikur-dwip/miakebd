@@ -13,7 +13,6 @@
                     <span class="text-sm leading-6 text-heading">
                         <span v-if="outlet.address">{{ outlet.address }}</span>
                         <span class="block">
-                            <span v-if="outlet.city">{{ outlet.city }},</span>
                             <span v-if="outlet.state">{{ outlet.state }},</span>
                             <span v-if="outlet.country">{{ outlet.country }},</span>
                             <span v-if="outlet.zip_code">{{ outlet.zip_code }}</span>

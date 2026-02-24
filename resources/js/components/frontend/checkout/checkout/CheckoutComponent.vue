@@ -30,7 +30,7 @@
                     <div class="flex p-2 border transition-all rounded-lg" :class=" outlet.id === modelOutlet.id ? 'border-primary/50 bg-[#FFF4F1]' : 'border-[#F7F7F7] bg-[#F7F7F7]'">
                         <input type="radio" @change="outletAddress($event)" :id="outlet.name" :name="outlet.name" :value="outlet" :key="outlet" v-model="modelOutlet">
                         <label :for="outlet.name" class="px-2 text-sm capitalize cursor-pointer ">
-                            <span class="font-semibold">{{ outlet.name }}</span> - {{ outlet.address }}, {{ outlet.city }}, {{ outlet.state }}, {{ outlet.zip_code }}
+                            <span class="font-semibold">{{ outlet.name }}</span> - {{ outlet.address }}, {{ outlet.state }}, {{ outlet.zip_code }}
                         </label>
                     </div>
                 </div>

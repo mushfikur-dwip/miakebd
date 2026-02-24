@@ -31,7 +31,7 @@ class CustomerAddressRequest extends FormRequest
             'phone'        => ['required', 'string', 'max:20'],
             'country'      => ['required', 'string', 'max:100'],
             'state'        => ['required', 'string', 'max:100'],
-            'city'         => ['required', 'string', 'max:100'],
+            'city'         => ['nullable', 'string', 'max:100'],
             'zip_code'     => ['nullable', 'string'],
             'address'      => ['required', 'string', 'max:500'],
         ];
@@ -39,7 +39,7 @@ class CustomerAddressRequest extends FormRequest
 
     public function messages(){
         return [
-            'address.required' => 'The street address field is required.'
+            'address.required' => 'The full address field is required.'
         ];
     }
 }

@@ -87,13 +87,6 @@ export default {
         },
         getProduct: function () {
             if (this.barcode) {
-                if (this.barcode.toString().length > 8) {
-                    this.barcode = this.barcode.toString().slice(0, -1);
-                } else if (this.barcode.toString().length > 7) {
-                    this.barcode = this.barcode.toString().slice(0, -1);
-                }
-
-                this.barcode = parseInt(this.barcode);
                 this.$store.dispatch("product/barcodeProduct", this.barcode).then((barcodeRes) => {
                     this.props.search.product_id = barcodeRes.data.data.product_id;
 

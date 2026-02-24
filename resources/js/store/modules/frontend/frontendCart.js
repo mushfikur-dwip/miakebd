@@ -389,7 +389,7 @@ export const frontendCart = {
                     if (Object.keys(state.shippingAddress).length > 0) {
                         let status = false;
                         _.forEach(payload.area, (list, listKey) => {
-                            if (list.country === state.shippingAddress.country && list.state === state.shippingAddress.state && list.city === state.shippingAddress.city) {
+                            if (list.country === state.shippingAddress.country && list.state === state.shippingAddress.state) {
                                 status = true;
                                 state.shippingCharge = parseFloat(list.shipping_cost);
                             }

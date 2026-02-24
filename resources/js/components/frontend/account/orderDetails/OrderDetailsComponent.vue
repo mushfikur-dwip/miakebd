@@ -150,7 +150,6 @@
                             <span class="text-sm font-normal capitalize">
                                 <span v-if="address.address">{{ address.address }}</span>
                                 <span class="block" :class="address.address ? 'mt-2' : ''">
-                                    <span v-if="address.city">{{ address.city }},</span>
                                     <span v-if="address.state">{{ address.state }},</span>
                                     <span v-if="address.country">{{ address.country }},</span>
                                     <span v-if="address.zip_code">{{ address.zip_code }}</span>
@@ -188,7 +187,6 @@
                             <span class="text-sm font-normal capitalize">
                                 <span v-if="outletAddress.address">{{ outletAddress.address }}</span>
                                 <span class="block" :class="outletAddress.address ? 'mt-2' : ''">
-                                    <span v-if="outletAddress.city">{{ outletAddress.city }},</span>
                                     <span v-if="outletAddress.state">{{ outletAddress.state }},</span>
                                     <span v-if="outletAddress.zip_code">{{ outletAddress.zip_code }}</span>
                                 </span>

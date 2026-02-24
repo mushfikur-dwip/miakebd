@@ -12,13 +12,7 @@
             <thead class="db-table-head">
                 <tr class="db-table-head-tr">
                     <th class="db-table-head-th">
-                        {{ $t('label.country') }}
-                    </th>
-                    <th class="db-table-head-th">
-                        {{ $t('label.state') }}
-                    </th>
-                    <th class="db-table-head-th">
-                        {{ $t('label.city') }}
+                        {{ $t('label.district') }}
                     </th>
                     <th class="db-table-head-th">
                         {{ $t('label.shipping_cost') }}
@@ -33,11 +27,7 @@
             </thead>
             <tbody class="db-table-body" v-if="orderAreas.length > 0">
                 <tr class="db-table-body-tr" v-for="orderArea in orderAreas" :key="orderArea">
-                    <td class="db-table-body-td">
-                        {{ orderArea.country }}
-                    </td>
                     <td class="db-table-body-td">{{ orderArea.state }}</td>
-                    <td class="db-table-body-td">{{ orderArea.city }}</td>
                     <td class="db-table-body-td">{{ orderArea.shipping_cost }}</td>
                     <td class="db-table-body-td">
                         <span :class="statusClass(orderArea.status)">
@@ -54,7 +44,7 @@
             </tbody>
             <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="6">
+                            <td class="db-table-body-td text-center" colspan="4">
                                 <div class="p-4">
                                     <div class="max-w-[300px] mx-auto mt-2">
                                         <img class="w-full h-full" :src="ENV.API_URL+'/images/default/not-found/not_found.png'" alt="Not Found">
@@ -81,6 +71,7 @@ import LoadingComponent from "../../../components/LoadingComponent";
 import SmDeleteComponent from "../../../components/buttons/SmDeleteComponent";
 import SmModalEditComponent from "../../../components/buttons/SmModalEditComponent";
 import statusEnum from "../../../../../enums/modules/statusEnum";
+import bdDistricts from "../../../../../data/bdDistricts";
 import PaginationTextComponent from "../../../components/pagination/PaginationTextComponent";
 import PaginationBox from "../../../components/pagination/PaginationBox";
 import PaginationSMBox from "../../../components/pagination/PaginationSMBox";
@@ -115,9 +106,9 @@ export default {
             },
             props: {
                 form: {
-                    country: null,
+                    country: 'Bangladesh',
                     state: null,
-                    city: null,
+                    city: '',
                     shipping_cost: "",
                     status: statusEnum.ACTIVE,
                 },
@@ -128,8 +119,7 @@ export default {
                     order_column: "id",
                     order_type: "desc",
                 },
-                states: [],
-                cities: []
+                states: bdDistricts,
             },
             errors: {},
             ENV:ENV
@@ -167,50 +157,19 @@ export default {
         edit: function (orderArea) {
             appService.modalShow();
             this.loading.isActive = true;
-            this.$store.dispatch("orderArea/edit", orderArea.id).then(async (res) => {
-                this.loading.isActive = false;
-
-                if (orderArea.state !== "") {
-                    await this.$store.dispatch('state/statesByCountry', orderArea.country)
-                        .then((res) => {
-                            this.props.states = res.data.data;
-                        })
-                    await this.$store.dispatch('city/citiesByState', orderArea.state)
-                        .then((res) => {
-                            this.props.cities = res.data.data;
-                        })
-                    if (orderArea.city === "") {
-                        this.props.form.city = null;
-                    }
-                } else {
-                    await this.$store.dispatch('state/statesByCountry', orderArea.country)
-                        .then((res) => {
-                            this.props.states = res.data.data;
-                        })
-                    this.props.form.state = null;
-                    this.props.form.city = null;
-                }
-
+            this.$store.dispatch("orderArea/edit", orderArea.id).then((res) => {
                 setTimeout(() => {
                     this.props.form = {
-                        country: orderArea.country,
-                        state: orderArea.state,
-                        city: orderArea.city,
+                        country: 'Bangladesh',
+                        state: orderArea.state || null,
+                        city: '',
                         shipping_cost: orderArea.shipping_cost,
                         status: orderArea.status,
-
                     };
-
-                    if (orderArea.state === "") {
-                        this.props.form.state = null;
-                    }
-
-                    if (orderArea.city === "") {
-                        this.props.form.city = null;
-                    }
-
+                    this.loading.isActive = false;
                 }, 200);
             }).catch((err) => {
+                this.loading.isActive = false;
                 alertService.error(err.response.data.message);
             });
         },

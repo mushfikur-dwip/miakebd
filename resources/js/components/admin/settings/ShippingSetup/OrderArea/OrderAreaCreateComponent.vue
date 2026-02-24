@@ -14,40 +14,15 @@
                 <form @submit.prevent="save">
                     <div class="form-row">
                         <div class="form-col-12 sm:form-col-6">
-                            <label class="db-field-title required" for="country">{{
-                                $t('label.country') }}</label>
-                            <vue-select class="db-field-control" id="country"
-                                v-bind:class="errors.country ? 'invalid' : ''" v-model="props.form.country"
-                                @update:modelValue="callStates($event)" :options="countries" label-by="name"
-                                value-by="name" :closeOnSelect="true" :searchable="true" :clearOnClose="true"
-                                placeholder="--" search-placeholder="--" />
-                            <small class="db-field-alert" v-if="errors.country">
-                                {{ errors.country[0] }}
-                            </small>
-                        </div>
-
-                        <div class="form-col-12 sm:form-col-6">
                             <label class="db-field-title required" for="state">{{
-                                $t('label.state') }}</label>
+                                $t('label.district') }}</label>
                             <vue-select class="db-field-control" id="state"
                                 v-bind:class="errors.state ? 'invalid' : ''" v-model="props.form.state"
-                                @update:modelValue="callCities($event)" :options="props.states" label-by="name"
+                                :options="props.states" label-by="name"
                                 value-by="name" :closeOnSelect="true" :searchable="true" :clearOnClose="true"
                                 placeholder="--" search-placeholder="--" />
                             <small class="db-field-alert" v-if="errors.state">
                                 {{ errors.state[0] }}
-                            </small>
-                        </div>
-
-                        <div class="form-col-12 sm:form-col-6">
-                            <label class="db-field-title required">{{
-                                $t('label.city') }}</label>
-                            <vue-select class="db-field-control" id="city"
-                                v-bind:class="errors.city ? 'invalid' : ''" v-model="props.form.city"
-                                :options="props.cities" label-by="name" value-by="name" :closeOnSelect="true"
-                                :searchable="true" :clearOnClose="true" placeholder="--" search-placeholder="--" />
-                            <small class="db-field-alert" v-if="errors.city">
-                                {{ errors.city[0] }}
                             </small>
                         </div>
 
@@ -110,6 +85,7 @@ import alertService from "../../../../../services/alertService";
 import LoadingComponent from "../../../components/LoadingComponent";
 import statusEnum from "../../../../../enums/modules/statusEnum";
 import SmModalCreateComponent from "../../../components/buttons/SmModalCreateComponent";
+import bdDistricts from "../../../../../data/bdDistricts";
 
 export default {
     name: "OrderAreaCreateComponent",
@@ -135,67 +111,33 @@ export default {
         addButton: function () {
             return { title: this.$t("button.add_order_area") }
         },
-        countries: function () {
-            return this.$store.getters['country/lists'];
-        }
     },
     mounted() {
-        setTimeout(() => {
-            this.callCountry();
-        }, 300);
+        this.props.states = bdDistricts;
     },
     methods: {
         floatNumber(e) {
             return appService.floatNumber(e);
         },
 
-        phoneNumber(e) {
-            return appService.phoneNumber(e);
-        },
-
-        callCountry: function () {
-            this.loading.isActive = true;
-            this.$store.dispatch('country/lists', { order_column: "name", order_type: "asc" });
-            this.loading.isActive = false;
-        },
-
-        callStates: function (countryName) {
-            this.props.states = [];
-            this.props.form.state = null;
-            this.props.cities = [];
-            this.props.form.city = null;
-
-            this.$store.dispatch('state/statesByCountry', countryName)
-                .then((res) => {
-                    this.props.states = res.data.data;
-                })
-        },
-        callCities: function (stateName) {
-            this.props.form.city = null;
-            this.props.cities = [];
-
-            this.$store.dispatch('city/citiesByState', stateName)
-                .then((res) => {
-                    this.props.cities = res.data.data;
-                })
-        },
         reset: function () {
             appService.modalHide();
             this.$store.dispatch("orderArea/reset").then().catch();
             this.errors = {};
             this.$props.props.form = {
-                country: null,
+                country: 'Bangladesh',
                 state: null,
-                city: null,
+                city: '',
                 shipping_cost: "",
                 status: statusEnum.ACTIVE,
             };
             this.$props.props.flag = this.flag;
-            this.$props.props.states = [];
-            this.$props.props.cities = [];
+            this.$props.props.states = bdDistricts;
         },
         save: function () {
             try {
+                this.props.form.country = 'Bangladesh';
+                this.props.form.city = '';
                 const tempId = this.$store.getters["orderArea/temp"].temp_id;
                 this.loading.isActive = true;
                 this.$store.dispatch("orderArea/save", this.props).then((res) => {
@@ -203,14 +145,13 @@ export default {
                     this.loading.isActive = false;
                     alertService.successFlip(tempId === null ? 0 : 1, this.$t("menu.order_area"));
                     this.props.form = {
-                        country: null,
+                        country: 'Bangladesh',
                         state: null,
-                        city: null,
+                        city: '',
                         shipping_cost: "",
                         status: statusEnum.ACTIVE,
                     };
-                    this.$props.props.states = [];
-                    this.$props.props.cities = [];
+                    this.$props.props.states = bdDistricts;
                     this.errors = {};
                 }).catch((err) => {
                     this.loading.isActive = false;

@@ -58,9 +58,6 @@
                 <span v-if="address.state" class="block text-sm leading-6"
                     >{{ address.state }},</span
                 >
-                <span v-if="address.city" class="block text-sm leading-6"
-                    >{{ address.city }},</span
-                >
                 <span v-if="address.country" class="block text-sm leading-6"
                     >{{ address.country }},</span
                 >
@@ -116,7 +113,7 @@
                     </div>
 
                     <!-- Row 2: Phone + Email -->
-                    <div class="form-col-12 sm:form-col-6">
+                    <div class="form-col-12">
                         <label
                             for="phone"
                             class="text-sm font-medium capitalize mb-1 field-title required"
@@ -167,7 +164,7 @@
                         </small>
                     </div>
 
-                    <!-- Row 3: District (State) + Thana (City) -->
+                    <!-- Row 3: District (State) -->
                     <div class="form-col-12 sm:form-col-6">
                         <label
                             class="text-sm font-medium capitalize mb-1 field-title required"
@@ -180,7 +177,6 @@
                             id="state"
                             v-bind:class="errors.state ? 'invalid' : ''"
                             v-model="address.form.state"
-                            @update:modelValue="callCities($event)"
                             :options="address.states"
                             label-by="name"
                             value-by="name"
@@ -195,38 +191,13 @@
                         </small>
                     </div>
 
-                    <div class="form-col-12 sm:form-col-6">
-                        <label
-                            class="text-sm font-medium capitalize mb-1 field-title required"
-                        >
-                            Upzila
-                        </label>
-                        <vue-select
-                            class="w-full h-12 px-4 rounded-lg text-base capitalize border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500 appearance-none"
-                            id="city"
-                            v-bind:class="errors.city ? 'invalid' : ''"
-                            v-model="address.form.city"
-                            :options="address.cities"
-                            label-by="name"
-                            value-by="name"
-                            :closeOnSelect="true"
-                            :searchable="true"
-                            :clearOnClose="true"
-                            placeholder="--"
-                            search-placeholder="--"
-                        />
-                        <small class="db-field-alert" v-if="errors.city">
-                            {{ errors.city[0] }}
-                        </small>
-                    </div>
-
-                    <!-- Row 4: Street Address (Full Width) -->
+                    <!-- Row 4: Full Address (Full Width) -->
                     <div class="form-col-12">
                         <label
                             class="text-sm font-medium capitalize mb-1 field-title required"
                             for="street_address"
                         >
-                            {{ $t("label.street_address") }}
+                            Full Address
                         </label>
                         <input
                             type="text"
@@ -293,7 +264,6 @@ export default {
                     phone: "",
                     country: "Bangladesh",
                     state: null,
-                    city: null,
                     address: "",
                 },
                 search: {
@@ -302,7 +272,6 @@ export default {
                     order_type: "asc",
                 },
                 states: [],
-                cities: [],
             },
             worldMapData: [],
             activeAddressId: null,
@@ -362,9 +331,7 @@ export default {
         },
         callStates: function (countryName) {
             this.address.form.state = null;
-            this.address.cities = [];
             this.address.states = [];
-            this.address.form.city = null;
 
             this.$store
                 .dispatch(
@@ -373,16 +340,6 @@ export default {
                 )
                 .then((res) => {
                     this.address.states = res.data.data;
-                });
-        },
-        callCities: function (stateName) {
-            this.address.form.city = null;
-            this.address.cities = [];
-
-            this.$store
-                .dispatch("frontendCountryStateCity/citiesByState", stateName)
-                .then((res) => {
-                    this.address.cities = res.data.data;
                 });
         },
         reset: function () {
@@ -399,11 +356,9 @@ export default {
                 phone: "",
                 country: "Bangladesh",
                 state: null,
-                city: null,
                 address: "",
             };
             this.address.states = [];
-            this.address.cities = [];
         },
         save: function () {
             try {
@@ -429,12 +384,10 @@ export default {
                             phone: "",
                             country: null,
                             state: null,
-                            city: null,
                             zip_code: "",
                             address: "",
                         };
                         this.address.states = [];
-                        this.address.cities = [];
                         this.errors = {};
                         this.activeAddress(res.data.data);
                     })
@@ -468,18 +421,6 @@ export default {
                                 .then((res) => {
                                     this.address.states = res.data.data;
                                 });
-                            await this.$store
-                                .dispatch(
-                                    "frontendCountryStateCity/citiesByState",
-                                    address.state
-                                )
-                                .then((res) => {
-                                    this.address.cities = res.data.data;
-                                });
-
-                            if (address.city === "") {
-                                this.address.form.city = null;
-                            }
                         } else {
                             await this.$store
                                 .dispatch(
@@ -490,7 +431,6 @@ export default {
                                     this.address.states = res.data.data;
                                 });
                             this.address.form.state = null;
-                            this.address.form.city = null;
                         }
 
                         this.address.form = {
@@ -500,7 +440,6 @@ export default {
                             phone: address.phone,
                             country: address.country || "Bangladesh",
                             state: address.state,
-                            city: address.city,
                             address: address.address,
                         };
 
@@ -508,9 +447,6 @@ export default {
                             this.address.form.state = null;
                         }
 
-                        if (address.city === "") {
-                            this.address.form.city = null;
-                        }
                     })
                     .catch((err) => {
                         alertService.error(err.response.data.message);

@@ -103,10 +103,10 @@ class ProductService
         try {
             DB::transaction(function () use ($request) {
                 if ($request->barcode_id == BarcodeType::EAN_13) {
-                    $barcode_value = str_pad($request->sku, 12, '0', STR_PAD_LEFT);
+                    $barcode_value = str_pad(substr($request->sku, -12), 12, '0', STR_PAD_LEFT);
                 }
                 if ($request->barcode_id == BarcodeType::UPC_A) {
-                    $barcode_value = str_pad($request->sku, 11, '0', STR_PAD_LEFT);
+                    $barcode_value = str_pad(substr($request->sku, -11), 11, '0', STR_PAD_LEFT);
                 }
                 $this->product = Product::create($request->validated() + ['slug' => Str::slug($request->name), 'variation_price' => $request->selling_price]);
                 if ($request->tags) {
@@ -155,19 +155,19 @@ class ProductService
         try {
             DB::transaction(function () use ($request, $product) {
                 if ($request->barcode_id != $product->barcode_id || $request->sku != $product->sku) {
-                    if ($request->barcode_id === BarcodeType::EAN_13) {
-                        $barcode_value = str_pad($request->sku, 12, '0', STR_PAD_LEFT);
+                    if ($request->barcode_id == BarcodeType::EAN_13) {
+                        $barcode_value = str_pad(substr($request->sku, -12), 12, '0', STR_PAD_LEFT);
                     }
-                    if ($request->barcode_id === BarcodeType::UPC_A) {
-                        $barcode_value = str_pad($request->sku, 11, '0', STR_PAD_LEFT);
+                    if ($request->barcode_id == BarcodeType::UPC_A) {
+                        $barcode_value = str_pad(substr($request->sku, -11), 11, '0', STR_PAD_LEFT);
                     }
                     $product->update($request->validated() + ['slug' => Str::slug($request->name)]);
 
                     $generator = new BarcodeGeneratorJPG();
-                    if ($product->barcode_id === BarcodeType::EAN_13) {
+                    if ($product->barcode_id == BarcodeType::EAN_13) {
                         $barcode = $generator->getBarcode($barcode_value, $generator::TYPE_EAN_13);
                     }
-                    if ($product->barcode_id === BarcodeType::UPC_A) {
+                    if ($product->barcode_id == BarcodeType::UPC_A) {
                         $barcode = $generator->getBarcode($barcode_value, $generator::TYPE_UPC_A);
                     }
                     $tempFilePath = storage_path('app/public/barcode.jpg');

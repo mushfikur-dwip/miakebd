@@ -108,10 +108,12 @@ class ProductService
                 if ($request->barcode_id == BarcodeType::UPC_A) {
                     $barcode_value = str_pad(substr($request->sku, -11), 11, '0', STR_PAD_LEFT);
                 }
-                $slug = Str::slug($request->name);
-                $slugCount = Product::withTrashed()->where('slug', 'like', $slug . '%')->count();
-                if ($slugCount > 0) {
-                    $slug = $slug . '-' . ($slugCount + 1);
+                $baseSlug = Str::slug($request->name);
+                $slug     = $baseSlug;
+                $counter  = 1;
+                while (Product::withTrashed()->where('slug', $slug)->exists()) {
+                    $slug = $baseSlug . '-' . $counter;
+                    $counter++;
                 }
                 $this->product = Product::create($request->validated() + ['slug' => $slug, 'variation_price' => $request->selling_price]);
                 if ($request->tags) {
@@ -166,7 +168,14 @@ class ProductService
                     if ($request->barcode_id == BarcodeType::UPC_A) {
                         $barcode_value = str_pad(substr($request->sku, -11), 11, '0', STR_PAD_LEFT);
                     }
-                    $product->update($request->validated() + ['slug' => Str::slug($request->name)]);
+                    $baseSlug = Str::slug($request->name);
+                    $slug     = $baseSlug;
+                    $counter  = 1;
+                    while (Product::withTrashed()->where('slug', $slug)->where('id', '!=', $product->id)->exists()) {
+                        $slug = $baseSlug . '-' . $counter;
+                        $counter++;
+                    }
+                    $product->update($request->validated() + ['slug' => $slug]);
 
                     $generator = new BarcodeGeneratorJPG();
                     if ($product->barcode_id == BarcodeType::EAN_13) {
@@ -180,7 +189,14 @@ class ProductService
                     $product->clearMediaCollection('product-barcode');
                     $product->addMedia($tempFilePath)->toMediaCollection('product-barcode');
                 } else {
-                    $product->update($request->validated() + ['slug' => Str::slug($request->name)]);
+                    $baseSlug = Str::slug($request->name);
+                    $slug     = $baseSlug;
+                    $counter  = 1;
+                    while (Product::withTrashed()->where('slug', $slug)->where('id', '!=', $product->id)->exists()) {
+                        $slug = $baseSlug . '-' . $counter;
+                        $counter++;
+                    }
+                    $product->update($request->validated() + ['slug' => $slug]);
                 }
 
                 if ($request->tags) {

@@ -41,6 +41,8 @@ class OrderDetailsResource extends JsonResource
             'active'                         => (int) $this->active,
             'return_and_refund'              => !$this->returnAndRefund,
             'user'                           => new UserResource($this->user),
+            'branch'                         => new OutletResource($this->outlet),
+            'branch_name'                    => $this?->outlet?->name ?? '',
             'order_address'                  => AddressResource::collection($this->address),
             'outlet_address'                 => new OutletResource($this?->outletAddress),
             'order_products'                 => OrderProductResource::collection($this->orderProducts),

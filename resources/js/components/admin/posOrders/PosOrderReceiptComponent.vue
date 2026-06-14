@@ -12,6 +12,21 @@
 
                 <table class="w-full my-1.5">
                     <tbody>
+                        <tr v-if="order.branch_name">
+                            <td colspan="2" class="text-xs text-left py-0.5 text-heading">
+                                {{ $t('label.sold_from') }}: {{ order.branch_name }}
+                            </td>
+                        </tr>
+                        <tr v-if="order.branch && order.branch.phone">
+                            <td colspan="2" class="text-xs text-left py-0.5 text-heading" dir="ltr">
+                                {{ $t('label.branch') }} {{ $t('label.phone') }}: {{ order.branch.country_code }}{{ order.branch.phone }}
+                            </td>
+                        </tr>
+                        <tr v-if="order.branch && order.branch.address">
+                            <td colspan="2" class="text-xs text-left py-0.5 text-heading">
+                                {{ $t('label.branch') }} {{ $t('label.address') }}: {{ order.branch.address }}
+                            </td>
+                        </tr>
                         <tr>
                             <td class="text-xs text-left py-0.5 text-heading">{{ $t('label.order_id') }}
                                 #{{ order.order_serial_no }}

@@ -28,6 +28,24 @@
                             <span class="text-xs">{{ order.order_datetime }}</span>
                         </li>
                         <li class="text-xs">
+                            {{ $t('label.branch') }}:
+                            <span class="text-heading">
+                                {{ order.branch_name || '-' }}
+                            </span>
+                        </li>
+                        <li class="text-xs" v-if="order.branch && order.branch.phone">
+                            {{ $t('label.phone') }}:
+                            <span class="text-heading" dir="ltr">
+                                {{ order.branch.country_code }}{{ order.branch.phone }}
+                            </span>
+                        </li>
+                        <li class="text-xs" v-if="order.branch && order.branch.address">
+                            {{ $t('label.address') }}:
+                            <span class="text-heading">
+                                {{ order.branch.address }}
+                            </span>
+                        </li>
+                        <li class="text-xs">
                             {{ $t('label.payment_type') }}:
                             <span class="text-heading">
                                 {{ order.pos_payment_method_name }}

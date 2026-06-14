@@ -66,6 +66,7 @@ use App\Http\Controllers\Admin\SmsGatewayController;
 use App\Http\Controllers\Admin\SocialMediaController;
 use App\Http\Controllers\Admin\StateController;
 use App\Http\Controllers\Admin\StockController;
+use App\Http\Controllers\Admin\StoreSalesReportController;
 use App\Http\Controllers\Admin\SubscriberController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\TaxController;
@@ -188,6 +189,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/customer-states', [DashboardController::class, 'customerStates']);
         Route::get('/top-customers', [DashboardController::class, 'topCustomers']);
         Route::get('/top-products', [DashboardController::class, 'topProducts']);
+        Route::get('/branch-sales-summary', [DashboardController::class, 'branchSalesSummary']);
     });
 
     Route::prefix('setting')->name('setting.')->group(function () {
@@ -631,6 +633,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/overview', [SalesReportController::class, 'salesReportOverview']);
         Route::get('/export', [SalesReportController::class, 'export']);
         Route::get('/export-pdf', [SalesReportController::class, 'exportPdf']);
+    });
+
+    Route::prefix('store-sales-report')->name('store-sales-report.')->group(function () {
+        Route::get('/', [StoreSalesReportController::class, 'index']);
+        Route::get('/overview', [StoreSalesReportController::class, 'overview']);
+        Route::get('/branch-summary', [StoreSalesReportController::class, 'branchSummary']);
+        Route::get('/export', [StoreSalesReportController::class, 'export']);
+        Route::get('/export-pdf', [StoreSalesReportController::class, 'exportPdf']);
     });
 
     Route::prefix('credit-balance-report')->name('credit-balance-report.')->group(function () {

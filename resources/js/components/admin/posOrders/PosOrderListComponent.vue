@@ -49,6 +49,16 @@
                         </div>
 
                         <div class="col-12 sm:col-6 md:col-4 xl:col-3">
+                            <label for="outlet_id" class="db-field-title">
+                                {{ $t("label.branch") }}
+                            </label>
+                            <vue-select class="db-field-control f-b-custom-select" id="outlet_id"
+                                v-model="props.search.outlet_id" :options="outlets" label-by="name" value-by="id"
+                                :closeOnSelect="true" :searchable="true" :clearOnClose="true" placeholder="--"
+                                search-placeholder="--" />
+                        </div>
+
+                        <div class="col-12 sm:col-6 md:col-4 xl:col-3">
                             <label for="searchStartDate" class="db-field-title after:hidden">
                                 {{ $t('label.date') }}
                             </label>
@@ -78,6 +88,7 @@
                     <thead class="db-table-head">
                         <tr class="db-table-head-tr">
                             <th class="db-table-head-th">{{ $t('label.order_id') }}</th>
+                            <th class="db-table-head-th">{{ $t('label.branch') }}</th>
                             <th class="db-table-head-th">{{ $t('label.customer') }}</th>
                             <th class="db-table-head-th">{{ $t('label.amount') }}</th>
                             <th class="db-table-head-th">{{ $t('label.date') }}</th>
@@ -90,6 +101,9 @@
                         <tr class="db-table-body-tr" v-for="order in orders" :key="order">
                             <td class="db-table-body-td">
                                 {{ order.order_serial_no }}
+                            </td>
+                            <td class="db-table-body-td">
+                                {{ order.branch_name || '-' }}
                             </td>
                             <td class="db-table-body-td">
                                 {{ textShortener(order.user.name, 20) }}
@@ -205,6 +219,7 @@ export default {
                     order_type: orderTypeEnum.POS,
                     excepts: orderTypeEnum.DELIVERY + '|' + orderTypeEnum.PICK_UP,
                     user_id: null,
+                    outlet_id: null,
                     status: null,
                     from_date: "",
                     to_date: "",
@@ -221,6 +236,12 @@ export default {
             order_type: 'asc',
             status: statusEnum.ACTIVE
         });
+        this.$store.dispatch("outlet/lists", {
+            paginate: 0,
+            order_column: 'id',
+            order_type: 'asc',
+            status: statusEnum.ACTIVE
+        });
     },
     computed: {
         orders: function () {
@@ -228,6 +249,9 @@ export default {
         },
         customers: function () {
             return this.$store.getters['user/lists'];
+        },
+        outlets: function () {
+            return this.$store.getters['outlet/lists'];
         },
         pagination: function () {
             return this.$store.getters['posOrder/pagination'];
@@ -271,6 +295,7 @@ export default {
             this.props.search.from_date = "";
             this.props.search.to_date = "";
             this.props.search.user_id = null;
+            this.props.search.outlet_id = null;
             this.modelValue = null;
             this.list();
         },

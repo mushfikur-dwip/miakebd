@@ -190,6 +190,9 @@
                                     <p class="text-xs font-light font-rubik mb-0.5">{{ order.order_items }} {{
                                         $t("label.products")
                                         }}</p>
+                                    <p class="text-xs font-light font-rubik mb-0.5" v-if="order.branch_name">
+                                        {{ $t("label.branch") }}: {{ order.branch_name }}
+                                    </p>
                                     <p class="text-xs font-light font-rubik mb-1">{{ order.order_datetime }}</p>
                                     <div class="flex items-center justify-between">
                                         <p class="text-sm leading-6 font-rubik capitalize text-heading">{{

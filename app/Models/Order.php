@@ -14,6 +14,7 @@ class Order extends Model
     protected $fillable = [
         'order_serial_no',
         'user_id',
+        'outlet_id',
         'tax',
         'discount',
         'subtotal',
@@ -38,6 +39,7 @@ class Order extends Model
         'id'                          => 'integer',
         'order_serial_no'             => 'string',
         'user_id'                     => 'integer',
+        'outlet_id'                   => 'integer',
         'tax'                         => 'decimal:6',
         'discount'                    => 'decimal:6',
         'subtotal'                    => 'decimal:6',
@@ -71,6 +73,11 @@ class Order extends Model
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class)->withTrashed();
+    }
+
+    public function outlet(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Outlet::class);
     }
 
     public function address(): \Illuminate\Database\Eloquent\Relations\HasMany

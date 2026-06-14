@@ -29,6 +29,7 @@ class OrderExport implements FromCollection, WithHeadings
             $orderArray[] = [
                 $order->order_serial_no,
                 trans('orderType.' . $order->order_type),
+                $order?->outlet?->name,
                 optional($order->user)->name,
                 AppLibrary::flatAmountFormat($order->total),
                 AppLibrary::datetime($order->order_datetime),
@@ -44,6 +45,7 @@ class OrderExport implements FromCollection, WithHeadings
         return [
             trans('all.label.order_serial_no'),
             trans('all.label.order_type'),
+            trans('all.label.branch'),
             trans('all.label.customer'),
             trans('all.label.amount'),
             trans('all.label.date'),

@@ -29,6 +29,7 @@ import reviewRoutes from "./modules/reviewRoutes";
 import salesReportRoutes from "./modules/salesReportRoutes";
 import settingRoutes from "./modules/settingRoutes";
 import stockRoutes from "./modules/stockRoutes";
+import storeSalesReportRoutes from "./modules/storeSalesReportRoutes";
 import subscriberRoutes from "./modules/subscriberRoutes";
 import transactionRoutes from "./modules/transactionRoutes";
 import mobileSectionRoutes from "./modules/mobileSectionRoutes";
@@ -76,6 +77,7 @@ const routes = baseRoutes.concat(
     employeeRoutes,
     transactionRoutes,
     salesReportRoutes,
+    storeSalesReportRoutes,
     creditBalanceReportRoutes,
     pushNotificationRoutes,
     productsRoutes,

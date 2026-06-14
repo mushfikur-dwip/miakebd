@@ -14,6 +14,9 @@
                     <p class="text-xs font-light mb-3">{{
                         $t('label.order_type')
                     }}: {{ enums.orderTypeEnumArray[order.order_type] }}</p>
+                    <p class="text-xs font-light mb-3" v-if="order.branch_name">
+                        {{ $t('label.branch') }}: {{ order.branch_name }}
+                    </p>
                     <p class="text-xs font-light mb-3">
                         {{
                             $t('label.order_status')

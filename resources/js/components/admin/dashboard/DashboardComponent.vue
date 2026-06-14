@@ -26,6 +26,10 @@
         <OrderSummaryComponent />
         <!--========ORDERS SUMMARY END=============-->
 
+        <!--========BRANCH SALES SUMMARY START=============-->
+        <BranchSalesSummaryComponent />
+        <!--========BRANCH SALES SUMMARY END=============-->
+
         <!--========CUSTOMER STATS START=============-->
         <CustomerStatsComponent />
         <!--========CUSTOMER STATS END=============-->
@@ -46,6 +50,7 @@ import OverviewComponent from "./OverviewComponent";
 import OrderStatisticsComponent from "./OrderStatisticsComponent";
 import SalesSummaryComponent from "./SalesSummaryComponent";
 import OrderSummaryComponent from "./OrderSummaryComponent";
+import BranchSalesSummaryComponent from "./BranchSalesSummaryComponent";
 import CustomerStatsComponent from "./CustomerStatsComponent";
 import TopCustomersComponent from "./TopCustomersComponent";
 import TopProductsComponent from "./TopProductsComponent";
@@ -59,6 +64,7 @@ export default {
         OrderStatisticsComponent,
         SalesSummaryComponent,
         OrderSummaryComponent,
+        BranchSalesSummaryComponent,
         CustomerStatsComponent,
         TopCustomersComponent,
         TopProductsComponent,

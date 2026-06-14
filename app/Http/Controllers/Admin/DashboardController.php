@@ -41,6 +41,7 @@ class DashboardController extends AdminController implements HasMiddleware
             new Middleware('permission:dashboard', only: ['totalOrders']),
             new Middleware('permission:dashboard', only: ['totalCustomers']),
             new Middleware('permission:dashboard', only: ['totalProducts']),
+            new Middleware('permission:dashboard', only: ['branchSalesSummary']),
         ];
     }
 
@@ -133,6 +134,15 @@ class DashboardController extends AdminController implements HasMiddleware
     {
         try {
             return SimpleProductResource::collection($this->productService->topProducts());
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function branchSalesSummary(): \Illuminate\Http\Response | array | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
+    {
+        try {
+            return ['data' => $this->dashboardService->branchSalesSummary()];
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

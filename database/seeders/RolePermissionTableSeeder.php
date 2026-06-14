@@ -44,7 +44,8 @@ class RolePermissionTableSeeder extends Seeder
                 ['name' => 'employees_delete'],
                 ['name' => 'employees_show'],
                 ['name' => 'transactions'],
-                ['name' => 'sales-report']
+                ['name' => 'sales-report'],
+                ['name' => 'store-sales-report']
             ];
             $branchManagerPermissions = Permission::whereIn('name', $branchManagerPermissions)->get();
             $branchManager->givePermissionTo($branchManagerPermissions);

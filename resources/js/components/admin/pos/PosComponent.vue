@@ -73,6 +73,13 @@
           <span class="capitalize text-sm font-bold">{{ $t('button.add') }}</span>
         </button>
       </div>
+      <div class="db-field mb-3">
+        <vue-select
+          class="db-field-control w-full text-sm rounded-lg appearance-none cursor-pointer text-heading border-[#D9DBE9]"
+          id="branch" v-model="checkoutProps.form.outlet_id" :options="outlets" label-by="name" value-by="id"
+          :closeOnSelect="true" :searchable="true" :clearOnClose="true" :placeholder="$t('label.select_branch')"
+          :search-placeholder="$t('label.search_branch')" />
+      </div>
     </div>
 
     <div v-if="carts.length === 0" class="flex items-center justify-center">
@@ -256,6 +263,7 @@ export default {
       checkoutProps: {
         form: {
           customer_id: null,
+          outlet_id: null,
           category: null,
           brand: null,
           discount: 0,
@@ -311,6 +319,9 @@ export default {
     customers: function () {
       return this.$store.getters['user/lists'];
     },
+    outlets: function () {
+      return this.$store.getters['outlet/lists'];
+    },
     carts: function () {
       return this.$store.getters['posCart/lists'];
     },
@@ -337,6 +348,7 @@ export default {
     this.productCategories();
     this.productBrands();
     this.productList();
+    this.outletList();
     try {
       this.customerList();
 
@@ -422,6 +434,14 @@ export default {
         this.loading.isActive = false;
       });
     },
+    outletList: function () {
+      this.$store.dispatch("outlet/lists", {
+        paginate: 0,
+        order_column: 'id',
+        order_type: 'asc',
+        status: statusEnum.ACTIVE
+      }).then().catch();
+    },
     productList: function (page = 1) {
       this.loading.isActive = true;
       this.props.search.page = page;
@@ -483,6 +503,7 @@ export default {
       if (this.carts.length === 0) {
         this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
         this.checkoutProps.form.pos_payment_note = "";
+        this.checkoutProps.form.outlet_id = null;
         this.discountErrorMessage = "";
 
       }
@@ -518,6 +539,7 @@ export default {
       if (this.carts.length === 0) {
         this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
         this.checkoutProps.form.pos_payment_note = "";
+        this.checkoutProps.form.outlet_id = null;
         this.discountErrorMessage = "";
 
       }
@@ -526,6 +548,7 @@ export default {
       this.loading.isActive = true;
       this.form = {
         customer_id: this.checkoutProps.form.customer_id,
+        outlet_id: this.checkoutProps.form.outlet_id,
         subtotal: this.subtotal,
         discount: parseFloat(this.posCartDiscount),
         tax: this.totalTax,
@@ -542,6 +565,7 @@ export default {
         this.$store.dispatch('posCart/resetCart').then(res => {
           this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
           this.checkoutProps.form.pos_payment_note = "";
+          this.checkoutProps.form.outlet_id = null;
           this.discount = null;
           this.discountErrorMessage = "";
           this.loading.isActive = false;
@@ -566,6 +590,10 @@ export default {
       });
     },
     orderPayment: function () {
+      if (!this.checkoutProps.form.outlet_id) {
+        alertService.error(this.$t('label.select_branch'));
+        return;
+      }
       appService.modalShow('#orderPayment');
     },
     totalProducts: function () {

@@ -100,6 +100,7 @@ import { smsGateway } from "./modules/smsGateway";
 import { socialMedia } from "./modules/socialMedia";
 import { state } from "./modules/state";
 import { stock } from "./modules/stock";
+import { storeSalesReport } from "./modules/storeSalesReport";
 import { subscriber } from "./modules/subscriber";
 import { supplier } from "./modules/supplier";
 import { tax } from "./modules/tax";
@@ -193,6 +194,7 @@ export default new createStore({
         frontendCart,
         frontendCoupon,
         stock,
+        storeSalesReport,
         shippingSetup,
         orderArea,
         notificationAlert,

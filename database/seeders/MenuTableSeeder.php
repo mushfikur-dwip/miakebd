@@ -322,6 +322,17 @@ class MenuTableSeeder extends Seeder
                         'updated_at' => now()
 
                     ],
+                    [
+                        'name'       => 'Store Sales Report',
+                        'language'   => 'store_sales_report',
+                        'url'        => 'store-sales-report',
+                        'icon'       => 'lab lab-line-sales-report',
+                        'priority'   => 100,
+                        'status'     => 1,
+                        'created_at' => now(),
+                        'updated_at' => now()
+
+                    ],
 
                     [
                         'name'       => 'Products Report',

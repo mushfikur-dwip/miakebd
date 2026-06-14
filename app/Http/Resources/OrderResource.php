@@ -20,6 +20,8 @@ class OrderResource extends JsonResource
             'id'                   => $this->id,
             'order_serial_no'      => $this->order_serial_no,
             'user_id'              => $this->user_id,
+            'branch'               => new OutletResource($this->outlet),
+            'branch_name'          => $this?->outlet?->name ?? '',
             "total_amount_price"   => AppLibrary::flatAmountFormat($this->total),
             "total_currency_price" => AppLibrary::currencyAmountFormat($this->total),
             "wallet_discount"      => $this->wallet_discount,

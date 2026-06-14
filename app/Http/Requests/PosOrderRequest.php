@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\Activity;
 use App\Enums\OrderType;
+use App\Enums\Status;
 use App\Rules\ValidJsonOrder;
 use App\Enums\PosPaymentMethod;
 use Illuminate\Validation\Rule;
@@ -31,6 +32,7 @@ class PosOrderRequest extends FormRequest
     {
         return [
             'customer_id'        => ['required', 'numeric'],
+            'outlet_id'          => ['required', 'numeric', Rule::exists('outlets', 'id')->where('status', Status::ACTIVE)],
             'subtotal'           => ['required', 'numeric'],
             'discount'           => ['nullable', 'numeric'],
             'tax'                => ['required', 'numeric'],

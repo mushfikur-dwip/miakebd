@@ -14,7 +14,8 @@ export const dashboard = {
         customerStates: [],
         featuredItems: [],
         topProducts: [],
-        topCustomers: []
+        topCustomers: [],
+        branchSalesSummary: []
     },
 
     getters: {
@@ -50,6 +51,9 @@ export const dashboard = {
         },
         topCustomers: function (state) {
             return state.topCustomers;
+        },
+        branchSalesSummary: function (state) {
+            return state.branchSalesSummary;
         }
     },
 
@@ -191,6 +195,19 @@ export const dashboard = {
                         reject(err);
                     });
             });
+        },
+        branchSalesSummary: function (context) {
+            return new Promise((resolve, reject) => {
+                axios
+                    .get("admin/dashboard/branch-sales-summary")
+                    .then((res) => {
+                        context.commit("branchSalesSummary", res.data.data);
+                        resolve(res);
+                    })
+                    .catch((err) => {
+                        reject(err);
+                    });
+            });
         }
     },
 
@@ -227,6 +244,9 @@ export const dashboard = {
         },
         topCustomers: function (state, payload) {
             state.topCustomers = payload;
+        },
+        branchSalesSummary: function (state, payload) {
+            state.branchSalesSummary = payload;
         }
     },
 };

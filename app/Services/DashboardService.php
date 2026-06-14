@@ -7,12 +7,15 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Order;
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
 use App\Enums\PaymentStatus;
+use App\Enums\Source;
 use Illuminate\Http\Request;
 use App\Libraries\AppLibrary;
 use App\Enums\Role as EnumRole;
 use App\Libraries\QueryExceptionLibrary;
 use App\Models\Product;
+use App\Models\Outlet;
 use App\Models\ReturnAndRefund;
 use Illuminate\Support\Facades\Log;
 
@@ -209,6 +212,35 @@ class DashboardService
     {
         try {
             return Product::count();
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    public function branchSalesSummary()
+    {
+        try {
+            $todayStart = Carbon::today()->toDateString();
+            $monthStart = Carbon::now()->startOfMonth()->toDateString();
+            $monthEnd = Carbon::now()->endOfMonth()->toDateString();
+
+            return Outlet::whereNotNull('id')->where(function ($query) {
+                $query->where('name', 'like', '%RMC%')
+                    ->orWhere('name', 'like', '%Prime%');
+            })->get()->map(function ($outlet) use ($todayStart, $monthStart, $monthEnd) {
+                $baseQuery = Order::where('order_type', OrderType::POS)
+                    ->where('source', Source::POS)
+                    ->where('payment_status', PaymentStatus::PAID)
+                    ->where('outlet_id', $outlet->id);
+
+                return [
+                    'id' => $outlet->id,
+                    'branch_name' => $outlet->name,
+                    'today_sales' => AppLibrary::currencyAmountFormat((clone $baseQuery)->whereDate('order_datetime', $todayStart)->sum('total')),
+                    'monthly_sales' => AppLibrary::currencyAmountFormat((clone $baseQuery)->whereDate('order_datetime', '>=', $monthStart)->whereDate('order_datetime', '<=', $monthEnd)->sum('total')),
+                ];
+            })->values();
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

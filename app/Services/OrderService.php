@@ -37,6 +37,7 @@ class OrderService
         'user_id',
         'total',
         'order_type',
+        'outlet_id',
         'order_datetime',
         'payment_method',
         'payment_status',
@@ -61,7 +62,7 @@ class OrderService
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_by') ?? 'desc';
 
-            return Order::with('transaction', 'orderProducts')->where(function ($query) use ($requests) {
+            return Order::with('transaction', 'orderProducts', 'user', 'outlet')->where(function ($query) use ($requests) {
                 if (isset($requests['from_date']) && isset($requests['to_date'])) {
                     $first_date = Date('Y-m-d', strtotime($requests['from_date']));
                     $last_date  = Date('Y-m-d', strtotime($requests['to_date']));
@@ -73,7 +74,7 @@ class OrderService
                 }
                 foreach ($requests as $key => $request) {
                     if (in_array($key, $this->orderFilter)) {
-                        if ($key === "status") {
+                        if ($key === "status" || $key === "outlet_id") {
                             $query->where($key, (int)$request);
                         } else if ($key === 'payment_method' && (int)$request < 0) {
                             $query->where('pos_payment_method', abs($request));
@@ -151,11 +152,15 @@ class OrderService
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_by') ?? 'desc';
 
-            return Order::where(function ($query) use ($requests, $user) {
+            return Order::with('outlet')->where(function ($query) use ($requests, $user) {
                 $query->where('user_id', $user->id);
                 foreach ($requests as $key => $request) {
                     if (in_array($key, $this->orderFilter)) {
-                        $query->where($key, 'like', '%' . $request . '%');
+                        if ($key === "status" || $key === "outlet_id") {
+                            $query->where($key, (int)$request);
+                        } else {
+                            $query->where($key, 'like', '%' . $request . '%');
+                        }
                     }
                     if (in_array($key, $this->exceptFilter)) {
                         $explodes = explode('|', $request);

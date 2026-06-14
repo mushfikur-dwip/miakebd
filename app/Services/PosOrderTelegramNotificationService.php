@@ -9,6 +9,7 @@ use App\Libraries\AppLibrary;
 use App\Models\Order;
 use Dipokhalder\Settings\Facades\Settings;
 use Exception;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,6 +18,10 @@ class PosOrderTelegramNotificationService
     public function send(int $orderId): void
     {
         try {
+            if (!Cache::add('pos_order_telegram_notification_sent_' . $orderId, true, now()->addDay())) {
+                return;
+            }
+
             $settings = array_merge([
                 'telegram_status'    => Ask::NO,
                 'telegram_bot_token' => '',

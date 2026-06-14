@@ -70,6 +70,7 @@ use App\Http\Controllers\Admin\StoreSalesReportController;
 use App\Http\Controllers\Admin\SubscriberController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\TaxController;
+use App\Http\Controllers\Admin\TelegramController;
 use App\Http\Controllers\Admin\ThemeController;
 use App\Http\Controllers\Admin\TimezoneController;
 use App\Http\Controllers\Admin\TransactionController;
@@ -230,6 +231,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::prefix('mail')->name('mail.')->group(function () {
             Route::get('/', [MailController::class, 'index']);
             Route::match(['put', 'patch'], '/', [MailController::class, 'update']);
+        });
+
+        Route::prefix('telegram')->name('telegram.')->group(function () {
+            Route::get('/', [TelegramController::class, 'index']);
+            Route::match(['put', 'patch'], '/', [TelegramController::class, 'update']);
         });
 
         Route::prefix('shipping-setup')->name('shipping-setup.')->group(function () {

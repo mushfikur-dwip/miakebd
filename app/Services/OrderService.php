@@ -18,6 +18,7 @@ use App\Events\SendOrderSms;
 use Illuminate\Http\Request;
 use App\Events\SendOrderMail;
 use App\Events\SendOrderPush;
+use App\Events\SendPosOrderTelegram;
 use App\Libraries\AppLibrary;
 use App\Models\ProductVariation;
 use Illuminate\Support\Facades\DB;
@@ -242,6 +243,7 @@ class OrderService
                 $this->order->order_serial_no = date('dmy') . $this->order->id;
                 $this->order->save();
             });
+            SendPosOrderTelegram::dispatch(['order_id' => $this->order->id]);
             return $this->order;
         } catch (Exception $exception) {
             DB::rollBack();

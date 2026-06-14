@@ -17,6 +17,10 @@
                 <i class="lab lab-line-mail text-sm"></i>
                 {{ $t("menu.mail") }}
             </router-link>
+            <router-link :to="{ name: 'admin.settings.telegram' }" class="db-tab-btn">
+                <i class="lab lab-line-notification text-sm"></i>
+                {{ $t("menu.telegram") }}
+            </router-link>
             <router-link :to="{ name: 'admin.settings.locationSetup' }" class="db-tab-btn">
                 <i class="lab lab-line-location-setup text-sm"></i>
                 {{ $t("menu.location_setup") }}

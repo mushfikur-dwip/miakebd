@@ -10,6 +10,7 @@ use App\Events\SendOrderPush;
 use App\Events\SendOrderGotSms;
 use App\Events\SendOrderGotMail;
 use App\Events\SendOrderGotPush;
+use App\Events\SendPosOrderTelegram;
 use App\Events\SendVerifyEmailCode;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Registered;
@@ -21,6 +22,7 @@ use App\Listeners\SendOrderPushNotification;
 use App\Listeners\SendOrderGotSmsNotification;
 use App\Listeners\SendOrderGotMailNotification;
 use App\Listeners\SendOrderGotPushNotification;
+use App\Listeners\SendPosOrderTelegramNotification;
 use App\Listeners\SendVerifyEmailCodeNotification;
 use App\Models\Order;
 use App\Observers\OrderObserver;
@@ -61,6 +63,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         SendOrderGotPush::class         => [
             SendOrderGotPushNotification::class
+        ],
+        SendPosOrderTelegram::class     => [
+            SendPosOrderTelegramNotification::class
         ],
     ];
 

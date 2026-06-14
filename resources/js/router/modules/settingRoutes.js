@@ -2,6 +2,7 @@ const SettingsComponent = () =>  import("../../components/admin/settings/Setting
 const CompanyComponent = () =>  import("../../components/admin/settings/Company/CompanyComponent");
 const SiteComponent = () =>  import("../../components/admin/settings/Site/SiteComponent");
 const MailComponent = () =>  import("../../components/admin/settings/Mail/MailComponent");
+const TelegramComponent = () =>  import("../../components/admin/settings/Telegram/TelegramComponent");
 const OtpComponent = () =>  import("../../components/admin/settings/Otp/OtpComponent");
 const NotificationComponent = () =>  import("../../components/admin/settings/Notification/NotificationComponent");
 const SocialMediaComponent = () =>  import("../../components/admin/settings/SocialMedia/SocialMediaComponent");
@@ -107,6 +108,17 @@ export default [
                     auth: true,
                     permissionUrl: "settings",
                     breadcrumb: "mail",
+                },
+            },
+            {
+                path: "telegram",
+                component: TelegramComponent,
+                name: "admin.settings.telegram",
+                meta: {
+                    isFrontend: false,
+                    auth: true,
+                    permissionUrl: "settings",
+                    breadcrumb: "telegram",
                 },
             },
             {

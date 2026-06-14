@@ -104,6 +104,7 @@ import { storeSalesReport } from "./modules/storeSalesReport";
 import { subscriber } from "./modules/subscriber";
 import { supplier } from "./modules/supplier";
 import { tax } from "./modules/tax";
+import { telegram } from "./modules/telegram";
 import { theme } from "./modules/theme";
 import { timezone } from "./modules/timezone";
 import { transaction } from "./modules/transaction";
@@ -195,6 +196,7 @@ export default new createStore({
         frontendCoupon,
         stock,
         storeSalesReport,
+        telegram,
         shippingSetup,
         orderArea,
         notificationAlert,

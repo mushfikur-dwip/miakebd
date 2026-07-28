@@ -76,7 +76,7 @@
 
 ## 2. `robots.txt`, `llms.txt` ও Sitemap
 
-- [ ] **P0 — বিদ্যমান `public/robots.txt` audit ও replace করুন**
+- [x] **P0 — বিদ্যমান `public/robots.txt` audit ও replace করুন**
   - **Dependency:** Document root confirmed
   - বর্তমান file মাত্র minimal rules রাখে; production routes অনুযায়ী public pages allow এবং admin/API/cart/checkout/account routes appropriately disallow করুন।
   - প্রতিটি named bot block independent ধরে প্রয়োজনীয় rules repeat করুন।
@@ -91,7 +91,7 @@
     ```
     Response `200`, plain text, Laravel HTML shell নয়।
 
-- [ ] **P1 — `public/llms.txt` তৈরি করুন**
+- [x] **P1 — `public/llms.txt` তৈরি করুন**
   - **Dependency:** Brand/store claims approved
   - প্রথম line `# Suglow` রাখুন।
   - Store identity, product categories, geographic coverage, canonical URLs এবং verified policies লিখুন।
@@ -103,7 +103,7 @@
     ```
     Response plain text এবং প্রথম line `# Suglow`।
 
-- [ ] **P0 — Project-compatible sitemap generator implement করুন**
+- [x] **P0 — Project-compatible sitemap generator implement করুন**
   - **Dependency:** Routes/status rules audited
   - Generated `GenerateSitemap.php` adapt করে:
     - `App\Models\ProductCategory` ও প্রকৃত `product_categories` table ব্যবহার করুন।
@@ -124,7 +124,7 @@
     ```
     Valid XML, correct content type, কোনো admin/API/private/deleted URL নেই।
 
-- [ ] **P1 — Sitemap regeneration schedule করুন**
+- [x] **P1 — Sitemap regeneration schedule করুন**
   - **Dependency:** Sitemap generator verified
   - Laravel scheduler-এ daily generation register করুন।
   - cPanel cron দিয়ে `php artisan schedule:run` প্রতি minute চালান, অথবা direct daily command ব্যবহার করুন।
@@ -141,7 +141,7 @@
 
 ## 3. বিদ্যমান `product_seos` Table-এ Spreadsheet Import
 
-- [ ] **P0 — Spreadsheet schema ও matching key audit করুন**
+- [x] **P0 — Spreadsheet schema ও matching key audit করুন**
   - **Dependency:** Database backup
   - `<SEO_SPREADSHEET_PATH>` workbook-এর sheet name, headings এবং sample rows যাচাই করুন।
   - Product matching priority স্থির রাখুন:
@@ -151,7 +151,7 @@
   - duplicate spreadsheet rows এবং duplicate product matches আলাদা report করুন।
   - **Acceptance:** Column mapping ও deterministic matching rules documented এবং sample rows দিয়ে verified।
 
-- [ ] **P0 — Import command-টি বর্তমান schema অনুযায়ী adapt করুন**
+- [x] **P0 — Import command-টি বর্তমান schema অনুযায়ী adapt করুন**
   - **Dependency:** Spreadsheet audit
   - `products.meta_title/meta_description/meta_keywords` ব্যবহার করবেন না।
   - `product_seos` mapping:
@@ -165,7 +165,7 @@
   - writes transaction-safe করুন; unmatched, duplicate, invalid ও unchanged counts report/log করুন।
   - **Acceptance:** Command missing file/sheet/columns-এ clean failure দেয় এবং dry-run database পরিবর্তন করে না।
 
-- [ ] **P0 — Import dry-run review করুন**
+- [x] **P0 — Import dry-run review করুন**
   - **Dependency:** Adapted importer
   - **Command:**
     ```bash
@@ -175,7 +175,7 @@
   - কোনো fallback যেন first/random/partial product update না করে।
   - **Acceptance:** Match rate acceptable, zero ambiguous writes, expected create/update/skip totals confirmed।
 
-- [ ] **P0 — SEO import execute ও verify করুন**
+- [x] **P0 — SEO import execute ও verify করুন**
   - **Dependency:** Approved dry-run এবং fresh database backup
   - **Command:**
     ```bash
@@ -189,14 +189,14 @@
 
 ## 4. Product Meta, Canonical, Open Graph ও Twitter Tags
 
-- [ ] **P0 — Product API SEO payload normalize করুন**
+- [x] **P0 — Product API SEO payload normalize করুন**
   - **Dependency:** SEO schema confirmed
   - `ProductSeoResource`-এ `meta_keyword` সবসময় predictable array হিসেবে return করুন।
   - canonical URL, absolute social image এবং safe fallback values frontend-এ derive করার contract নির্ধারণ করুন।
   - meta description-এর জন্য three-block content থেকে শুধু প্রথম concise block ব্যবহার করুন; full description data visible AEO/GEO section-এর জন্য preserve করুন।
   - **Acceptance:** SEO record থাকা/না থাকা দুই অবস্থাতেই stable response shape পাওয়া যায়।
 
-- [ ] **P0 — বর্তমান `useHead()` logic ঠিক করুন**
+- [x] **P0 — বর্তমান `useHead()` logic ঠিক করুন**
   - **Dependency:** Normalized SEO payload
   - `resources/js/components/frontend/product/ProductDetailsComponent.vue`-এ:
     - unique document title;
@@ -221,7 +221,7 @@
 
 ## 5. Server-rendered Product SEO ও JSON-LD Strategy
 
-- [ ] **P0 — বর্তমান SPA-compatible rendering approach নির্বাচন ও proof-of-concept করুন**
+- [x] **P0 — বর্তমান SPA-compatible rendering approach নির্বাচন ও proof-of-concept করুন**
   - **Dependency:** Hosting capability baseline
   - Generated Inertia SSR files ব্যবহার করবেন না।
   - Preferred order:
@@ -231,7 +231,7 @@
   - একটি known product URL-এ proof-of-concept করে raw response HTML যাচাই করুন।
   - **Acceptance:** JavaScript execute না করেও raw HTML-এ product-specific title, description, canonical এবং JSON-LD পাওয়া যায়।
 
-- [ ] **P0 — Product web route ও server SEO data flow implement করুন**
+- [x] **P0 — Product web route ও server SEO data flow implement করুন**
   - **Dependency:** Rendering proof-of-concept approved
   - `/product/{product:slug}` request catch-all-এর আগে resolve করুন।
   - Active/indexable product এবং তার SEO/media/pricing data load করুন।
@@ -240,7 +240,7 @@
   - missing/inactive products proper HTTP 404/robots behavior দেবে।
   - **Acceptance:** Direct product request product-specific raw HTML দেয়; SPA interaction ও client navigation অক্ষত থাকে।
 
-- [ ] **P0 — Product structured data adapt করুন**
+- [x] **P0 — Product structured data adapt করুন**
   - **Dependency:** Server SEO data flow
   - Generated `SeoSchema.php`-কে প্রকৃত fields অনুযায়ী map করুন:
     - `Product`: name, description, image, SKU, brand/category যেখানে data আছে;
@@ -267,7 +267,7 @@
   - malformed বা missing blocks gracefulভাবে skip করুন।
   - **Acceptance:** Representative English/Bangla/multiline samples সঠিকভাবে parse হয়।
 
-- [ ] **P1 — `ProductSeoBlocks.vue` adapt ও integrate করুন**
+- [x] **P1 — `ProductSeoBlocks.vue` adapt ও integrate করুন**
   - **Dependency:** Parser verified
   - Product description area-তে accessible headings, answer paragraph এবং `<dl>` facts render করুন।
   - raw HTML ব্যবহার না করে Vue escaping বজায় রাখুন।
@@ -285,7 +285,7 @@
   - প্রতিটি image-এর intrinsic dimensions/aspect ratio এবং LCP candidate record করুন।
   - **Acceptance:** Missing dimension/aspect-ratio images ও current LCP element-এর তালিকা আছে।
 
-- [ ] **P1 — `ProductImage.vue` pattern project-এ adapt করুন**
+- [x] **P1 — `ProductImage.vue` pattern project-এ adapt করুন**
   - **Dependency:** Image inventory
   - wrapper দিয়ে space reserve, correct `width`/`height`, `alt`, `decoding` ও loading policy দিন।
   - main product image-এ eager/high priority; below-the-fold images-এ lazy loading ব্যবহার করুন।
@@ -319,7 +319,7 @@
   - admin-only libraries storefront initial bundle-এ না আসে নিশ্চিত করুন।
   - **Acceptance:** Home/product direct load functional এবং initial JS transfer baseline থেকে কম।
 
-- [ ] **P2 — Safe manual chunking current Vite config-এ merge করুন**
+- [x] **P2 — Safe manual chunking current Vite config-এ merge করুন**
   - **Dependency:** Lazy loading
   - Generated Vite config replace করবেন না।
   - Current `optimizeDeps`, input ও Vue plugin settings preserve করে measured dependencies-এর জন্য সীমিত manual chunks যোগ করুন।
@@ -391,7 +391,7 @@
 ## Definition of Done
 
 - [ ] `robots.txt`, `llms.txt` ও sitemap public এবং correct content type-এ served।
-- [ ] SEO spreadsheet নিরাপদে বিদ্যমান `product_seos` table-এ imported।
+- [x] SEO spreadsheet নিরাপদে বিদ্যমান `product_seos` table-এ imported।
 - [ ] Direct product URL-এর raw HTML-এ unique metadata, canonical এবং valid JSON-LD আছে।
 - [ ] Client navigation duplicate/stale head tags তৈরি করে না।
 - [ ] AEO/GEO content visible, accurate এবং structured data-এর সঙ্গে consistent।

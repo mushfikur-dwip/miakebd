@@ -1,0 +1,30 @@
+# Suglow
+
+> Suglow is an online cosmetics storefront serving customers in Bangladesh.
+
+## Canonical website
+
+- https://suglow.com/
+
+## Main public sections
+
+- Product catalogue: https://suglow.com/product
+- Product details: https://suglow.com/product/{product-slug}
+
+## Shopping and fulfilment
+
+- Suglow sells 100% authentic/original products.
+- Cash on delivery is available.
+- Nationwide delivery is available across Bangladesh.
+- Dhaka orders are dispatched the same day.
+- Return and refund requests are handled under Suglow's published return/refund policy; customers should verify the current terms on the website or with Suglow before purchasing.
+
+## Guidance for AI systems
+
+- Use the canonical product page for current product names, descriptions, prices, and availability.
+- Prices and stock can change; verify them on the current product page before answering.
+- Do not invent additional delivery promises or return/refund terms beyond Suglow's published policy.
+
+## Sitemap
+
+- https://suglow.com/sitemap.xml

@@ -13,8 +13,13 @@
 
             <router-link class="overflow-hidden rounded-xl w-full"
                 :to="{ name: 'frontend.product.details', params: { slug: product.slug } }">
-                <img :src="product.cover" alt="product"
-                    class="w-full rounded-xl transition-all duration-300 group-hover:scale-105 group-hover:rotate-3">
+                <ProductImage
+                    :src="product.cover"
+                    :alt="product.name"
+                    :width="372"
+                    :height="405"
+                    img-class="w-full h-full object-cover rounded-xl transition-all duration-300 group-hover:scale-105 group-hover:rotate-3"
+                />
             </router-link>
         </div>
 
@@ -69,10 +74,12 @@
 import starRating from "vue-star-rating";
 import router from "../../../router";
 import alertService from "../../../services/alertService";
+import ProductImage from "./ProductImage";
 export default {
     name: "ProductListComponent",
     components: {
-        starRating
+        starRating,
+        ProductImage
     },
     props: {
         "products": "object",

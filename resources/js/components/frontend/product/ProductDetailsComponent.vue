@@ -9,7 +9,7 @@
 
                 <div v-if="images.length" class="col-12 sm:col-6 lg:col-5">
                     <Swiper dir="ltr" :spaceBetween="10" :navigation="true" :thumbs="{ swiper: thumbsSwiper }"
-                        :modules="modules" class="gallery-swiper">
+                        :modules="modules" class="gallery-swiper aspect-square bg-gray-100">
                         <SwiperSlide v-for="(image, index) in images" :key="index" class="w-full">
                             <inner-image-zoom :src="image" :zoomSrc="image" :zoomScale='1' zoomType="hover"
                                 :hideHint='true' />
@@ -21,13 +21,15 @@
                         <SwiperSlide v-for="(image, index) in images" :key="index"
                             class="w-full cursor-pointer rounded-lg border border-gray-200 transition-all duration-500">
                             <img class="w-full rounded-lg border-2 border-gray-200 transition-all duration-500"
-                                :src="image" alt="gallery" />
+                                :src="image" :alt="`${product.name} thumbnail ${index + 1}`"
+                                width="180" height="180" loading="lazy" decoding="async" />
                         </SwiperSlide>
                     </Swiper>
                 </div>
 
                 <div v-else class="col-12 sm:col-6 lg:col-5">
-                    <img :src="product.image" alt="products" class="w-full rounded-2xl">
+                    <ProductImage :src="product.image" :alt="product.name || 'Product'" :width="1536" :height="1536"
+                        img-class="w-full h-full object-cover rounded-2xl" eager />
                 </div>
 
                 <div class="col-12 sm:col-6 lg:col-7 lg:pl-10">
@@ -159,6 +161,7 @@
                                 {{ $t('label.product_details') }}
                             </h3>
                             <div class="text-description" v-html="product.details"></div>
+                            <ProductSeoBlocks :description="product.seo?.description || ''" />
                         </div>
 
                         <div id="tab_videos" class="tab-div p-4 sm:p-8 sm:pt-6 border-t border-[#D9DBE9]">
@@ -275,6 +278,8 @@ import { useHead } from '@vueuse/head';
 import 'vue-inner-image-zoom/lib/vue-inner-image-zoom.css';
 
 import InnerImageZoom from 'vue-inner-image-zoom';
+import ProductImage from "../components/ProductImage";
+import ProductSeoBlocks from "./ProductSeoBlocks";
 
 export default {
     name: "ProductDetailsComponent",
@@ -286,16 +291,21 @@ export default {
         Swiper,
         SwiperSlide,
         LoadingComponent,
+        ProductImage,
+        ProductSeoBlocks,
         'inner-image-zoom': InnerImageZoom
     },
     setup() {
         const thumbsSwiper = ref(null);
+        const seoHead = ref({});
+        useHead(seoHead);
         const setThumbsSwiper = (swiper) => {
             thumbsSwiper.value = swiper;
         };
         return {
             thumbsSwiper,
             setThumbsSwiper,
+            seoHead,
             modules: [FreeMode, Navigation, Thumbs],
         }
     },
@@ -464,26 +474,53 @@ export default {
                         this.loading.isActive = false;
                     });
 
-                    if (Object.keys(res.data.data.seo) && res.data.data.seo.title && res.data.data.seo.description) {
-                        let metaData = [
-                            { name: 'title', content: res.data.data.seo.title },
-                            { name: 'description', content: res.data.data.seo.description },
-                        ];
-
-                        if (res.data.data.seo.thumb && res.data.data.seo.cover) {
-                            metaData.push({ content: res.data.data.seo.thumb });
-                            metaData.push({ content: res.data.data.seo.cover });
-                        }
-
-                        useHead({
-                            title: this.setting.company_name + ' - ' + res.data.data.seo.title,
-                            meta: metaData
-                        });
-                    }
+                    this.updateSeoHead(res.data.data);
                 }).catch((err) => {
                     this.loading.isActive = false;
                 });
             }
+        },
+        updateSeoHead: function (product) {
+            const seo = product.seo || {};
+            const title = seo.title || product.name;
+            const company = this.setting.company_name || 'Suglow';
+            const descriptionSource = seo.description || product.details || product.name;
+            const firstBlock = descriptionSource
+                .replace(/<\/p>\s*<p>\s*(?:<br\s*\/?>|&nbsp;|\s)*\s*<\/p>\s*<p>/gi, "</p>\n\n<p>")
+                .split(/\r?\n\s*\r?\n/)[0]
+            const description = firstBlock
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/&amp;/g, '&')
+                .replace(/&quot;/g, '"')
+                .replace(/&#039;|&apos;/g, "'")
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 160);
+            const canonical = `${window.location.origin}/product/${encodeURIComponent(product.slug)}`;
+            const image = seo.cover || product.image;
+            const keywords = Array.isArray(seo.meta_keyword) ? seo.meta_keyword.join(', ') : '';
+
+            this.seoHead = {
+                title: `${title} | ${company}`,
+                link: [
+                    { key: 'canonical', rel: 'canonical', href: canonical },
+                ],
+                meta: [
+                    { key: 'description', name: 'description', content: description },
+                    { key: 'keywords', name: 'keywords', content: keywords },
+                    { key: 'robots', name: 'robots', content: 'index, follow, max-image-preview:large' },
+                    { key: 'og:type', property: 'og:type', content: 'product' },
+                    { key: 'og:title', property: 'og:title', content: title },
+                    { key: 'og:description', property: 'og:description', content: description },
+                    { key: 'og:image', property: 'og:image', content: image },
+                    { key: 'og:url', property: 'og:url', content: canonical },
+                    { key: 'og:site_name', property: 'og:site_name', content: company },
+                    { key: 'twitter:card', name: 'twitter:card', content: 'summary_large_image' },
+                    { key: 'twitter:title', name: 'twitter:title', content: title },
+                    { key: 'twitter:description', name: 'twitter:description', content: description },
+                    { key: 'twitter:image', name: 'twitter:image', content: image },
+                ].filter((tag) => tag.content),
+            };
         },
         showRelatedProduct: function () {
             if (typeof this.$route.params.slug !== "undefined") {

@@ -118,7 +118,7 @@ export const frontendProduct = {
                     context.commit("show", res.data.data);
                     context.commit("showImages", res.data.data.images);
                     context.commit("showReviews", res.data.data.reviews);
-                    context.commit("showVideos", res.data.data.videos);``
+                    context.commit("showVideos", res.data.data.videos);
                     context.commit("showSeo", res.data.data.seo);
                     resolve(res);
                 }).catch((err) => {

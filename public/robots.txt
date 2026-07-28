@@ -1,2 +1,29 @@
 User-agent: *
-Disallow:
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: GPTBot
+Disallow: /admin/
+Disallow: /api/
+Allow: /
+
+User-agent: ClaudeBot
+Disallow: /admin/
+Disallow: /api/
+Allow: /
+
+User-agent: PerplexityBot
+Disallow: /admin/
+Disallow: /api/
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://suglow.com/sitemap.xml

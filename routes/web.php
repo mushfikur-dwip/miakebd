@@ -31,6 +31,9 @@ Route::prefix('install')->name('installer.')->middleware(['web'])->group(functio
 });
 
 Route::get('/', [RootController::class, 'index'])->middleware(['installed'])->name('home');
+Route::get('/product/{product:slug}', [RootController::class, 'product'])
+    ->middleware(['installed'])
+    ->name('product.show');
 Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(function () {
     Route::get('/{paymentGateway:slug}/pay/{order}', [PaymentController::class, 'index'])->name('index');
     Route::post('/{order}/pay', [PaymentController::class, 'payment'])->name('store');
@@ -40,10 +43,11 @@ Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(fun
     Route::get('/successful/{order}', [PaymentController::class, 'successful'])->name('successful');
 });
 
-Route::fallback(function(\Illuminate\Http\Request $request) {
+Route::fallback(function (\Illuminate\Http\Request $request) {
     // Don't catch API routes
     if ($request->is('api/*')) {
         abort(404);
     }
+
     return app(RootController::class)->index($request->path());
 })->middleware(['installed']);

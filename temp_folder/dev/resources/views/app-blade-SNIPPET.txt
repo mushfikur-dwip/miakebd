@@ -1,0 +1,43 @@
+PASTE THIS INTO:  dev/resources/views/app.blade.php
+
+Put it inside the <head> section, just before the closing </head> tag,
+AFTER @inertiaHead.
+
+------------------------------ COPY FROM HERE ------------------------------
+
+        {{-- Structured data (JSON-LD) shared from the controller.
+             Rendered server-side because Vue templates cannot contain <script>. --}}
+        @isset($structuredData)
+            <script type="application/ld+json">{!! $structuredData !!}</script>
+        @endisset
+
+------------------------------- TO HERE ------------------------------------
+
+
+YOUR app.blade.php SHOULD END UP LOOKING ROUGHLY LIKE THIS:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    @routes
+    @vite(['resources/js/app.js'])
+    @inertiaHead
+
+    {{-- paste the block here --}}
+    @isset($structuredData)
+        <script type="application/ld+json">{!! $structuredData !!}</script>
+    @endisset
+</head>
+<body class="font-sans antialiased">
+    @inertia
+</body>
+</html>
+
+
+HOW TO VERIFY IT WORKED
+  curl -s https://suglow.com/product/YOUR-PRODUCT-SLUG | grep -A3 "ld+json"
+You should see your JSON. Then paste the URL into:
+  https://search.google.com/test/rich-results

@@ -1,33 +1,33 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\ApiKeyMiddleware;
 use App\Http\Middleware\Installed;
 use App\Http\Middleware\localization;
-use Illuminate\Foundation\Application;
-use Illuminate\Database\QueryException;
-use App\Http\Middleware\ApiKeyMiddleware;
-use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
+use Illuminate\Auth\Middleware\Authorize;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Auth\Middleware\RequirePassword;
-use Illuminate\Http\Middleware\SetCacheHeaders;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
+use Illuminate\Http\Middleware\SetCacheHeaders;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ValidateSignature;
-use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Session\Middleware\AuthenticateSession;
-use Spatie\Permission\Middleware\PermissionMiddleware;
-use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Spatie\Permission\Exceptions\UnauthorizedException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
+    ->withEvents(discover: false)
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',

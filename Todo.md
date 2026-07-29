@@ -10,11 +10,11 @@
 > **গুরুত্বপূর্ণ:** এই project Inertia ব্যবহার করে না। Frontend একটি Vue Router SPA, head management-এ `@vueuse/head` ব্যবহার করে, এবং product SEO data ইতিমধ্যে `product_seos` table-এ সংরক্ষিত হয়। তাই generated Inertia-specific files সরাসরি copy করা যাবে না।
 
 ## Status Legend
-
+ 
 - **Priority:** `P0` = blocker/critical, `P1` = high, `P2` = improvement
 - **Dependency:** কাজটি শুরু করার আগে যে Todo সম্পন্ন হতে হবে
 - **Acceptance:** কাজটি সম্পন্ন হয়েছে প্রমাণ করার শর্ত
-
+ 
 ## Generated Files Compatibility Matrix
 
 | Generated file | Status | Project-specific decision |

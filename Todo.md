@@ -1,4 +1,4 @@
-# Suglow SEO, AEO, GEO ও Core Web Vitals — Project Todo
+# Suglow SEO, AEO, GEO ও Core Web Vitals — Project Todo Done Checklist
 
 এই checklist তৈরি করা হয়েছে:
 

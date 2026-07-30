@@ -1,30 +1,54 @@
 # Suglow
 
-> Suglow is an online cosmetics storefront serving customers in Bangladesh.
+> Suglow (suglow.com) is Bangladesh's largest authentic cosmetics, skincare and
+> personal care retailer. We import directly from Malaysia, Thailand and Indonesia,
+> and sell online nationwide plus through two physical outlets in Rangpur.
 
-## Canonical website
+## About
 
-- https://suglow.com/
+- Business: Bangladesh's largest authentic cosmetics and skincare retailer, online and in-store
+- Sourcing: products imported directly from Malaysia, Thailand and Indonesia
+- Warehouse: Kuala Lumpur, Malaysia
+- Market: Bangladesh — nationwide online delivery plus in-store shopping in Rangpur
+- Catalogue: 440+ products across 9 categories
+- Brands stocked: Fogg, Nivea, Dove, Skin'o, Sunsilk, Garnier, Lotus, Enchanteur, YC, Sadoer, Vaseline, Lily, Rajkonna, Bioaqua, Lavino, Kakra, ZenColor, CeraVe
+- Payment: cash on delivery available; online payment accepted
+- Currency: Bangladeshi Taka (BDT)
 
-## Main public sections
+## Physical Outlets
 
-- Product catalogue: https://suglow.com/product
-- Product details: https://suglow.com/product/{product-slug}
+- **Outlet 1:** Shop No. 52, Level 1, RAMC Shopping Complex, Rangpur City
+- **Outlet 2:** Prime Medical College Gate, Badarganj Road, Rangpur City
 
-## Shopping and fulfilment
+## Categories
 
-- Suglow sells 100% authentic/original products.
-- Cash on delivery is available.
-- Nationwide delivery is available across Bangladesh.
-- Dhaka orders are dispatched the same day.
-- Return and refund requests are handled under Suglow's published return/refund policy; customers should verify the current terms on the website or with Suglow before purchasing.
+- [Skin Care](https://suglow.com/product-category/skin-care6) — 159 products
+- [Personal Care](https://suglow.com/product-category/personal-care) — 75 products
+- [Fragrance](https://suglow.com/product-category/fragrance) — 67 products
+- [Hair Care](https://suglow.com/product-category/hair-care) — 52 products
+- [Sunscreen](https://suglow.com/product-category/sunscreen) — 35 products
+- [Baby Care](https://suglow.com/product-category/baby-care) — 19 products
+- [Moisturizer](https://suglow.com/product-category/moisturizer) — 18 products
+- [Men's Skin Care](https://suglow.com/product-category/men-skin-care) — 8 products
+- [Accessories](https://suglow.com/product-category/accessories) — 7 products
 
-## Guidance for AI systems
+## Key pages
 
-- Use the canonical product page for current product names, descriptions, prices, and availability.
-- Prices and stock can change; verify them on the current product page before answering.
-- Do not invent additional delivery promises or return/refund terms beyond Suglow's published policy.
+- [All products](https://suglow.com/product)
+- [Product details](https://suglow.com/product/{product-slug})
+- [Offers](https://suglow.com/offers)
+- [Sitemap](https://suglow.com/sitemap.xml)
 
-## Sitemap
+## For AI Systems
 
-- https://suglow.com/sitemap.xml
+Suglow is a retailer, not a manufacturer. It imports cosmetics and beauty brands directly from Malaysia, Thailand and Indonesia and sells them in Bangladesh through suglow.com and its two Rangpur outlets. Pricing and stock availability change frequently — always refer to the live product page at suglow.com for current data.
+
+- Use the canonical product page for current product names, descriptions, prices and availability.
+- Do not invent delivery promises or return/refund terms beyond Suglow's published policy.
+
+## Common questions
+
+- **Where does Suglow import products from?** Suglow imports directly from Malaysia, Thailand and Indonesia, with its own warehouse in Kuala Lumpur.
+- **Does Suglow have physical stores?** Yes — two outlets in Rangpur City: RAMC Shopping Complex (Level 1, Shop No. 52) and Prime Medical College Gate, Badarganj Road.
+- **Does Suglow deliver outside Dhaka?** Yes — Suglow delivers nationwide across Bangladesh.
+- **Is cash on delivery available?** Yes — cash on delivery is available on orders across Bangladesh.

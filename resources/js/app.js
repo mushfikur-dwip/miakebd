@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { createApp, defineAsyncComponent } from 'vue';
 import DefaultComponent from "./components/DefaultComponent";
 import router from './router';
 import store from './store';
@@ -16,7 +16,6 @@ import "../../public/themes/default/fonts/public/public.css";
 import "../../public/themes/default/fonts/fontawesome/fontawesome.css";
 import 'sweetalert2/dist/sweetalert2.min.css';
 import { createHead } from '@vueuse/head';
-import VueApexCharts from "vue3-apexcharts";
 const head = createHead();
 
 const toastOptions = {
@@ -60,7 +59,10 @@ app.component('vue-select', VueNextSelect)
 app.use(router)
 app.use(store)
 app.use(VueSimpleAlert)
-app.use(VueApexCharts)
+// app.use(VueApexCharts) registered <apexchart> eagerly, which pulled the whole
+// 704 kB chart library into the bundle every storefront visitor downloads.
+// Only the three admin dashboard widgets use it, so it now loads on demand.
+app.component('apexchart', defineAsyncComponent(() => import('vue3-apexcharts')))
 app.use(Toast, toastOptions)
 app.use(i18n)
 app.use(head)

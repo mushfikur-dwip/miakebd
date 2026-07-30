@@ -398,6 +398,38 @@
                     </div>
 
                     <div class="form-col-12">
+                        <label for="site_checkout_notice" class="db-field-title">
+                            {{ $t("label.checkout_notice") }}
+                        </label>
+                        <textarea v-model="form.site_checkout_notice"
+                            v-bind:class="errors.site_checkout_notice ? 'invalid' : ''"
+                            id="site_checkout_notice" class="db-field-control" rows="3"
+                            :placeholder="$t('label.checkout_notice_placeholder')"></textarea>
+                        <small class="db-field-alert" v-if="errors.site_checkout_notice">
+                            {{ errors.site_checkout_notice[0] }}
+                        </small>
+                        <small class="db-field-hint">{{ $t("message.checkout_notice_hint") }}</small>
+                    </div>
+
+                    <div class="form-col-12 md:form-col-6">
+                        <label class="db-field-title">{{ $t("label.checkout_notice_status") }}</label>
+                        <div class="db-field-radio-group">
+                            <div class="db-field-radio">
+                                <input :value="enums.activityEnum.ENABLE" v-model="form.site_checkout_notice_status"
+                                    id="checkoutNoticeShow" type="radio" name="checkoutNoticeStatus"
+                                    class="db-radio">
+                                <label for="checkoutNoticeShow" class="db-field-label">{{ $t("label.show") }}</label>
+                            </div>
+                            <div class="db-field-radio">
+                                <input :value="enums.activityEnum.DISABLE" v-model="form.site_checkout_notice_status"
+                                    id="checkoutNoticeHide" type="radio" name="checkoutNoticeStatus"
+                                    class="db-radio">
+                                <label for="checkoutNoticeHide" class="db-field-label">{{ $t("label.hide") }}</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-col-12">
                         <button type="submit" class="db-btn text-white bg-primary">
                             <i class="lab lab-fill-save"></i>
                             <span>{{ $t("button.save") }}</span>
@@ -452,6 +484,8 @@ export default {
                 site_non_purchase_product_maximum_quantity: null,
                 site_is_return_product_price_add_to_credit: null,
                 site_offer_banner_text: null,
+                site_checkout_notice: null,
+                site_checkout_notice_status: null,
             },
             enums: {
                 dateFormatEnum: dateFormatEnum,
@@ -536,6 +570,8 @@ export default {
                     site_non_purchase_product_maximum_quantity: res.data.data.site_non_purchase_product_maximum_quantity,
                     site_is_return_product_price_add_to_credit: res.data.data.site_is_return_product_price_add_to_credit,
                     site_offer_banner_text: res.data.data.site_offer_banner_text,
+                    site_checkout_notice: res.data.data.site_checkout_notice,
+                    site_checkout_notice_status: res.data.data.site_checkout_notice_status,
                 }
                 console.log('✅ Form after loading:', this.form);
                 console.log('🎯 Offer Banner in form:', this.form.site_offer_banner_text);

@@ -54,7 +54,21 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
     
-    'asset_url' => env('ASSET_URL'),
+    /*
+     * Falls back to APP_URL instead of null.
+     *
+     * With no value, asset() builds image URLs from whatever host the request
+     * arrived on — so a health check on the bare IP, an internal http:// call,
+     * or a www/non-www variant emits og:image and JSON-LD image URLs on that
+     * host rather than the real domain, and WhatsApp and Google cache them.
+     * Defaulting to APP_URL makes the canonical origin the default without
+     * needing anything added to .env.
+     *
+     * ?: rather than an env() default, because a present-but-empty
+     * "ASSET_URL=" line returns "" — which env()'s default would never
+     * replace, leaving the original problem in place.
+     */
+    'asset_url' => env('ASSET_URL') ?: env('APP_URL'),
 
     /*
     |--------------------------------------------------------------------------

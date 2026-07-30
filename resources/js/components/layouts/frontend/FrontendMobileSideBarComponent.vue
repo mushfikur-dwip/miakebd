@@ -93,6 +93,8 @@
 </template>
 
 <script>
+
+import { loadLocale } from "../../../i18n";
 import targetService from "../../../services/targetService";
 import activityEnum from "../../../enums/modules/activityEnum";
 
@@ -134,7 +136,7 @@ export default {
                 display_mode: mode
             }).then(res => {
                 this.$store.dispatch('frontendLanguage/show', id).then(res => {
-                    this.$i18n.locale = res.data.data.code;
+                    loadLocale(res.data.data.code);
                 }).catch();
             }).catch();
         },

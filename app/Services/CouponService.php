@@ -5,6 +5,7 @@ namespace App\Services;
 
 
 use Exception;
+use App\Enums\Ask;
 use Carbon\Carbon;
 use App\Models\Coupon;
 use App\Models\OrderCoupon;
@@ -199,6 +200,24 @@ class CouponService
     public function couponChecking(CouponCheckRequest $request)
     {
         try {
+            // Coupons require a real account.
+            //
+            // limit_per_user is counted against order_coupons.user_id, and guest
+            // checkout deliberately mints a NEW user row per checkout — so a
+            // once-per-customer coupon could be redeemed without limit simply by
+            // ordering as a guest each time. The customer is asked to claim
+            // their account (one-click, OTP-verified) before a code applies.
+            // auth('sanctum'), not auth(): this route carries no auth:sanctum
+            // middleware, so the default guard resolves to null even when a
+            // valid Bearer token is present — which would reject every real
+            // customer too. Resolving the token guard directly keeps the
+            // friendly message instead of a bare 401.
+            $user = auth('sanctum')->user();
+
+            if (blank($user) || (int) $user->is_guest === Ask::YES) {
+                throw new Exception(trans('all.message.coupon_requires_account'), 422);
+            }
+
             $coupon = Coupon::where(['code' => $request->code])->first();
             if ($coupon) {
                 if ($coupon->minimum_order > $request->total) {

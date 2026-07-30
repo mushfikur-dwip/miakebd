@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Ask;
 use Spatie\Image\Enums\Fit;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\MediaLibrary\HasMedia;
@@ -71,6 +72,21 @@ class User extends Authenticatable implements HasMedia
         'status'            => 'integer',
         'email_verified_at' => 'datetime',
     ];
+
+    /**
+     * Excludes guest-checkout rows from account lookups. Several guest rows can
+     * share one phone number and none of them has a usable password, so any
+     * query that resolves a customer by phone or email has to filter them out
+     * or it may return a guest instead of the real account.
+     *
+     * Written as "not a guest" so a legacy row holding 0 or NULL still matches.
+     */
+    public function scopeNotGuest($query)
+    {
+        return $query->where(function ($builder) {
+            $builder->where('is_guest', '!=', Ask::YES)->orWhereNull('is_guest');
+        });
+    }
 
     public function getImageAttribute(): string
     {

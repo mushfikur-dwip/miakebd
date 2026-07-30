@@ -8,6 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // This is a data patch for installs that predate the permission. On a
+        // fresh database the seeders own the permission and menu tables, and
+        // inserting here first made PermissionTableSeeder collide on
+        // permissions.name — so `migrate:fresh --seed` could not complete and
+        // the project could not be stood up from scratch.
+        if (DB::table('permissions')->count() === 0) {
+            return;
+        }
+
         $permissionId = DB::table('permissions')->where('name', 'store-sales-report')->value('id');
 
         if (!$permissionId) {

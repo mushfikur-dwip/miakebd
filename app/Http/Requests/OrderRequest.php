@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Activity;
+use App\Enums\Ask;
 use App\Enums\OrderType;
 use App\Rules\ValidJsonOrder;
 use Illuminate\Validation\Rule;
@@ -50,6 +51,18 @@ class OrderRequest extends FormRequest
         $validator->after(function ($validator) {
             if (request('order_type') != OrderType::DELIVERY && request('order_type') != OrderType::PICK_UP) {
                 $validator->errors()->add('order_type', 'This order type is disabled now you can try another order type right now or call the management.');
+            }
+
+            // Coupons require a real account. Blocking this only in the UI and
+            // in coupon-checking would still leave the order endpoint able to
+            // accept a coupon_id directly, and each guest checkout is a fresh
+            // user row — so limit_per_user would count from zero every time.
+            // auth('sanctum') for the same reason as CouponService: the guard
+            // must be named explicitly or the token is not resolved here.
+            $user = auth('sanctum')->user();
+
+            if ($user && (int) $user->is_guest === Ask::YES && (int) request('coupon_id') > 0) {
+                $validator->errors()->add('coupon_id', trans('all.message.coupon_requires_account'));
             }
         });
     }

@@ -32,7 +32,7 @@
                 <div v-if="categories.length > 0" class="grid grid-cols-3 gap-4">
                     <router-link v-for="category in limitedCategories" 
                                 :key="category.id"
-                                :to="{ name: 'frontend.product', query: { category: category.slug } }"
+                                :to="{ name: 'frontend.productCategory', params: { slug: category.slug } }"
                                 @click="hideTarget('mobile-category-canvas', 'canvas-active')"
                                 class="flex flex-col items-center p-3 bg-white rounded-lg border border-gray-100 transition-all duration-200 hover:shadow-md active:scale-95">
                         <div class="w-12 h-12 mb-2 rounded-full bg-primary/10 flex items-center justify-center">

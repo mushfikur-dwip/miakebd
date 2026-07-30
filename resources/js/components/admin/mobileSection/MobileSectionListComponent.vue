@@ -244,7 +244,11 @@ export default {
             );
             if (cat) {
                 this.form.name = cat.name;
-                this.form.url = `/product?category=${cat.slug}`;
+                // Clean category path. The old /product?category= form still
+                // 301s, but a shortcut saved with it navigates client-side —
+                // no redirect fires, so the address bar and the canonical stay
+                // on /product while the customer is looking at a category.
+                this.form.url = `/product-category/${cat.slug}`;
             }
         },
         fetchData() {

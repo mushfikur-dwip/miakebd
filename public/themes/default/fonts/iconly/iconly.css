@@ -3,7 +3,9 @@
  */
 
 @font-face {
-    font-display: auto;
+    /* swap, not auto: the icon font blocked its glyphs from painting until it
+       downloaded. Every other face in the theme already uses swap. */
+    font-display: swap;
     font-family: "Iconly";
     font-style: normal;
     font-weight: 400;

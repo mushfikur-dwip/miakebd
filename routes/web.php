@@ -34,6 +34,30 @@ Route::get('/', [RootController::class, 'index'])->middleware(['installed'])->na
 Route::get('/product/{product:slug}', [RootController::class, 'product'])
     ->middleware(['installed'])
     ->name('product.show');
+
+// Clean category URL. Must be declared before the catch-all fallback so the
+// server can render category-specific metadata instead of the SPA shell.
+Route::get('/product-category/{slug}', [RootController::class, 'category'])
+    ->middleware(['installed'])
+    ->where('slug', '[A-Za-z0-9\-_.]+')
+    ->name('product.category');
+
+// Old query-string category links keep working, and consolidate their ranking
+// signals onto the clean path instead of splitting them.
+Route::get('/product', function (\Illuminate\Http\Request $request) {
+    $slug = $request->query('category');
+
+    if (is_string($slug) && preg_match('/^[A-Za-z0-9\-_.]+$/', $slug)) {
+        // Carry the rest of the query string across. Dropping it turned a
+        // bookmarked "sunscreen, brand=5, sorted" listing into a bare category
+        // page, and because the hop is a 301 the browser caches that loss.
+        $carry = $request->except('category');
+
+        return redirect()->route('product.category', ['slug' => $slug] + $carry, 301);
+    }
+
+    return app(RootController::class)->index();
+})->middleware(['installed'])->name('product.listing');
 Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(function () {
     Route::get('/{paymentGateway:slug}/pay/{order}', [PaymentController::class, 'index'])->name('index');
     Route::post('/{order}/pay', [PaymentController::class, 'payment'])->name('store');

@@ -66,20 +66,30 @@ class LoginController extends Controller
 
         $request->merge(['status' => Status::ACTIVE]);
 
+        // Guest checkout can leave several rows on one phone number, none of
+        // which has a usable password, and their ids are lower than the row the
+        // customer eventually signs up with — so an unscoped lookup returns a
+        // guest first and fails the login of the real account behind it.
+        // Auth::attempt() runs a Closure credential against its query builder.
+        $notGuest = fn($query) => $query->notGuest();
+
         if ($request['email']) {
-            if (!Auth::guard('web')->attempt($request->only('email', 'password', 'status'))) {
+            if (!Auth::guard('web')->attempt($request->only('email', 'password', 'status') + ['is_guest' => $notGuest])) {
                 return new JsonResponse([
                     'errors' => ['validation' => trans('all.message.credentials_invalid')]
                 ], 400);
             }
-            $user = User::where('email', $request['email'])->first();
+            $user = User::notGuest()->where('email', $request['email'])->first();
         } else {
-            if (!Auth::guard('web')->attempt($request->only('country_code', 'phone', 'password', 'status'))) {
+            if (!Auth::guard('web')->attempt($request->only('country_code', 'phone', 'password', 'status') + ['is_guest' => $notGuest])) {
                 return new JsonResponse([
                     'errors' => ['validation' => trans('all.message.credentials_invalid')]
                 ], 400);
             }
-            $user = User::where(['phone' => $request['phone'], 'country_code' => $request->country_code])->first();
+            $user = User::notGuest()->where([
+                'phone' => $request['phone'],
+                'country_code' => $request->country_code,
+            ])->first();
         }
 
         $this->token = $user->createToken('auth_token')->plainTextToken;

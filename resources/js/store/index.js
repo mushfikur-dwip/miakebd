@@ -30,6 +30,7 @@ import { frontendCountryCode } from "./modules/frontend/frontendCountryCode";
 import { frontendCountryStateCity } from "./modules/frontend/frontendCountryStateCity";
 import { frontendCoupon } from "./modules/frontend/frontendCoupon";
 import { frontendEditProfile } from "./modules/frontend/frontendEditProfile";
+import { frontendGuest } from "./modules/frontend/frontendGuest";
 import { frontendLanguage } from "./modules/frontend/frontendLanguage";
 import { frontendOrder } from "./modules/frontend/frontendOrder";
 import { frontendOrderArea } from "./modules/frontend/frontendOrderArea";
@@ -192,6 +193,7 @@ export default new createStore({
         frontendProductVariation,
         frontendAddress,
         frontendSignup,
+        frontendGuest,
         frontendCart,
         frontendCoupon,
         stock,

@@ -169,15 +169,27 @@ class AppLibrary
         return $returnArray;
     }
 
-    public static function username($name)
+    public static function username($name): string
     {
-        if ($name) {
-            $username = strtolower(str_replace(' ', '', $name)) . rand(1, 999999);
-            if (User::where(['username' => $username])->first()) {
-                self::username($name);
-            }
-            return $username;
+        $base = strtolower(str_replace(' ', '', (string) $name));
+
+        if ($base === '') {
+            $base = 'user';
         }
+
+        // users.username is a unique varchar(255). A 255-character name plus up
+        // to 6 random digits overflows it and throws in MySQL strict mode.
+        $base = mb_substr($base, 0, 200);
+
+        // The previous version recursed on a collision but returned the
+        // colliding name regardless, so duplicates still reached the unique
+        // index. withTrashed() matters too — soft-deleted rows keep their
+        // username and the index still covers them.
+        do {
+            $username = $base . rand(1, 999999);
+        } while (User::withTrashed()->where('username', $username)->exists());
+
+        return $username;
     }
 
     public static function name($firstName, $lastName): string

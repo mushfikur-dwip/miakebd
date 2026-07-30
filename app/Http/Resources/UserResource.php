@@ -27,6 +27,9 @@ class UserResource extends JsonResource
             "image"            => $this->thumb,
             "role_id"          => $this->myRole,
             "country_code"     => $this->country_code,
+            // Lets the storefront offer the claim-your-order flow to someone
+            // who checked out without registering.
+            "is_guest"         => (int) $this->is_guest,
             "order"            => $this->orders->count(),
             'create_date'      => AppLibrary::date($this->created_at),
             'update_date'      => AppLibrary::date($this->updated_at),

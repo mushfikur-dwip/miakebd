@@ -77,6 +77,7 @@ use App\Http\Controllers\Admin\TransactionController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Auth\DeactivateController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\GuestController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RefreshTokenController;
 use App\Http\Controllers\Auth\SignupController;
@@ -133,25 +134,43 @@ Route::match(['get', 'post'], '/login', function () {
 Route::match(['get', 'post'], '/refresh-token', [RefreshTokenController::class, 'refreshToken'])->middleware(['installed']);
 
 Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name('auth.')->namespace('Auth')->group(function () {
-    Route::post('/login', [LoginController::class, 'login']);
+    // Throttled against password spraying — nothing in this group was rate
+    // limited, and the app registers no global API limiter.
+    Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:10,1');
 
-    Route::prefix('forgot-password')->name('forgot-password.')->group(function () {
+    // The OTP is only otp_digit_limit digits (4 by default) and a code stays
+    // usable until it expires, so an unthrottled verify endpoint is a few
+    // thousand requests away from any account. send-otp costs a real SMS.
+    Route::prefix('forgot-password')->name('forgot-password.')->middleware('throttle:15,1')->group(function () {
         Route::post('/', [ForgotPasswordController::class, 'forgotPassword']);
-        Route::post('/otp-phone', [ForgotPasswordController::class, 'otpPhone']);
-        Route::post('/otp-email', [ForgotPasswordController::class, 'otpEmail']);
-        Route::post('/verify-phone', [ForgotPasswordController::class, 'verifyPhone']);
-        Route::post('/verify-email', [ForgotPasswordController::class, 'verifyEmail']);
-        Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword']);
+        Route::post('/otp-phone', [ForgotPasswordController::class, 'otpPhone'])->middleware('throttle:5,1');
+        Route::post('/otp-email', [ForgotPasswordController::class, 'otpEmail'])->middleware('throttle:5,1');
+        Route::post('/verify-phone', [ForgotPasswordController::class, 'verifyPhone'])->middleware('throttle:6,1');
+        Route::post('/verify-email', [ForgotPasswordController::class, 'verifyEmail'])->middleware('throttle:6,1');
+        Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:6,1');
     });
 
-    Route::prefix('signup')->name('signup.')->group(function () {
-        Route::post('/otp-phone', [SignupController::class, 'otpPhone']);
-        Route::post('/otp-email', [SignupController::class, 'otpEmail']);
-        Route::post('/verify-phone', [SignupController::class, 'verifyPhone']);
-        Route::post('/verify-email', [SignupController::class, 'verifyEmail']);
+    Route::prefix('signup')->name('signup.')->middleware('throttle:15,1')->group(function () {
+        Route::post('/otp-phone', [SignupController::class, 'otpPhone'])->middleware('throttle:5,1');
+        Route::post('/otp-email', [SignupController::class, 'otpEmail'])->middleware('throttle:5,1');
+        Route::post('/verify-phone', [SignupController::class, 'verifyPhone'])->middleware('throttle:6,1');
+        Route::post('/verify-email', [SignupController::class, 'verifyEmail'])->middleware('throttle:6,1');
         Route::post('/register', [SignupController::class, 'register']);
-        Route::post('/login-verify', [SignupController::class, 'signupLoginVerify']);
+        Route::post('/login-verify', [SignupController::class, 'signupLoginVerify'])->middleware('throttle:6,1');
         Route::post('/register-validation', [SignupController::class, 'validateRegister']);
+    });
+
+    // Guest checkout. The rate limits are deliberate: send-otp costs a real
+    // SMS, and claim is brute-forcible.
+    Route::prefix('guest')->name('guest.')->group(function () {
+        Route::post('/start', [GuestController::class, 'start'])
+            ->middleware('throttle:10,1')->name('start');
+
+        Route::post('/send-otp', [GuestController::class, 'sendOtp'])
+            ->middleware('throttle:3,1')->name('sendOtp');
+
+        Route::post('/claim', [GuestController::class, 'claim'])
+            ->middleware('throttle:5,1')->name('claim');
     });
 
     Route::post('/logout', [LoginController::class, 'logout'])->middleware(['auth:sanctum', 'throttle:60,1']);

@@ -708,7 +708,24 @@
         "easypaisa_status": "حالة إيزي بايسا",
         "easypaisa_username": "اسم مستخدم إيزي بايسا",
         "easypaisa_password": "كلمة مرور إيزي بايسا",
-        "unlimited": "غير محدود"
+        "unlimited": "غير محدود",
+        "no_account_needed": "لا حاجة لحساب",
+        "continue_as_guest": "المتابعة كضيف",
+        "already_have_an_account": "هل لديك حساب بالفعل؟",
+        "please_wait": "يرجى الانتظار",
+        "guest_order": "طلب ضيف",
+        "save_your_order_history": "احفظ سجل طلباتك",
+        "verify_your_number": "تحقق من رقمك",
+        "enter_the_code": "أدخل الرمز",
+        "account_created": "تم إنشاء الحساب",
+        "optional": "اختياري",
+        "checkout_notice": "إشعار الدفع",
+        "checkout_notice_placeholder": "الإشعار الظاهر أعلى نموذج الدفع",
+        "checkout_notice_status": "إظهار إشعار الدفع",
+        "show": "إظهار",
+        "hide": "إخفاء",
+        "customer_information": "معلومات العميل",
+        "login_to_autofill": "سجّل الدخول للتعبئة التلقائية"
     },
     "button": {
         "add": "إضافة",
@@ -815,17 +832,22 @@
         "upload_file": "تحميل الملف",
         "pdf": "PDF",
         "barcode": "الباركود",
-        "confirm_and_print_receipt": "تأكيد و طباعة الإيصال"
+        "confirm_and_print_receipt": "تأكيد و طباعة الإيصال",
+        "continue_to_delivery": "المتابعة إلى التوصيل",
+        "create_my_account": "إنشاء حسابي",
+        "send_code": "إرسال الرمز",
+        "verify_and_create": "تحقق وأنشئ",
+        "one_click_login": "تسجيل الدخول بنقرة واحدة"
     },
     "number": {
         "10": "10",
         "25": "25",
         "50": "50",
         "100": "100",
-        "500": "500",
-        "1000": "1000",
         "403": "403",
-        "404": "404"
+        "404": "404",
+        "500": "500",
+        "1000": "1000"
     },
     "error": {
         "something_wrong": ".هناك خطأ ما"
@@ -890,6 +912,27 @@
         "offer_cleared_success": "تم تنفيذ عرض المنتج بنجاح",
         "no_data_found": "لم يتم العثور على أي بيانات!",
         "empty_cart": "سلة التسوق الخاصة بك فارغة! ابدأ التسوق الآن!",
-        "tags_hint": "استخدم العلامات (الكلمات الرئيسية) لإظهار المنتجات ذات الصلة"
+        "tags_hint": "استخدم العلامات (الكلمات الرئيسية) لإظهار المنتجات ذات الصلة",
+        "guest_checkout_intro": "اطلب في أقل من دقيقة. اسمك ورقم جوالك فقط، بدون كلمة مرور.",
+        "guest_phone_hint": "نستخدمه لتأكيد التوصيل وإرسال تحديثات الطلب.",
+        "guest_can_create_account_later": "يمكنك تحويله إلى حساب كامل بعد الدفع.",
+        "sign_in_for_faster_checkout": "سجّل الدخول لاستخدام بياناتك المحفوظة.",
+        "perk_saved_addresses": "عناوين التوصيل المحفوظة",
+        "perk_order_history": "كل طلباتك السابقة في مكان واحد",
+        "perk_faster_reorder": "أعد الطلب بضغطة واحدة",
+        "name_required": "يرجى إدخال اسمك",
+        "phone_required": "يرجى إدخال رقم هاتفك",
+        "phone_invalid": "يرجى إدخال رقم جوال صحيح",
+        "something_went_wrong": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+        "guest_claim_intro": "لقد أتممت الطلب كضيف. أنشئ حسابًا لتتبع هذا الطلب والاحتفاظ به في سجلك.",
+        "guest_claim_phone_help": "أدخل رقم الجوال الذي أجريت به هذا الطلب. سنرسل لك رمز تحقق.",
+        "code_sent_to": "أرسلنا رمزًا إلى",
+        "min_6_characters": "6 أحرف على الأقل",
+        "password_optional_hint": "اتركه فارغًا لتسجيل الدخول برمز في المرة القادمة.",
+        "account_created_success": "حسابك جاهز وتم حفظ هذا الطلب فيه.",
+        "orders_merged": "حسابك جاهز وتم حفظ {count} طلبات فيه.",
+        "coupon_needs_account_title": "رموز الكوبون تتطلب حسابًا",
+        "coupon_needs_account_note": "أنت تتم الطلب كضيف. سجّل الدخول — أو أنشئ حسابك بنقرة واحدة — لتطبيق كوبون أو رمز قسيمة.",
+        "checkout_notice_hint": "يظهر أعلى صفحة الدفع. اتركه فارغًا لإخفائه."
     }
 }

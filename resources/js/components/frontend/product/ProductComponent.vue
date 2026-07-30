@@ -3,7 +3,7 @@
     <section class="mb-10 sm:mb-20">
         <div class="container">
             <CategoryBreadcrumbComponent
-                v-if="typeof $route.query.category !== 'undefined' && $route.query.category !== ''"
+                v-if="categorySlug"
                 :categories="ancestorsAndSelfCategories" />
 
             <div class="flex items-center justify-between gap-5 mb-6 max-md:mb-8">
@@ -262,6 +262,19 @@ export default {
         }
     },
     computed: {
+        // /product-category/:slug is the canonical form; ?category= is still
+        // read so old links, bookmarks and any cached SERP entry keep working.
+        categorySlug: function () {
+            const fromPath = this.$route.params.slug;
+
+            if (typeof fromPath === "string" && fromPath !== "") {
+                return fromPath;
+            }
+
+            const fromQuery = this.$route.query.category;
+
+            return typeof fromQuery === "string" && fromQuery !== "" ? fromQuery : null;
+        },
         pagination: function () {
             return this.$store.getters["frontendProduct/categoryWiseProductPagination"];
         },
@@ -298,10 +311,12 @@ export default {
             targetService.hideTarget(id, cClass);
         },
         ancestorsAndSelf: function () {
-            if (typeof this.$route.query.category !== "undefined" && this.$route.query.category !== "") {
+            const categorySlug = this.categorySlug;
+
+            if (categorySlug) {
                 this.loading.isActive = true;
-                this.productSearchForm.category = this.$route.query.category;
-                this.$store.dispatch("frontendProductCategory/ancestorsAndSelf", this.$route.query.category).then(res => {
+                this.productSearchForm.category = categorySlug;
+                this.$store.dispatch("frontendProductCategory/ancestorsAndSelf", categorySlug).then(res => {
                     this.loading.isActive = false;
                 }).catch((err) => {
                     this.loading.isActive = false;

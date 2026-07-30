@@ -16,7 +16,7 @@
                     <nav v-if="featuredCategories.length > 0" class="flex flex-col gap-4">
                         <router-link v-for="category in featuredCategories" :key="category.id"
                             class="w-fit text-sm font-medium capitalize text-white transition-all duration-300 hover:text-primary"
-                            :to="{ name: 'frontend.product', query: { category: category.slug } }">
+                            :to="{ name: 'frontend.productCategory', params: { slug: category.slug } }">
                             {{ category.name }}
                         </router-link>
                     </nav>

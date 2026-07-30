@@ -1,7 +1,20 @@
 <template>
     <LoadingComponent :props="loading"/>
+    <!-- Shop notice, written and toggled from Settings → Site. Rendered above
+         everything so it is read before any payment decision. -->
+    <div v-if="checkoutNotice" class="checkout-notice col-12">
+        <i class="lab lab-line-info flex-shrink-0" aria-hidden="true"></i>
+        <p>{{ checkoutNotice }}</p>
+    </div>
+
     <div class="row">
         <div class="col-12 lg:col-8">
+            <!-- Anonymous visitors choose a path first. Everything below needs
+                 a token: the address book, the outlets and the order endpoint
+                 are all per-user. -->
+            <GuestGateComponent v-if="!authStatus" />
+
+            <template v-else>
             <div class="flex items-center rounded-2xl w-fit mb-6 text-focus bg-[#EAF6FF]">
                 <div class="relative cursor-pointer">
                     <input @change="changeOrderType(orderTypeEnum.DELIVERY)" id="checkout-delivery"
@@ -64,6 +77,7 @@
                     {{ $t('button.save_and_pay') }}
                 </button>
             </div>
+            </template>
         </div>
 
         <div class="col-12 lg:col-4">
@@ -81,7 +95,8 @@
                 <SummeryComponent/>
             </div>
 
-            <div class="max-lg:flex hidden flex-col-reverse sm:flex-row items-center justify-between gap-5 mt-10">
+            <div v-if="authStatus"
+                 class="max-lg:flex hidden flex-col-reverse sm:flex-row items-center justify-between gap-5 mt-10">
                 <router-link :to="{ name: 'frontend.checkout.cartList' }"
                              class="field-button font-semibold tracking-wide normal-case text-secondary bg-[#F7F7FC]">
                     {{ $t('button.back_to_cart') }}
@@ -98,6 +113,7 @@
 <script>
 import orderTypeEnum from "../../../../enums/modules/orderTypeEnum";
 import AddressComponent from "./AddressComponent.vue";
+import GuestGateComponent from "./GuestGateComponent.vue";
 import SummeryComponent from "../SummeryComponent.vue";
 import CouponComponent from "../CouponComponent.vue";
 import WalletRedeemComponent from "../WalletRedeemComponent.vue";
@@ -105,18 +121,20 @@ import router from "../../../../router";
 import alertService from "../../../../services/alertService";
 import LoadingComponent from "../../components/LoadingComponent.vue";
 import statusEnum from "../../../../enums/modules/statusEnum";
+import activityEnum from "../../../../enums/modules/activityEnum";
 
 
 export default {
     name: "CheckoutComponent",
-    components: {CouponComponent, WalletRedeemComponent, SummeryComponent, AddressComponent, LoadingComponent},
+    components: {CouponComponent, WalletRedeemComponent, SummeryComponent, AddressComponent, GuestGateComponent, LoadingComponent},
     data() {
         return {
             loading: {
                 isActive: false
             },
             enums : {
-                statusEnum: statusEnum
+                statusEnum: statusEnum,
+                activityEnum: activityEnum
             },
             orderTypeEnum: orderTypeEnum,
             shippingAndBillingCheck: true,
@@ -125,8 +143,24 @@ export default {
         }
     },
     computed: {
+        authStatus: function () {
+            return this.$store.getters.authStatus;
+        },
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
+        },
+        // Hidden when the admin switches it off OR leaves the text empty, so
+        // clearing the box is enough — no need to also flip the toggle.
+        checkoutNotice: function () {
+            const setting = this.setting || {};
+
+            if (parseInt(setting.site_checkout_notice_status, 10) === this.enums.activityEnum.DISABLE) {
+                return null;
+            }
+
+            const text = (setting.site_checkout_notice || '').trim();
+
+            return text !== '' ? text : null;
         },
         orderType: function () {
             return this.$store.getters['frontendCart/orderType'];
@@ -142,23 +176,41 @@ export default {
         }
     },
     mounted() {
-        this.loading.isActive = true;
-        this.$store.dispatch('frontendOrderArea/lists').then(res => {
-            this.loading.isActive = false;
-        }).catch((err) => {
-            this.loading.isActive = false;
-        });
-
-        this.loading.isActive = true;
-        this.$store.dispatch('frontendOutlet/lists', {
-            status : this.enums.statusEnum.ACTIVE
-        }).then(res => {
-            this.loading.isActive = false;
-        }).catch((err) => {
-            this.loading.isActive = false;
-        });
+        this.loadCheckoutData();
+    },
+    watch: {
+        // A guest who has just started a session needs the same data a
+        // logged-in customer gets, without a page reload.
+        authStatus: function (value) {
+            if (value) {
+                this.loadCheckoutData();
+            }
+        }
     },
     methods: {
+        loadCheckoutData: function () {
+            // Skipped for anonymous visitors — the guest gate is all they see,
+            // so these two requests would only delay it.
+            if (!this.authStatus) {
+                return;
+            }
+
+            this.loading.isActive = true;
+            this.$store.dispatch('frontendOrderArea/lists').then(res => {
+                this.loading.isActive = false;
+            }).catch((err) => {
+                this.loading.isActive = false;
+            });
+
+            this.loading.isActive = true;
+            this.$store.dispatch('frontendOutlet/lists', {
+                status : this.enums.statusEnum.ACTIVE
+            }).then(res => {
+                this.loading.isActive = false;
+            }).catch((err) => {
+                this.loading.isActive = false;
+            });
+        },
         changeOrderType: function (e) {
             this.$store.dispatch('frontendCart/updateOrderType', e)
         },
@@ -201,3 +253,36 @@ export default {
 }
 </script>
 
+
+<style scoped>
+/* Shop notice above checkout. Mint ground so it reads as information, not an
+   error — it is a standing policy statement, not something the customer did. */
+.checkout-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 13px 16px;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    background: #E9F6F1;
+    border: 1px solid #C9E9DC;
+    color: #1B5E43;
+}
+
+.checkout-notice i {
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.checkout-notice p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+}
+
+@media (min-width: 640px) {
+    .checkout-notice p {
+        font-size: 14px;
+    }
+}
+</style>

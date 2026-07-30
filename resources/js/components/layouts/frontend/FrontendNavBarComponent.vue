@@ -48,7 +48,7 @@
                                     <div class="w-full rounded-b-2xl shadow-paper bg-white">
                                         <nav class="w-full flex items-center justify-center">
                                             <router-link v-for="(category, index) in categories" :key="index"
-                                                :to="{ name: 'frontend.product', query: { category: category.slug } }"
+                                                :to="{ name: 'frontend.productCategory', params: { slug: category.slug } }"
                                                 @mouseover.prevent="activeTab = 'category_' + category.slug"
                                                 class="capitalize text-sm font-semibold tracking-wide px-5 py-4 transition-all duration-300 relative before:content-[''] before:absolute before:bottom-0 before:left-0 before:h-0.5 before:bg-primary hover:text-primary"
                                                 :class="{ 'text-primary before:w-full before:transition-all before:duration-300': activeTab === 'category_' + category.slug }">
@@ -69,7 +69,7 @@
                                                             <h3
                                                                 class="text-sm font-semibold capitalize pb-3 border-b border-slate-200">
                                                                 <router-link
-                                                                    :to="{ name: 'frontend.product', query: { category: children.slug } }"
+                                                                    :to="{ name: 'frontend.productCategory', params: { slug: children.slug } }"
                                                                     class="hover:text-primary transition-all duration-300">
                                                                     {{ children.name }}
                                                                 </router-link>
@@ -310,6 +310,8 @@
 </template>
 
 <script>
+
+import { loadLocale } from "../../../i18n";
 import statusEnum from "../../../enums/modules/statusEnum";
 import { onMounted, ref } from "vue";
 import targetService from "../../../services/targetService";
@@ -318,8 +320,6 @@ import activityEnum from "../../../enums/modules/activityEnum";
 import roleEnum from "../../../enums/modules/roleEnum";
 import MenuChildrenComponent from "../../frontend/components/MenuChildrenComponent";
 import orderTypeEnum from "../../../enums/modules/orderTypeEnum";
-import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import _ from "lodash";
 import axios from 'axios';
 import { useCanvas } from "../../../composables/canvas";
@@ -421,7 +421,7 @@ export default {
             this.loading.isActive = false;
             this.$store.dispatch('frontendLanguage/lists', this.languageProps).then().catch();
             this.$store.dispatch('frontendLanguage/show', this.defaultLanguage).then(res => {
-                this.$i18n.locale = res.data.data.code;
+                loadLocale(res.data.data.code);
                 this.$store.dispatch("globalState/init", {
                     language_code: res.data.data.code,
                     display_mode: res.data.data.display_mode
@@ -432,46 +432,55 @@ export default {
                 this.$store.dispatch('frontendCart/initOrderType', { order_type: orderTypeEnum.DELIVERY });
 
                 if (this.$store.getters.authStatus && res.data.data.notification_fcm_api_key && res.data.data.notification_fcm_auth_domain && res.data.data.notification_fcm_project_id && res.data.data.notification_fcm_storage_bucket && res.data.data.notification_fcm_messaging_sender_id && res.data.data.notification_fcm_app_id && res.data.data.notification_fcm_measurement_id) {
-                    initializeApp({
-                        apiKey: res.data.data.notification_fcm_api_key,
-                        authDomain: res.data.data.notification_fcm_auth_domain,
-                        projectId: res.data.data.notification_fcm_project_id,
-                        storageBucket: res.data.data.notification_fcm_storage_bucket,
-                        messagingSenderId: res.data.data.notification_fcm_messaging_sender_id,
-                        appId: res.data.data.notification_fcm_app_id,
-                        measurementId: res.data.data.notification_fcm_measurement_id
-                    });
-                    const messaging = getMessaging();
+                    // Loaded on demand: push notifications are optional, only
+                    // apply to logged-in users, and this block is already 3s
+                    // behind first paint. A static import put the whole Firebase
+                    // SDK on the critical path of every storefront page instead.
+                    Promise.all([
+                        import("firebase/app"),
+                        import("firebase/messaging")
+                    ]).then(([{ initializeApp }, { getMessaging, getToken, onMessage }]) => {
+                        initializeApp({
+                            apiKey: res.data.data.notification_fcm_api_key,
+                            authDomain: res.data.data.notification_fcm_auth_domain,
+                            projectId: res.data.data.notification_fcm_project_id,
+                            storageBucket: res.data.data.notification_fcm_storage_bucket,
+                            messagingSenderId: res.data.data.notification_fcm_messaging_sender_id,
+                            appId: res.data.data.notification_fcm_app_id,
+                            measurementId: res.data.data.notification_fcm_measurement_id
+                        });
+                        const messaging = getMessaging();
 
-                    Notification.requestPermission().then((permission) => {
-                        if (permission === 'granted') {
-                            getToken(messaging, { vapidKey: res.data.data.notification_fcm_public_vapid_key }).then((currentToken) => {
-                                if (currentToken) {
-                                    axios.post('/frontend/device-token/web', { token: currentToken }).then().catch((error) => {
-                                        if (error.response.data.message === 'Unauthenticated.') {
-                                            this.$store.dispatch('loginDataReset');
-                                        }
-                                    });
-                                }
-                            }).catch();
-                        }
-                    });
+                        Notification.requestPermission().then((permission) => {
+                            if (permission === 'granted') {
+                                getToken(messaging, { vapidKey: res.data.data.notification_fcm_public_vapid_key }).then((currentToken) => {
+                                    if (currentToken) {
+                                        axios.post('/frontend/device-token/web', { token: currentToken }).then().catch((error) => {
+                                            if (error.response.data.message === 'Unauthenticated.') {
+                                                this.$store.dispatch('loginDataReset');
+                                            }
+                                        });
+                                    }
+                                }).catch();
+                            }
+                        });
 
-                    onMessage(messaging, (payload) => {
-                        const notificationTitle = payload.notification.title;
-                        const notificationOptions = {
-                            body: payload.notification.body,
-                            icon: '/images/required/firebase-logo.png'
-                        };
-                        new Notification(notificationTitle, notificationOptions);
+                        onMessage(messaging, (payload) => {
+                            const notificationTitle = payload.notification.title;
+                            const notificationOptions = {
+                                body: payload.notification.body,
+                                icon: '/images/required/firebase-logo.png'
+                            };
+                            new Notification(notificationTitle, notificationOptions);
 
-                        if (payload.data.topicName === 'new-order-found' && this.orderNotification.permission) {
-                            this.orderNotificationStatus = true;
-                            this.orderNotificationMessage = payload.notification.body;
-                            const audio = new Audio(res.data.data.notification_audio);
-                            audio.play();
-                        }
-                    });
+                            if (payload.data.topicName === 'new-order-found' && this.orderNotification.permission) {
+                                this.orderNotificationStatus = true;
+                                this.orderNotificationMessage = payload.notification.body;
+                                const audio = new Audio(res.data.data.notification_audio);
+                                audio.play();
+                            }
+                        });
+                    }).catch();
                 }
             }, 3000);
 
@@ -520,7 +529,7 @@ export default {
                 display_mode: mode
             }).then(res => {
                 this.$store.dispatch('frontendLanguage/show', id).then(res => {
-                    this.$i18n.locale = res.data.data.code;
+                    loadLocale(res.data.data.code);
                 }).catch();
             }).catch();
         },

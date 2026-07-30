@@ -1,8 +1,30 @@
+# suglow.com robots.txt
+#
+# Served from the web root so it bypasses Laravel's catch-all route.
+#
+# robots.txt groups are EXCLUSIVE: a bot that finds its own User-agent block
+# ignores the "*" block entirely. The disallow rules are therefore repeated
+# inside every named group rather than being inherited.
+
 User-agent: *
 Disallow: /admin/
 Disallow: /api/
 Disallow: /login
 Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Disallow: /*?sort=
+Disallow: /*?filter=
+Allow: /
+
+User-agent: Googlebot
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
 Disallow: /cart
 Disallow: /checkout
 Disallow: /account/
@@ -11,19 +33,44 @@ Allow: /
 User-agent: GPTBot
 Disallow: /admin/
 Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
 Allow: /
 
 User-agent: ClaudeBot
 Disallow: /admin/
 Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
 Allow: /
 
 User-agent: PerplexityBot
 Disallow: /admin/
 Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
 Allow: /
 
 User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
+Disallow: /admin/
+Disallow: /api/
+Disallow: /cart
+Disallow: /checkout
 Allow: /
 
 Sitemap: https://suglow.com/sitemap.xml

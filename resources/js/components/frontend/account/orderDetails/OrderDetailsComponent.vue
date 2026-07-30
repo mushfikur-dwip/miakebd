@@ -5,6 +5,10 @@
         <h2 class="capitalize text-xl font-bold text-primary">{{ $t('label.order_details') }}</h2>
     </div>
 
+    <!-- Offered only to someone who checked out without an account. It
+         disappears the moment the claim succeeds, because is_guest flips. -->
+    <GuestClaimComponent v-if="showGuestClaim" @claimed="onGuestClaimed" />
+
     <div class="rounded-2xl shadow-card p-4 sm:p-6 mb-6 bg-white">
         <div class="text-center mb-10">
             <h3 class="text-xl font-semibold capitalize mb-4">{{ $t('message.thank_you') }}</h3>
@@ -302,11 +306,13 @@ import alertService from "../../../../services/alertService";
 import targetService from "../../../../services/targetService";
 import { useRoute } from 'vue-router'
 import OrderReceiptComponent from "./OrderReceiptComponent";
+import GuestClaimComponent from "./GuestClaimComponent.vue";
 import orderTypeEnum from "../../../../enums/modules/orderTypeEnum";
+import askEnum from "../../../../enums/modules/askEnum";
 
 export default {
     name: "OrderDetailsComponent",
-    components: { LoadingComponent, OrderReceiptComponent },
+    components: { LoadingComponent, OrderReceiptComponent, GuestClaimComponent },
     setup() {
         const route = useRoute();
         return { route: route };
@@ -356,6 +362,10 @@ export default {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
         },
+        showGuestClaim: function () {
+            const user = this.$store.getters.authInfo;
+            return !!user && parseInt(user.is_guest, 10) === askEnum.YES;
+        },
         order: function () {
             return this.$store.getters['frontendOrder/show'];
         },
@@ -389,6 +399,13 @@ export default {
         }
     },
     methods: {
+        onGuestClaimed: function () {
+            // The order now belongs to a real account, so re-read it to pick up
+            // the new owner before the customer navigates anywhere.
+            if (this.$route.params.id) {
+                this.$store.dispatch("frontendOrder/show", this.$route.params.id).then().catch();
+            }
+        },
         showTarget: function (id, cClass) {
             targetService.showTarget(id, cClass);
         },

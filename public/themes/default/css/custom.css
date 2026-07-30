@@ -322,3 +322,112 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         
     }
 }
+
+/* ==========================================================================
+   suglow.com — Cumulative Layout Shift fix
+   ==========================================================================
+   PageSpeed measured CLS 1.565 (Google's limit is 0.10). Every reported row
+   was tagged "Unsized image element" pointing at the logo:
+
+       <img class="w-28 sm:w-32" alt="logo" src="…">
+
+   The logo has a width (w-28 = 112px) but no height, so the browser cannot
+   reserve vertical space and the header grows the moment the image arrives,
+   shoving the whole page down. Every later shift is a knock-on effect.
+
+   LOGO DIMENSIONS — measured, not guessed: getimagesize() reported 1280x720,
+   a 16:9 ratio. At w-28 (112px) that is 63px tall, at sm:w-32 (128px) 72px.
+
+   SEPARATE ISSUE: a 1280x720 PNG displayed 112px wide is ~130x more pixels
+   than needed. Re-uploading it at ~256x144 is a large part of the "Improve
+   image delivery" saving. CSS cannot fix that; only a smaller source can.
+   ========================================================================== */
+
+:root {
+    /* Measured from the live file: 1280 x 720 */
+    --suglow-logo-ratio: 16 / 9;
+}
+
+/* 1. THE LOGO — root cause of the whole cascade.
+   aspect-ratio makes the browser reserve the correct height on the first
+   layout pass. !important because this file loads before Tailwind, whose
+   w-28 / sm:w-32 utilities would otherwise win on source order. */
+img[alt="logo"] {
+    aspect-ratio: var(--suglow-logo-ratio) !important;
+    height: auto !important;
+    object-fit: contain;
+}
+
+/* Keep the header's height stable while the logo is still blank. */
+header.shadow-xs,
+header.bg-white {
+    contain: layout;
+}
+
+/* 2. PRODUCT CARD IMAGES — the 0.650 shift. Product photos are square, so
+   declaring that up front means each card reaches its final size before any
+   image loads and the grid never re-flows. */
+.miron img,
+.miron picture img {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    background-color: #f6f6f6;
+}
+
+/* 3. SAFETY NET for any remaining image without dimensions. height:auto alone
+   prevents distortion; images that do carry width/height keep their values. */
+img:not([width]):not([height]) {
+    height: auto;
+}
+
+.swiper-slide img,
+[class*="product-card"] img,
+[class*="product_card"] img {
+    aspect-ratio: 1 / 1;
+    height: auto;
+    object-fit: contain;
+}
+
+/* 4. THE "MOST POPULAR" SECTION — the 0.724 shift. It renders only once its
+   API response lands, going from zero height to full height in one jump.
+   A reserved minimum turns a full-page shift into a small one. */
+section.mb-7,
+section.sm\:mb-12 {
+    min-height: 320px;
+}
+
+@media (min-width: 640px) {
+    section.mb-7,
+    section.sm\:mb-12 {
+        min-height: 400px;
+    }
+}
+
+/* 5. SWIPER CAROUSEL. The pagination bullets animated `width` and `color`,
+   which force layout every frame. transform/opacity run on the compositor. */
+.swiper-pagination-bullet {
+    transition: transform 0.3s ease, opacity 0.3s ease !important;
+    will-change: transform, opacity;
+}
+
+.swiper-pagination-bullet-active {
+    transform: scale(1.4);
+    opacity: 1;
+}
+
+.swiper {
+    min-height: 200px;
+}
+
+/* 6. IMAGE DECODING.
+   NOTE: this deliberately does NOT use `content-visibility: auto` on img.
+   Without a companion `contain-intrinsic-size`, an off-screen element with
+   content-visibility:auto collapses to zero height and then expands when it
+   scrolls into view — which manufactures exactly the layout shift the rest of
+   this file exists to remove. decoding=async gets the off-main-thread decode
+   benefit (helping Total Blocking Time) with no such side effect. */
+img {
+    image-rendering: auto;
+}

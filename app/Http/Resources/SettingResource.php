@@ -39,6 +39,8 @@ class SettingResource extends JsonResource
             'site_online_payment_gateway'           => $this->info['site_online_payment_gateway'],
             'site_cash_on_delivery'                 => $this->info['site_cash_on_delivery'],
             'site_offer_banner_text'                => $this->info['site_offer_banner_text'] ?? null,
+            'site_checkout_notice'                  => \App\Support\CheckoutNotice::text($this->info),
+            'site_checkout_notice_status'           => \App\Support\CheckoutNotice::status($this->info),
             'shipping_setup_method'                 => $this->info['shipping_setup_method'],
             'shipping_setup_flat_rate_wise_cost'    => $this->info['shipping_setup_flat_rate_wise_cost'],
             'shipping_setup_area_wise_default_cost' => $this->info['shipping_setup_area_wise_default_cost'],

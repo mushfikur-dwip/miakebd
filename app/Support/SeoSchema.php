@@ -15,10 +15,11 @@ class SeoSchema
         $currentPrice = AppLibrary::isBetweenDate($product->offer_start_date, $product->offer_end_date)
             ? $price - (($price / 100) * $product->discount)
             : $price;
-        $inStock = $product->show_stock_out == Activity::DISABLE
-            ? ($product->can_purchasable == Ask::NO ? false : (int) $product->stock_items_sum_quantity > 0)
-            : true;
-        $url = route('product.show', ['product' => $product->slug]);
+        $inStock = self::isInStock($product);
+        // Config-derived for the same reason as the canonical in
+        // RootController: this URL becomes the schema @id and Offer.url, and
+        // must not vary with the host the request happened to use.
+        $url = rtrim((string) config('app.url'), '/') . '/product/' . rawurlencode($product->slug);
         $description = self::plainText($product->seo?->description ?: $product->description ?: $product->name);
 
         $schema = [
@@ -55,6 +56,35 @@ class SeoSchema
         }
 
         return array_filter($schema, fn ($value) => $value !== null && $value !== '');
+    }
+
+    /**
+     * Stock status exactly as the customer sees it.
+     *
+     * This mirrors the `stock` expression in SimpleProductDetailsResource,
+     * which is what the product page renders. The previous version inverted two
+     * of the three branches, so the structured data contradicted the page:
+     *
+     *   can_purchasable = NO   page showed "In stock (100)", schema said OutOfStock
+     *   show_stock_out = ENABLE (the column default)
+     *                          page showed "Stock out",      schema said InStock
+     *
+     * Google flags that as a mismatched-availability error and Merchant Center
+     * disapproves the item, so the two must be derived from one expression.
+     */
+    public static function isInStock(Product $product): bool
+    {
+        if ($product->show_stock_out != Activity::DISABLE) {
+            return false;
+        }
+
+        // A non-purchasable product is displayed with a synthetic quantity
+        // (NON_PURCHASE_QUANTITY) rather than as sold out.
+        if ($product->can_purchasable == Ask::NO) {
+            return (int) env('NON_PURCHASE_QUANTITY') > 0;
+        }
+
+        return (int) $product->stock_items_sum_quantity > 0;
     }
 
     public static function plainText(?string $value): string

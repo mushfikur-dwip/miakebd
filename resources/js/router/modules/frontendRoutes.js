@@ -47,6 +47,18 @@ export default [
         },
     },
     {
+        // Clean category URL. Renders the same listing component as /product;
+        // the component reads route.params.slug when present and falls back to
+        // route.query.category so old links keep working.
+        path: "/product-category/:slug",
+        component: ProductComponent,
+        name: "frontend.productCategory",
+        meta: {
+            isFrontend: true,
+            auth: false,
+        },
+    },
+    {
         path: "/product/:slug",
         component: ProductDetailsComponent,
         name: "frontend.product.details",
@@ -246,7 +258,7 @@ export default [
         redirect: {name: "frontend.checkout.checkout"},
         meta: {
             isFrontend: true,
-            auth: true,
+            auth: false,
         },
         children: [
             {
@@ -255,7 +267,7 @@ export default [
                 name: "frontend.checkout.cartList",
                 meta: {
                     isFrontend: true,
-                    auth: true
+                    auth: false
                 }
             },
             {
@@ -264,7 +276,7 @@ export default [
                 name: "frontend.checkout.checkout",
                 meta: {
                     isFrontend: true,
-                    auth: true
+                    auth: false
                 }
             },
             {
@@ -273,7 +285,7 @@ export default [
                 name: "frontend.checkout.payment",
                 meta: {
                     isFrontend: true,
-                    auth: true
+                    auth: false
                 }
             }
         ]

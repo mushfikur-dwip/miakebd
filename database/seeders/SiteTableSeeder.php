@@ -36,6 +36,8 @@ class SiteTableSeeder extends Seeder
             'site_android_app_link'                      => $envService->getValue('DEMO') ? 'http://android.com' : '',
             'site_ios_app_link'                          => $envService->getValue('DEMO') ? 'http://ios.com' : '',
             'site_copyright'                             => $envService->getValue('DEMO') ? '© ShopKing by iNiLabs ' . Carbon::now()->year . ', All Rights Reserved' : '',
+            'site_checkout_notice'                       => 'প্রযুক্তিগত ত্রুটির কারণে পণ্যের মূল্য ভুল দেখালে, Suglow অর্ডার বাতিলের অধিকার সংরক্ষণ করে। কাস্টমার সাপোর্টের কনফার্মেশন ছাড়া পেমেন্ট করবেন না।',
+            'site_checkout_notice_status'                => Activity::ENABLE,
             'site_language_switch'                       => Activity::ENABLE,
             'site_app_debug'                             => Activity::DISABLE,
             'site_auto_update'                           => Activity::DISABLE,

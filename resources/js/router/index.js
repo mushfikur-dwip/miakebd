@@ -1,5 +1,10 @@
 import { createRouter, createWebHistory } from "vue-router";
-import DashboardComponent from "../components/admin/dashboard/DashboardComponent";
+// Lazy: the dashboard renders three <apexchart> children, so a static import
+// puts the whole chart library in the bundle every storefront visitor loads.
+// ExceptionComponent and NotFoundComponent stay eager — they are small and need
+// to render instantly when something has already gone wrong.
+const DashboardComponent = () =>
+    import("../components/admin/dashboard/DashboardComponent");
 import ExceptionComponent from "../components/exception/ExceptionComponent.vue";
 import NotFoundComponent from "../components/exception/NotFoundComponent.vue";
 import ENV from "../config/env";

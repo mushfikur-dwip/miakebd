@@ -104,6 +104,7 @@ return [
         'offer_product_exist'              => 'The product already added in another offer. When the offer is end then you can add this item again.',
         'minimum_order_amount'             => 'The minimum order amount is ',
         'coupon_date_expired'              => 'The coupon time is expired',
+        'coupon_requires_account'          => 'Coupon codes need an account. Create yours in one click to use this code.',
         'coupon_not_exist'                 => 'The coupon does not exist',
         'code_is_invalid'                  => 'The code is invalid.',
         'code_is_expired'                  => 'The code is expired.',

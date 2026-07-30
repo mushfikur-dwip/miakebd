@@ -7,7 +7,7 @@
                 <i class="lab-line-chevron-left text-xl font-bold !leading-8"></i>
             </button>
             <router-link v-on:click="hideTarget('mobile-category-canvas', 'canvas-active')"
-                :to="{ name: 'frontend.product', query: { category: parentCategory.slug } }"
+                :to="{ name: 'frontend.productCategory', params: { slug: parentCategory.slug } }"
                 class="text-xl font-bold capitalize">
                 {{ parentCategory.name }}
             </router-link>
@@ -21,7 +21,7 @@
             <li v-for="category in categories" class="border-b border-slate-100">
                 <div class="flex items-center justify-between py-3">
                     <router-link v-on:click="hideTarget('mobile-category-canvas', 'canvas-active')"
-                        :to="{ name: 'frontend.product', query: { category: category.slug } }"
+                        :to="{ name: 'frontend.productCategory', params: { slug: category.slug } }"
                         class="text-lg font-semibold capitalize">{{ category.name }}</router-link>
                     <button v-if="category.children.length > 0"
                         @click.prevent="showTarget('mobile_category_' + category.slug, '!translate-x-0')" type="button">

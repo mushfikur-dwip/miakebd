@@ -18,6 +18,31 @@
         <button @click.prevent="destroyCoupon" class="lab-line-trash lab-font-size-xl text-danger"></button>
     </div>
 
+    <!-- Guest checkout: coupons need a real account, because limit_per_user is
+         counted per user row and every guest checkout creates a new one. -->
+    <div v-else-if="isGuest" class="coupon-locked mb-6">
+        <div class="flex items-start gap-3">
+            <span class="coupon-locked-icon flex-shrink-0" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+            </span>
+            <div class="flex-auto">
+                <h4 class="font-semibold leading-5 mb-1 capitalize text-heading">
+                    {{ $t('message.coupon_needs_account_title') }}
+                </h4>
+                <p class="text-xs text-paragraph mb-3">
+                    {{ $t('message.coupon_needs_account_note') }}
+                </p>
+                <router-link :to="{ name: 'auth.login' }" class="coupon-locked-cta">
+                    {{ $t('button.one_click_login') }}
+                </router-link>
+            </div>
+        </div>
+    </div>
+
     <div v-else @click.prevent="showTarget('coupon-modal', 'modal-active')"
         class="mb-6 rounded-2xl border border-focus flex items-center gap-3 p-4 cursor-pointer">
         <div class="relative flex-shrink-0">
@@ -36,7 +61,7 @@
         <i class="lab lab-line-chevron-right rtl:rotate-180 lab-font-size-2xl text-focus"></i>
     </div>
 
-    <div id="coupon-modal"
+    <div v-if="!isGuest" id="coupon-modal"
         class="fixed inset-0 z-50 p-3 w-screen h-dvh overflow-y-auto bg-black/50 transition-all duration-300 opacity-0 invisible">
         <div class="w-full rounded-xl mx-auto bg-white transition-all duration-300 max-w-[360px]">
             <div class="flex items-center justify-between gap-2 py-4 px-4 border-b border-slate-100">
@@ -77,6 +102,7 @@
 import targetService from "../../../services/targetService";
 import alertService from "../../../services/alertService";
 import LoadingComponent from "../components/LoadingComponent.vue";
+import askEnum from "../../../enums/modules/askEnum";
 
 export default {
     name: "CouponComponent",
@@ -91,6 +117,10 @@ export default {
         }
     },
     computed: {
+        isGuest: function () {
+            const user = this.$store.getters.authInfo;
+            return !!user && parseInt(user.is_guest, 10) === askEnum.YES;
+        },
         coupons: function () {
             return this.$store.getters['frontendCoupon/lists'];
         },
@@ -102,6 +132,11 @@ export default {
         }
     },
     mounted() {
+        // A guest cannot apply any of them, so skip the request entirely.
+        if (this.isGuest) {
+            return;
+        }
+
         this.loading.isActive = true;
         this.$store.dispatch("frontendCoupon/lists", {}).then(res => {
             this.loading.isActive = false;
@@ -151,3 +186,57 @@ export default {
     }
 }
 </script>
+<style scoped>
+.coupon-locked {
+    border-radius: 1rem;
+    padding: 1rem;
+    background: linear-gradient(140deg, #ffffff 0%, rgb(var(--primary) / 0.05) 100%);
+    border: 1px solid rgb(var(--primary) / 0.2);
+}
+
+.coupon-locked-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+    color: rgb(var(--primary));
+    background: rgb(var(--primary) / 0.1);
+}
+
+.coupon-locked-icon svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.coupon-locked-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.25rem;
+    padding: 0 1.1rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(120deg, rgb(var(--primary)) 0%, rgb(var(--primary) / 0.82) 100%);
+    box-shadow: 0 8px 18px -8px rgb(var(--primary) / 0.75);
+    transition: transform 0.2s cubic-bezier(0.22, 1.15, 0.36, 1), filter 0.2s ease;
+}
+
+.coupon-locked-cta:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .coupon-locked-cta {
+        transition: none;
+    }
+
+    .coupon-locked-cta:hover {
+        transform: none;
+    }
+}
+</style>

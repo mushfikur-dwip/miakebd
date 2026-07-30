@@ -1,7 +1,7 @@
 <template>
     <div class="p-0 m-0">
         <p v-if="categories.length > 0" v-for="category in categories" :key="category">
-            <router-link :to="{ name: 'frontend.product', query: {category : category.slug} }"
+            <router-link :to="{ name: 'frontend.productCategory', params: { slug: category.slug } }"
                          class="text-sm capitalize py-1 transition-all duration-300 hover:text-primary hover:underline" :class="!icon ? 'font-medium' : ''">
                 <i v-if="icon" class="lab lab-line-chevron-right"></i>
                 {{ category.name }}

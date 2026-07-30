@@ -1,4 +1,7 @@
-import MobileSectionListComponent from "../../components/admin/mobileSection/MobileSectionListComponent.vue";
+// Lazy, like every other admin route — a static import here ships an
+// admin-only screen to every storefront visitor.
+const MobileSectionListComponent = () =>
+    import("../../components/admin/mobileSection/MobileSectionListComponent.vue");
 
 export default [
     {

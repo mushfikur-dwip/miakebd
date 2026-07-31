@@ -67,12 +67,11 @@
 import CartListComponent from "./cartList/CartListComponent.vue";
 import router from "../../../router";
 import appService from "../../../services/appService";
-import CouponComponent from "./CouponComponent.vue";
 import LoadingComponent from "../components/LoadingComponent.vue";
 
 export default {
     name: "CheckoutComponent",
-    components: { LoadingComponent, CouponComponent, CartListComponent },
+    components: { LoadingComponent, CartListComponent },
     data() {
         return {
             loading: {

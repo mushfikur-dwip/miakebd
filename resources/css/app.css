@@ -537,6 +537,567 @@
     .installer-track li.active i { @apply bg-primary border-primary text-white }
 
     .unread-message h4 { @apply relative after:content-[''] after:absolute after:top-0 ltr:after:-right-3 rtl:after:-left-3 after:inline-block after:w-2 after:h-2 after:rounded-full after:bg-primary  }
+
+    /*===============================
+            CHECKOUT DESIGN SYSTEM
+        Shared by the cart, checkout and payment steps so the three read as one
+        screen. Plain CSS rather than @apply because every value is a fixed
+        measurement from the approved design; the brand / blush / peach trio it
+        was drawn in is already this app's --primary tokens.
+    ================================*/
+    .co-card {
+        background: #ffffff;
+        border: 1px solid #e8e9ee;
+        border-radius: 13px;
+    }
+
+    .co-card-head {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 13px 17px;
+        border-bottom: 1px solid #f0f1f4;
+    }
+
+    .co-card-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        color: rgb(var(--primary));
+        background: rgb(var(--primary-light));
+    }
+
+    .co-card-icon svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .co-card-head h3 {
+        flex: 1;
+        margin: 0;
+        font-size: 16.5px;
+        font-weight: 700;
+        text-transform: capitalize;
+    }
+
+    .co-card-link {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+        color: #006cc0;
+    }
+
+    .co-card-link:hover {
+        text-decoration: underline;
+    }
+
+    .co-card-body {
+        padding: 17px;
+    }
+
+    .co-group-label {
+        display: block;
+        margin-bottom: 9px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: #6e7191;
+    }
+
+    /* Selectable option cards — delivery zone, outlet, payment method. */
+    .co-opts {
+        display: grid;
+        gap: 11px;
+        grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+    }
+
+    .co-opt {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        width: 100%;
+        padding: 12px 13px;
+        text-align: left;
+        background: #ffffff;
+        border: 1.5px solid #e4e5ea;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .co-opt:hover {
+        border-color: #c9cad2;
+    }
+
+    .co-opt:active {
+        transform: scale(0.99);
+    }
+
+    .co-opt.selected {
+        border-color: rgb(var(--primary));
+        background: rgb(var(--primary-slate));
+    }
+
+    .co-radio {
+        position: relative;
+        flex: 0 0 15px;
+        height: 15px;
+        margin-top: 2px;
+        border: 1.5px solid #c6c7cf;
+        border-radius: 99px;
+        transition: border-color 0.2s ease;
+    }
+
+    .co-opt.selected .co-radio {
+        border-color: rgb(var(--primary));
+    }
+
+    .co-radio::after {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        border-radius: 99px;
+        background: rgb(var(--primary));
+        transform: scale(0);
+        transition: transform 0.2s cubic-bezier(0.22, 1.15, 0.36, 1);
+    }
+
+    .co-opt.selected .co-radio::after {
+        transform: scale(1);
+    }
+
+    /* Scoped to the text wrapper: a bare `.co-opt span` would also catch the
+       radio and repaint the title muted. */
+    .co-opt-text {
+        display: block;
+        min-width: 0;
+        color: #1f1f39;
+    }
+
+    .co-opt-text b {
+        display: block;
+        font-size: 13.5px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    .co-opt-text span {
+        display: block;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #6e7191;
+    }
+
+    .co-opt-text img {
+        height: 22px;
+        width: auto;
+        margin-bottom: 4px;
+    }
+
+    .co-selbar {
+        margin-top: 11px;
+        padding: 9px 12px;
+        font-size: 12.5px;
+        color: #20548a;
+        background: #f4f8fd;
+        border: 1px solid #dce9f7;
+        border-radius: 8px;
+    }
+
+    /* Order summary */
+    .co-sticky {
+        position: sticky;
+        top: 18px;
+    }
+
+    .co-item {
+        display: flex;
+        gap: 11px;
+        padding: 13px 0;
+        border-bottom: 1px solid #f0f1f4;
+    }
+
+    .co-items > .co-item:last-child {
+        border-bottom: 0;
+    }
+
+    .co-thumb {
+        flex: 0 0 46px;
+        height: 46px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: linear-gradient(135deg, rgb(var(--primary-light)), rgb(var(--primary-slate)));
+        border: 1px solid #f0e4e9;
+    }
+
+    .co-item-text {
+        min-width: 0;
+    }
+
+    .co-item-text b {
+        display: block;
+        font-size: 13.5px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    .co-item-text span {
+        display: block;
+        font-size: 11.5px;
+        color: #6e7191;
+    }
+
+    .co-item .co-price {
+        margin-inline-start: auto;
+        font-size: 13.5px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .co-rows {
+        padding-top: 4px;
+    }
+
+    .co-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0;
+        font-size: 14px;
+    }
+
+    .co-row > span:last-child {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .co-row.total {
+        margin-top: 6px;
+        padding-top: 13px;
+        border-top: 1px solid #f0f1f4;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .co-row.total > span:last-child {
+        font-size: 21px;
+        color: rgb(var(--primary));
+    }
+
+    .co-terms {
+        display: flex;
+        gap: 9px;
+        align-items: flex-start;
+        margin: 13px 0;
+        font-size: 12.5px;
+        color: #6e7191;
+    }
+
+    .co-cbx {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 16px;
+        height: 16px;
+        margin-top: 2px;
+        border-radius: 4px;
+        border: 1.5px solid #c6c7cf;
+        color: #ffffff;
+        font-size: 10px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .co-cbx.checked {
+        border-color: rgb(var(--primary));
+        background: rgb(var(--primary));
+    }
+
+    .co-cbx svg {
+        width: 10px;
+        height: 10px;
+        transform: scale(0);
+        transition: transform 0.2s cubic-bezier(0.22, 1.15, 0.36, 1);
+    }
+
+    .co-cbx.checked svg {
+        transform: scale(1);
+    }
+
+    .co-terms a {
+        color: rgb(var(--primary));
+        font-weight: 600;
+    }
+
+    .co-terms a:hover {
+        text-decoration: underline;
+    }
+
+    .co-place {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        width: 100%;
+        height: 50px;
+        border-radius: 10px;
+        font-size: 15.5px;
+        font-weight: 700;
+        color: #ffffff;
+        background: #1a1a20;
+        transition: filter 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .co-place:hover:not(:disabled) {
+        filter: brightness(1.15);
+    }
+
+    .co-place:active:not(:disabled) {
+        transform: scale(0.99);
+    }
+
+    .co-place:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .co-fine {
+        margin: 10px 0 0;
+        font-size: 11.5px;
+        text-align: center;
+        color: #6e7191;
+    }
+
+    /* Coupon / voucher panel. Tinted with the brand pinks so it reads as its
+       own offer card against the white checkout, rather than the flat grey
+       block it used to be. */
+    .co-extra {
+        margin: 14px 0;
+        padding: 16px;
+        background: linear-gradient(135deg, rgb(var(--primary-light)) 0%, rgb(var(--primary-slate)) 100%);
+        border: 1px solid rgb(var(--primary) / 0.08);
+        border-radius: 14px;
+    }
+
+    .co-extra h4 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 12px;
+        font-size: 15px;
+        font-weight: 700;
+        color: #1f1f39;
+    }
+
+    .co-extra h4 svg {
+        flex-shrink: 0;
+        width: 17px;
+        height: 17px;
+        color: rgb(var(--primary));
+    }
+
+    .co-tabs {
+        display: flex;
+        gap: 7px;
+        margin-bottom: 10px;
+    }
+
+    .co-tab {
+        padding: 6px 13px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6e7191;
+        background: #ffffff;
+        border: 1px solid #e4e5ea;
+        border-radius: 99px;
+        transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .co-tab.on {
+        color: #ffffff;
+        background: rgb(var(--primary));
+        border-color: rgb(var(--primary));
+    }
+
+    /* Input and button are separate pills rather than one welded control. It
+       matches the reference design and drops the LTR/RTL corner-radius
+       juggling the joined version needed. */
+    .co-cpn {
+        display: flex;
+        gap: 10px;
+    }
+
+    .co-cpn input {
+        flex: 1;
+        min-width: 0;
+        height: 46px;
+        padding: 0 16px;
+        font-size: 13px;
+        background: #ffffff;
+        border: 1px solid rgb(var(--primary) / 0.14);
+        border-radius: 12px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* Uppercase the hint only, not the typed value — the codes are matched
+       server-side as entered, so restyling the real text would misrepresent
+       what gets submitted. */
+    .co-cpn input::placeholder {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #a0a3bd;
+    }
+
+    .co-cpn input:focus {
+        border-color: rgb(var(--primary) / 0.55);
+        box-shadow: 0 0 0 3px rgb(var(--primary) / 0.07);
+    }
+
+    .co-cpn input.invalid {
+        border-color: #e93c3c;
+    }
+
+    .co-cpn button {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        height: 46px;
+        padding: 0 20px;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #ffffff;
+        background: rgb(var(--primary));
+        border-radius: 12px;
+        box-shadow: 0 6px 16px -6px rgb(var(--primary) / 0.5);
+        transition: filter 0.2s ease, transform 0.2s ease;
+    }
+
+    .co-cpn button svg {
+        flex-shrink: 0;
+        width: 15px;
+        height: 15px;
+    }
+
+    /* --primary is near-black, so a small brightness step is invisible. */
+    .co-cpn button:hover:not(:disabled) {
+        filter: brightness(1.6);
+        transform: translateY(-1px);
+    }
+
+    .co-cpn button:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    /* Mobile action bar. The summary sits below two sections of form on a
+       phone, so the total and the button pin to the bottom of the screen
+       instead — no scrolling back to pay, and the amount stays visible while
+       the delivery choice changes it. Desktop keeps the button in the card. */
+    .co-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 10px 13px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom));
+        background: #ffffff;
+        border-top: 1px solid #e8e9ee;
+        box-shadow: 0 -6px 18px -12px rgb(0 0 0 / 0.28);
+    }
+
+    /* 1025px, not 1024px. The in-card button is hidden with Tailwind's
+       `max-lg`, which this project configures as max-width 1024px — so at
+       exactly 1024px wide (iPad Pro portrait) the bar hid itself while the
+       card button was still hidden too, and the page had no confirm button
+       at all. */
+    @media (min-width: 1025px) {
+        .co-bar {
+            display: none;
+        }
+    }
+
+    .co-bar-total {
+        flex: 1;
+        line-height: 1.25;
+    }
+
+    .co-bar-total span {
+        display: block;
+        font-size: 10.5px;
+        color: #6e7191;
+    }
+
+    .co-bar-total b {
+        font-size: 17px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .co-bar button,
+    .co-bar .co-bar-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+        padding: 0 20px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #ffffff;
+        background: #1a1a20;
+        border-radius: 9px;
+        transition: filter 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .co-bar button:hover:not(:disabled),
+    .co-bar .co-bar-cta:hover {
+        filter: brightness(1.15);
+    }
+
+    .co-bar button:active:not(:disabled),
+    .co-bar .co-bar-cta:active {
+        transform: scale(0.98);
+    }
+
+    .co-bar button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .co-opt,
+        .co-radio,
+        .co-radio::after,
+        .co-cbx,
+        .co-cbx svg,
+        .co-tab,
+        .co-cpn input,
+        .co-cpn button,
+        .co-place,
+        .co-bar button {
+            transition: none;
+        }
+
+        .co-opt:active,
+        .co-cpn button:hover:not(:disabled),
+        .co-place:active:not(:disabled),
+        .co-bar button:active:not(:disabled) {
+            transform: none;
+        }
+    }
 }
 
 @layer utilities {

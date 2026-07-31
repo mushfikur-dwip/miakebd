@@ -50,28 +50,56 @@
         </div>
 
         <div class="col-12 lg:col-4">
-            <CouponComponent />
-            <SummeryComponent />
+            <div class="co-sticky">
+                <!-- Items are already listed beside this panel on the cart
+                     step, so the summary shows totals only. -->
+                <SummeryComponent :items="false">
+                    <template #promo>
+                        <ExtraComponent v-if="authStatus" />
+                    </template>
 
-            <router-link :to="{ name : 'frontend.checkout.checkout' }" class="max-lg:block hidden field-button mt-6 font-semibold tracking-wide normal-case">{{ $t('button.process_to_checkout') }}</router-link>
+                    <template #action>
+                        <router-link :to="{ name : 'frontend.checkout.checkout' }"
+                                     class="co-place max-lg:hidden mt-4">
+                            {{ $t('button.process_to_checkout') }}
+                        </router-link>
+                    </template>
+                </SummeryComponent>
+            </div>
         </div>
+    </div>
+
+    <div class="co-bar">
+        <div class="co-bar-total">
+            <span>{{ $t('label.total') }}</span>
+            <b>{{ money(total) }}</b>
+        </div>
+        <router-link :to="{ name : 'frontend.checkout.checkout' }" class="co-bar-cta">
+            {{ $t('button.process_to_checkout') }}
+        </router-link>
     </div>
 </template>
 
 <script>
 import appService from "../../../../services/appService";
-import CouponComponent from "../CouponComponent.vue";
+import ExtraComponent from "../ExtraComponent.vue";
 import SummeryComponent from "../SummeryComponent.vue";
 
 export default {
     name: "CartListComponent",
-    components: {SummeryComponent, CouponComponent},
+    components: {SummeryComponent, ExtraComponent},
     computed: {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
         },
+        authStatus: function () {
+            return this.$store.getters.authStatus;
+        },
         carts: function () {
             return this.$store.getters['frontendCart/lists'];
+        },
+        total: function () {
+            return this.$store.getters['frontendCart/total'];
         }
     },
     methods: {
@@ -80,6 +108,16 @@ export default {
         },
         currencyFormat(amount, decimal, currency, position) {
             return appService.currencyFormat(amount, decimal, currency, position);
+        },
+        money(amount) {
+            const setting = this.setting || {};
+
+            return appService.currencyFormat(
+                amount,
+                setting.site_digit_after_decimal_point,
+                setting.site_default_currency_symbol,
+                setting.site_currency_position
+            );
         },
         quantityUp: function (id, product, e) {
             let quantity = e.target.value;

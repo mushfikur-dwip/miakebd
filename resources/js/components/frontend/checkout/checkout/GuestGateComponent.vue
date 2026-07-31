@@ -5,9 +5,9 @@
          name and mobile are collected before the address because the address
          saves through an authenticated endpoint, so the guest session has to
          exist first. -->
-    <div class="guest-card mb-6">
-        <div class="guest-card-head">
-            <span class="guest-card-icon" aria-hidden="true">
+    <div class="co-card">
+        <div class="co-card-head">
+            <span class="co-card-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
@@ -15,12 +15,12 @@
                 </svg>
             </span>
             <h3>{{ $t('label.customer_information') }}</h3>
-            <router-link :to="{ name: 'auth.login' }" class="guest-card-login">
+            <router-link :to="{ name: 'auth.login' }" class="co-card-link">
                 {{ $t('label.login_to_autofill') }}
             </router-link>
         </div>
 
-        <form class="guest-card-body" @submit.prevent="start" novalidate>
+        <form class="co-card-body" @submit.prevent="start" novalidate>
             <div class="guest-fields">
                 <div>
                     <label for="guestName" class="field-title required">{{ $t('label.name') }}</label>
@@ -169,61 +169,8 @@ export default {
 </script>
 
 <style scoped>
-.guest-card {
-    background: #ffffff;
-    border: 1px solid #e8e9ee;
-    border-radius: 14px;
-    overflow: hidden;
-}
-
-.guest-card-head {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 14px 18px;
-    border-bottom: 1px solid #f0f1f4;
-}
-
-.guest-card-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 27px;
-    height: 27px;
-    border-radius: 8px;
-    color: rgb(var(--primary));
-    background: rgb(var(--primary) / 0.08);
-}
-
-.guest-card-icon svg {
-    width: 15px;
-    height: 15px;
-}
-
-.guest-card-head h3 {
-    flex: 1;
-    margin: 0;
-    font-size: 16px;
-    font-weight: 700;
-    text-transform: capitalize;
-}
-
-.guest-card-login {
-    font-size: 13px;
-    font-weight: 600;
-    color: #006cc0;
-    white-space: nowrap;
-}
-
-.guest-card-login:hover {
-    text-decoration: underline;
-}
-
-.guest-card-body {
-    padding: 18px;
-}
-
+/* Card chrome comes from the shared .co-card set so this reads as the same
+   card as delivery, address and summary. Only the form is styled here. */
 .guest-fields {
     display: grid;
     gap: 15px;

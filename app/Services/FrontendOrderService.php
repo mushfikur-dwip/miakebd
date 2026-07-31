@@ -114,8 +114,20 @@ class FrontendOrderService
                     $orderReplace->delete();
                 }
 
+                $attributes = $request->validated();
+
+                // orders.outlet_id is a foreign key to outlets, so 0 is not a
+                // usable value — MySQL rejects the whole insert with a foreign
+                // key error that reaches the customer as nothing more than
+                // "A database error occurred". A delivery order legitimately
+                // has no outlet, and every client that builds the payload from
+                // an empty address object sends 0 rather than null.
+                if (blank($attributes['outlet_id'] ?? null) || (int) $attributes['outlet_id'] === 0) {
+                    $attributes['outlet_id'] = null;
+                }
+
                 $this->order = Order::create(
-                    $request->validated() + [
+                    $attributes + [
                         'user_id'        => Auth::user()->id,
                         'status'         => OrderStatus::PENDING,
                         'payment_status' => PaymentStatus::UNPAID,

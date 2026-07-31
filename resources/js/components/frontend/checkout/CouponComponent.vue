@@ -43,7 +43,7 @@
         </div>
     </div>
 
-    <div v-else @click.prevent="showTarget('coupon-modal', 'modal-active')"
+    <div v-else @click.prevent="showTarget(modalId, 'modal-active')"
         class="mb-6 rounded-2xl border border-focus flex items-center gap-3 p-4 cursor-pointer">
         <div class="relative flex-shrink-0">
             <i class="lab lab-fill-shape lab-font-size-2xl opacity-[0.3] text-focus"></i>
@@ -61,12 +61,12 @@
         <i class="lab lab-line-chevron-right rtl:rotate-180 lab-font-size-2xl text-focus"></i>
     </div>
 
-    <div v-if="!isGuest" id="coupon-modal"
+    <div v-if="!isGuest" :id="modalId"
         class="fixed inset-0 z-50 p-3 w-screen h-dvh overflow-y-auto bg-black/50 transition-all duration-300 opacity-0 invisible">
         <div class="w-full rounded-xl mx-auto bg-white transition-all duration-300 max-w-[360px]">
             <div class="flex items-center justify-between gap-2 py-4 px-4 border-b border-slate-100">
                 <h3 class="text-lg font-bold capitalize"> {{ $t('label.coupon_code') }}</h3>
-                <button @click.prevent="hideTarget('coupon-modal', 'modal-active')" type="button"
+                <button @click.prevent="hideTarget(modalId, 'modal-active')" type="button"
                     class="lab-line-circle-cross text-lg text-[#E93C3C]"></button>
             </div>
             <form @submit.prevent="couponChecking" class="w-full flex items-center px-4 mt-4">
@@ -104,6 +104,11 @@ import alertService from "../../../services/alertService";
 import LoadingComponent from "../components/LoadingComponent.vue";
 import askEnum from "../../../enums/modules/askEnum";
 
+// The modal is opened by DOM id, so every mounted instance needs its own.
+// A shared id made document.querySelector return whichever copy came first in
+// the document, which is not necessarily the one the customer clicked.
+let couponModalCounter = 0;
+
 export default {
     name: "CouponComponent",
     components: { LoadingComponent },
@@ -112,6 +117,7 @@ export default {
             loading: {
                 isActive: false
             },
+            modalId: `coupon-modal-${++couponModalCounter}`,
             code: null,
             error: ""
         }

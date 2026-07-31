@@ -279,7 +279,7 @@
     </div>
 
     <div id="payment-modal"
-        :class="Object.keys(route.query).length > 0 && route.query.status === 'success' && cart.length > 0 ? 'modal-active' : ''"
+        :class="justOrdered ? 'modal-active' : ''"
         class=" fixed inset-0 z-50 p-3 w-screen h-dvh overflow-y-auto bg-black/50 transition-all duration-300 opacity-0 invisible">
         <div class="w-full rounded-xl mx-auto bg-white transition-all duration-300 max-w-[360px]">
             <div class="px-4 py-5 relative">
@@ -322,6 +322,11 @@ export default {
             loading: {
                 isActive: false,
             },
+            // Drives the success modal. It used to key off the cart still
+            // having items in it, which tied "show the thank-you message" to
+            // "the cart has not been cleared yet" — so the cart could not be
+            // cleared until the customer dismissed the modal.
+            justOrdered: false,
             tracks: [
                 { step: 1, title: this.$t('label.order_pending') },
                 { step: 5, title: this.$t('label.order_confirmed') },
@@ -389,6 +394,24 @@ export default {
         }
     },
     mounted() {
+        // Reaching this page with a successful payment IS the order being
+        // placed. The cart used to survive until one of the two modal buttons
+        // was clicked, so closing the tab, pressing back or tapping the logo
+        // left the whole cart — the spent coupon included — in localStorage,
+        // and every later order was rejected for reusing it. Clear it here,
+        // whatever the customer does next.
+        if (this.route.query.status === 'success') {
+            this.justOrdered = true;
+
+            const paymentMethod = this.paymentMethod || {};
+
+            if (this.cart.length > 0 && paymentMethod.slug === 'credit') {
+                this.$store.dispatch("profile").then().catch();
+            }
+
+            this.$store.dispatch("frontendCart/resetCart").then().catch();
+        }
+
         if (this.$route.params.id) {
             this.loading.isActive = true;
             this.$store.dispatch("frontendOrder/show", this.$route.params.id).then(res => {
@@ -409,11 +432,10 @@ export default {
         showTarget: function (id, cClass) {
             targetService.showTarget(id, cClass);
         },
+        // Only dismisses the modal now — the cart and the wallet refresh are
+        // handled on mount, so they no longer depend on this being clicked.
         reset: function () {
-            if (this.cart.length > 0 && Object.keys(this.paymentMethod).length > 0 && this.paymentMethod.slug === 'credit') {
-                this.$store.dispatch("profile").then().catch();
-            }
-            this.$store.dispatch("frontendCart/resetCart").then().catch();
+            this.justOrdered = false;
         },
         orderStatusClass: function (status) {
             return appService.orderStatusClass(status);

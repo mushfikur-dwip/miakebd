@@ -1,12 +1,17 @@
 export default {
     showTarget: function (targetID, addClass) {
         const targetElement = document.querySelector(`#${targetID}`);
+        // Locking the page scroll for a modal that is not in the DOM leaves the
+        // customer on a frozen screen with nothing to close.
+        if (!targetElement) {
+            return;
+        }
         targetElement.classList.add(addClass);
         document.body.classList.add('overflow-hidden');
     },
     hideTarget: function (targetID, addClass) {
         const targetElement = document.querySelector(`#${targetID}`);
-        targetElement.classList.remove(addClass);
+        targetElement?.classList.remove(addClass);
         document.body.classList.remove('overflow-hidden');
     },
     multiTargets: function (event, commonBtnClass, commonDivClass, targetID) {

@@ -1,73 +1,62 @@
 <template>
     <LoadingComponent :props="loading" />
-    <div v-if="show" class="mb-6 rounded-2xl shadow-card">
-        <div
-            class="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-gray-100"
-        >
-            <h4 class="font-bold capitalize">{{ title }}</h4>
-            <div class="flex flex-wrap items-center gap-4">
+    <div v-if="show" class="co-card">
+        <div class="co-card-head">
+            <span class="co-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                </svg>
+            </span>
+            <h3>{{ title }}</h3>
+            <div class="flex flex-wrap items-center gap-2">
                 <button
                     v-if="Object.keys(selectedAddress).length > 0"
                     type="button"
                     @click.prevent="edit(selectedAddress)"
-                    class="px-3 h-8 leading-8 rounded-full flex items-center gap-2 bg-[#E6FFF0] text-success"
+                    class="address-action bg-[#E6FFF0] text-success"
                 >
                     <i class="lab-fill-edit"></i>
-                    <span
-                        class="text-sm font-medium capitalize whitespace-nowrap"
-                        >{{ $t("button.edit") }}</span
-                    >
+                    <span>{{ $t("button.edit") }}</span>
                 </button>
                 <button
                     type="button"
                     @click.prevent="
                         showTarget(slug + '-address-modal', 'modal-active')
                     "
-                    class="px-3 h-8 leading-8 rounded-full flex items-center gap-2 bg-[#FFF4F1] text-primary"
+                    class="address-action bg-primary-slate text-primary"
                 >
                     <i class="lab-fill-circle-plus"></i>
-                    <span
-                        class="text-sm font-medium capitalize whitespace-nowrap"
-                        >{{ $t("button.add_new") }}</span
-                    >
+                    <span>{{ $t("button.add_new") }}</span>
                 </button>
             </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4">
-            <div
-                :class="
-                    Object.keys(selectedAddress).length > 0 &&
-                    address.id === selectedAddress.id
-                        ? 'border-primary/50 bg-[#FFF4F1]'
-                        : 'border-[#F7F7F7] bg-[#F7F7F7]'
-                "
-                @click.prevent="activeAddress(address)"
-                v-for="address in addresses"
-                :key="address"
-                class="py-3 px-4 rounded-lg cursor-pointer border transition-all duration-300"
-            >
-                <span class="text-base font-medium capitalize mb-1">{{
-                    address.full_name
-                }}</span>
-                <span v-if="address.phone" class="block text-sm leading-6"
-                    >{{ address.country_code ?? "" }} {{ address.phone }},</span
+        <div class="co-card-body">
+            <div class="co-opts">
+                <button
+                    type="button"
+                    :class="
+                        Object.keys(selectedAddress).length > 0 &&
+                        address.id === selectedAddress.id
+                            ? 'selected'
+                            : ''
+                    "
+                    @click.prevent="activeAddress(address)"
+                    v-for="address in addresses"
+                    :key="address.id"
+                    class="co-opt"
                 >
-                <span v-if="address.email" class="block text-sm leading-6"
-                    >{{ address.email }},</span
-                >
-                <span v-if="address.state" class="block text-sm leading-6"
-                    >{{ address.state }},</span
-                >
-                <span v-if="address.country" class="block text-sm leading-6"
-                    >{{ address.country }},</span
-                >
-                <span v-if="address.address" class="block text-sm leading-6"
-                    >{{ address.address
-                    }}<span v-if="address.zip_code">,</span></span
-                >
-                <span v-if="address.zip_code" class="block text-sm leading-6">{{
-                    address.zip_code
-                }}</span>
+                    <span class="co-radio" aria-hidden="true"></span>
+                    <span class="co-opt-text">
+                        <b>{{ address.full_name }}</b>
+                        <span v-if="address.phone"
+                            >{{ address.country_code ?? "" }} {{ address.phone }}</span
+                        >
+                        <span v-if="address.address">{{ address.address }}</span>
+                        <span v-if="address.state">{{ address.state }}</span>
+                    </span>
+                </button>
             </div>
         </div>
     </div>
@@ -306,6 +295,7 @@ export default {
                 },
             })
             .then((res) => {
+                this.purgeForeignAddress();
                 this.loading.isActive = false;
             })
             .catch((err) => {
@@ -316,6 +306,27 @@ export default {
         this.address.form.country_code = "+880";
     },
     methods: {
+        // The cart is persisted to localStorage, so the address chosen for an
+        // earlier order survives into the next one — and every guest checkout
+        // creates a fresh user row, so that id then belongs to somebody else.
+        // OrderRequest requires shipping_id/billing_id and the order is
+        // refused, which is why a second order could never be placed. If the
+        // stored address is not in this customer's own list, drop it so they
+        // are asked to pick one instead of silently sending a dead id.
+        purgeForeignAddress: function () {
+            const selected = this.selectedAddress || {};
+
+            if (!selected.id) {
+                return;
+            }
+
+            const owned = (this.addresses || []).some(address => address.id === selected.id);
+
+            if (!owned) {
+                this.activeAddressId = null;
+                this.method({});
+            }
+        },
         phoneNumber(e) {
             return appService.phoneNumber(e);
         },
@@ -456,3 +467,29 @@ export default {
     },
 };
 </script>
+
+<style scoped>
+.address-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 99px;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-transform: capitalize;
+    white-space: nowrap;
+    transition: filter 0.2s ease;
+}
+
+.address-action:hover {
+    filter: brightness(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .address-action {
+        transition: none;
+    }
+}
+</style>

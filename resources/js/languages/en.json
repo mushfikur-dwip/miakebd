@@ -486,6 +486,7 @@
         "shipping_address": "Shipping Address",
         "billing_address": "Billing Address",
         "coupon_code": "Coupon Code",
+        "enter_coupon_code": "Enter coupon code",
         "default_shipping_method": "Default Shipping Method",
         "select_shipping_method": "Select Shipping Method",
         "product_wise": "Product Wise",
@@ -984,6 +985,14 @@
         "orders_merged": "Your account is ready and {count} orders are now saved to it.",
         "coupon_needs_account_title": "Coupon codes need an account",
         "coupon_needs_account_note": "You are checking out as a guest. Sign in — or create your account in one click — to apply a coupon or voucher code.",
-        "checkout_notice_hint": "Appears at the top of the checkout page. Leave empty to hide it."
+        "checkout_notice_hint": "Appears at the top of the checkout page. Leave empty to hide it.",
+        "get_some_extra": "Get some extra",
+        "get_some_extra_note": "Apply a coupon code to this order",
+        "agree_to_policies": "I have read and agree to the",
+        "agree_to_store_policies": "I have read and agree to the store policies.",
+        "guest_no_account_needed": "No account needed — create one after checkout if you want.",
+        "select_delivery_method": "Choose how you want to receive your order",
+        "select_a_store_location": "Please select a store location.",
+        "shipping_charge_from_address": "The delivery charge is calculated from the district on your shipping address."
     }
 }

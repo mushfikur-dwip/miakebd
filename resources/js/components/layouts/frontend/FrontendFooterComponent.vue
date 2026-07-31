@@ -158,13 +158,24 @@ export default {
             console.error(err);
         });
 
-        // Fetch featured categories
-        this.$store.dispatch("productCategory/lists", {
-            paginate: 0,
-            order_column: "id",
-            order_type: "asc",
-            status: this.enums.statusEnum.ACTIVE,
-            is_featured: 1
+        // Featured categories. This used to dispatch productCategory/lists,
+        // which is the admin module — it calls admin/setting/product-category,
+        // a route gated by a permission no customer has. Every storefront page
+        // renders this footer, so every visitor got a 403 and the list was
+        // always empty. The frontend route runs the same service and accepts
+        // the same is_featured filter.
+        //
+        // Called directly rather than through frontendProductCategory/lists
+        // because that module's state is shared with the homepage category
+        // section, which wants every category, not just the featured ones.
+        axios.get("frontend/product-category", {
+            params: {
+                paginate: 0,
+                order_column: "id",
+                order_type: "asc",
+                status: this.enums.statusEnum.ACTIVE,
+                is_featured: 1
+            }
         }).then(res => {
             if (res.data.data && res.data.data.length > 0) {
                 this.featuredCategories = res.data.data;

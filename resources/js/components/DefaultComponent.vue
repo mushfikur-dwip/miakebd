@@ -3,7 +3,13 @@
         <LoadingComponent :props="{isActive:true}" />
     </div>
 
-    <div v-if="theme === 'frontend'">
+    <!-- pb on mobile reserves the height of FrontendMobileNavBarComponent,
+         which is `fixed bottom-0` and therefore out of flow. Nothing was
+         compensating for it, so the last element on every page — the
+         Previous/Next pagination, the footer's bottom row — was rendered
+         underneath the bar and the floating cart button. lg:pb-0 because the
+         bar is `lg:hidden`. -->
+    <div v-if="theme === 'frontend'" class="pb-[84px] lg:pb-0">
         <!-- Offer Banner for Mobile -->
         <div v-if="setting.site_offer_banner_text" class="lg:hidden w-full bg-[rgb(232,194,179)] text-black py-[0.25rem] px-4 text-center animate-slideDown">
             <p class="text-sm font-medium">{{ setting.site_offer_banner_text }}</p>

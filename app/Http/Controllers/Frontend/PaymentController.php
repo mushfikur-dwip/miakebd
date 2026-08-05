@@ -22,6 +22,7 @@ use App\Services\PaymentManagerService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Dipokhalder\Settings\Facades\Settings;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
 {
@@ -99,6 +100,12 @@ class PaymentController extends Controller
 
     public function successful(Order $order): \Illuminate\Foundation\Application|\Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse|\Illuminate\Contracts\Foundation\Application
     {
+        // This route carries no auth middleware, so without this check ANY
+        // visitor could hit /payment/successful/{any order id} — firing the
+        // customer's mail/SMS/push notifications for arbitrary orders, and
+        // marking a wallet-covered order PAID without proving anything.
+        abort_if(!Auth::check() || (int) $order->user_id !== (int) Auth::id(), 404);
+
         try {
             // If order is fully paid by wallet (wallet_discount covers total), mark as paid
             if ($order->wallet_discount > 0 && $order->wallet_discount >= $order->total && $order->payment_status === PaymentStatus::UNPAID) {

@@ -5,7 +5,7 @@
     </div>
 
     <header
-        :class="isSticky === true ? 'fixed top-0 left-0 z-30 w-full mb-5 sm:mb-8 shadow-xs bg-white' : 'mb-5 sm:mb-8 shadow-xs bg-white'">
+        :class="isSticky === true ? 'fixed top-0 left-0 z-30 w-full mb-5 sm:mb-8 shadow-xs bg-white' : 'relative z-30 mb-5 sm:mb-8 shadow-xs bg-white'">
         <div class="container py-3.5 px-4 lg:py-0">
             <div class="flex items-center justify-between gap-5">
                 <!--  Logo & Mobile Responsive Start -->
@@ -144,10 +144,17 @@
 
 
                 <!-- My Account Start -->
-                <div class="relative hidden lg:block group">
-                    <button type="button" class="lab-line-user text-xl py-5"></button>
-                    <div v-if="logged"
-                        class="w-60 absolute top-15 ltr:-right-10 rtl:-left-10  z-10 rounded-2xl overflow-hidden shadow-card bg-white transition-all duration-300 origin-top scale-y-0 group-hover:scale-y-100">
+                <!-- Click to open, NOT hover. A hover panel closes the instant
+                     the pointer leaves the trigger, which left no time to reach
+                     the buttons inside, and it is unusable on touch. It now
+                     stays open until you pick something, click away, or press
+                     Escape. -->
+                <div class="relative hidden lg:block" ref="accountMenu">
+                    <button type="button" class="lab-line-user text-xl py-5" :aria-expanded="accountOpen"
+                        aria-haspopup="true" @click.stop="accountOpen = !accountOpen"></button>
+                    <div v-if="logged" v-show="accountOpen"
+                        class="w-60 absolute top-full ltr:-right-10 rtl:-left-10 z-50 rounded-2xl overflow-hidden shadow-card bg-white"
+                        @click="accountOpen = false">
                         <div class="flex items-center gap-3 p-4 border-b border-[#EFF0F6]">
                             <img :src="profile.image" alt="avatar"
                                 class="w-11 h-11 rounded-full object-cover flex-shrink-0">
@@ -226,8 +233,9 @@
                         </nav>
                     </div>
 
-                    <div v-else
-                        class="w-64 absolute top-15 ltr:-right-10 rtl:-left-10 z-10 p-4 rounded-2xl overflow-hidden shadow-card bg-white transition-all duration-300 origin-top scale-y-0 group-hover:scale-y-100">
+                    <div v-else v-show="accountOpen"
+                        class="w-64 absolute top-full ltr:-right-10 rtl:-left-10 z-50 p-4 rounded-2xl overflow-hidden shadow-card bg-white"
+                        @click="accountOpen = false">
                         <router-link
                             class="!text-primary !bg-[#FFF4F1] w-full text-center h-12 leading-12 font-semibold tracking-wide rounded-full whitespace-nowrap"
                             :to="{ name: 'auth.signup' }">
@@ -354,6 +362,8 @@ export default {
             searchProductLists: [],
             currentRoute: "",
             defaultLanguage: null,
+            // Account dropdown open state. Click-driven — see the markup above.
+            accountOpen: false,
             enums: {
                 activityEnum: activityEnum,
                 roleEnum: roleEnum
@@ -411,6 +421,11 @@ export default {
         this.currentRoute = this.$route.path;
         this.loading.isActive = true;
         this.orderPermissionCheck();
+
+        // Close the account dropdown on an outside click or Escape. The
+        // trigger stops propagation, so its own click never reaches this.
+        document.addEventListener('click', this.closeAccountMenu);
+        document.addEventListener('keydown', this.onAccountKeydown);
         this.$store.dispatch('frontendSetting/lists').then(res => {
             this.defaultLanguage = res.data.data.site_default_language;
             const globalState = this.$store.getters['globalState/lists'];
@@ -506,7 +521,28 @@ export default {
         }
 
     },
+    beforeUnmount() {
+        // Listeners are on document, so they outlive the component unless
+        // removed — every navigation would otherwise leak another pair.
+        document.removeEventListener('click', this.closeAccountMenu);
+        document.removeEventListener('keydown', this.onAccountKeydown);
+    },
     methods: {
+        closeAccountMenu: function (event) {
+            if (!this.accountOpen) {
+                return;
+            }
+            // Ignore clicks that landed inside the menu itself.
+            if (this.$refs.accountMenu && this.$refs.accountMenu.contains(event.target)) {
+                return;
+            }
+            this.accountOpen = false;
+        },
+        onAccountKeydown: function (event) {
+            if (event.key === 'Escape') {
+                this.accountOpen = false;
+            }
+        },
         showTarget: function (id, cClass) {
             targetService.showTarget(id, cClass);
         },
@@ -585,6 +621,9 @@ export default {
     watch: {
         $route(to, from) {
             this.currentRoute = to.path;
+            // Navigating away must dismiss the menu, or it stays pinned open
+            // over the new page after choosing Log In / Register.
+            this.accountOpen = false;
         },
     }
 }

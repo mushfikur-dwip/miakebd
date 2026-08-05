@@ -263,11 +263,11 @@ export default {
                         );
                     }).catch((err) => {
                         this.loading.isActive = false;
-                        alertService.error(err.response.data.message);
+                        alertService.downloadError(err);
                     });
                 } catch (err) {
                     this.loading.isActive = false;
-                    alertService.error(err.response.data.message);
+                    alertService.downloadError(err);
                 }
             }).catch((err) => {
                 this.loading.isActive = false;
@@ -295,12 +295,12 @@ export default {
                 const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = this.$t("menu.return_orders");
+                link.download = this.$t("menu.return_orders") + ".xlsx";
                 link.click();
                 URL.revokeObjectURL(link.href);
             }).catch((err) => {
                 this.loading.isActive = false;
-                alertService.error(err.response.data.message);
+                alertService.downloadError(err);
             });
         },
         reset: function () {

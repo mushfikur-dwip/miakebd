@@ -12,6 +12,7 @@ import appService from "../services/appService";
 import store from "../store";
 import administratorRoutes from "./modules/administratorRoutes";
 import authRoutes from "./modules/authRoutes";
+import blogRoutes from "./modules/blogRoutes";
 import couponRoutes from "./modules/couponRoutes";
 import creditBalanceReportRoutes from "./modules/creditBalanceReportRoutes";
 import customerRoutes from "./modules/customerRoutes";
@@ -100,7 +101,8 @@ const routes = baseRoutes.concat(
     returnAndRefundRoutes,
     subscriberRoutes,
     reviewRoutes,
-    mobileSectionRoutes
+    mobileSectionRoutes,
+    blogRoutes
 );
 
 const permission = store.getters.authPermission;

@@ -42,6 +42,12 @@ class OrderRequest extends FormRequest
             'coupon_id'       => ['nullable', 'numeric'],
             'source'          => ['required', 'numeric'],
             'payment_method'  => ['required', 'numeric'],
+            // Wallet redemption. Without these two rules validated() dropped
+            // both fields, so an order placed "with wallet" recorded no
+            // wallet_discount and was never marked paid — the customer thought
+            // they had paid, the shop saw an unpaid order.
+            'wallet_discount' => ['nullable', 'numeric', 'min:0'],
+            'total_amount_for_cashback' => ['nullable', 'numeric', 'min:0'],
             'products'        => ['required', 'json', new ValidJsonOrder]
         ];
     }

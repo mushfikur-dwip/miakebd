@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Analytic;
 use App\Models\Product;
 use App\Models\ThemeSetting;
+use App\Support\BlogMetaResolver;
 use App\Support\CategoryMetaResolver;
 use App\Support\SeoSchema;
 
@@ -22,7 +23,9 @@ class RootController extends Controller
         abort_unless($product->status === Status::ACTIVE, 404);
 
         $product = Product::query()
-            ->with(['seo.media', 'media', 'category', 'brand', 'variations'])
+            // reviews.user feeds the Review markup in SeoSchema. Eager-loaded
+            // so five reviews do not become five extra queries per page render.
+            ->with(['seo.media', 'media', 'category', 'brand', 'variations', 'reviews.user'])
             ->withSum('stockItems', 'quantity')
             ->withReviewRating()
             ->findOrFail($product->id);
@@ -30,7 +33,11 @@ class RootController extends Controller
         $description = SeoSchema::plainText($product->seo?->description ?: $product->description ?: $product->name);
         $title = $product->seo?->title ?: $product->name;
         $keywordValues = json_decode((string) $product->seo?->meta_keyword, true);
-        $keywords = implode(', ', is_array($keywordValues) ? $keywordValues : []);
+        if (!is_array($keywordValues)) {
+            // Legacy rows stored as a plain comma-separated string.
+            $keywordValues = array_values(array_filter(array_map('trim', explode(',', (string) $product->seo?->meta_keyword))));
+        }
+        $keywords = implode(', ', $keywordValues);
         // Config-derived, not route(): route() builds against whatever host the
         // request arrived on, so a hit on the bare IP, on http rather than
         // https, or on www would emit a canonical pointing at that variant —
@@ -56,7 +63,10 @@ class RootController extends Controller
             'seo' => compact('title', 'description', 'keywords', 'canonical', 'image')
                 + ['type' => 'product', 'robots' => 'index, follow, max-image-preview:large']
                 + ['commerce' => $commerce],
-            'structuredData' => $structuredData,
+            // productPage() = the Product schema above plus a BreadcrumbList
+            // in one @graph. Commerce keeps reading $structuredData so the
+            // og/product:* tags still cannot drift from the offers block.
+            'structuredData' => SeoSchema::productPage($product),
         ]);
     }
 
@@ -85,6 +95,69 @@ class RootController extends Controller
             ],
             'structuredData' => CategoryMetaResolver::structuredData($meta),
             'category' => $meta,
+        ]);
+    }
+
+    /**
+     * /blog — the magazine landing page.
+     */
+    public function blogIndex(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        return $this->shell([
+            'seo'            => BlogMetaResolver::forIndex(),
+            'structuredData' => BlogMetaResolver::indexStructuredData(),
+        ]);
+    }
+
+    /**
+     * /blog/{slug} — a single article.
+     *
+     * An unknown or unpublished slug 404s rather than rendering the SPA shell
+     * under a real-looking URL, which is what would otherwise let a draft be
+     * shared and indexed.
+     */
+    public function blogPost(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        $meta = BlogMetaResolver::forPost($slug);
+
+        abort_if($meta === null, 404);
+
+        return $this->shell([
+            'seo'            => $meta,
+            'structuredData' => BlogMetaResolver::postStructuredData($slug),
+            'blogPost'       => $meta,
+        ]);
+    }
+
+    /**
+     * /blog/category/{slug} — the topic landing page.
+     */
+    public function blogCategory(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        $meta = BlogMetaResolver::forCategory($slug);
+
+        abort_if($meta === null, 404);
+
+        return $this->shell([
+            'seo'            => $meta,
+            'structuredData' => BlogMetaResolver::categoryStructuredData($meta),
+            'blogCategory'   => $meta,
+        ]);
+    }
+
+    /**
+     * /blog/tag/{slug} — a concern landing page (acne, sunburn, tan).
+     */
+    public function blogTag(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        $meta = BlogMetaResolver::forTag($slug);
+
+        abort_if($meta === null, 404);
+
+        return $this->shell([
+            'seo'            => $meta,
+            'structuredData' => BlogMetaResolver::tagStructuredData($meta),
+            'blogCategory'   => $meta,
         ]);
     }
 

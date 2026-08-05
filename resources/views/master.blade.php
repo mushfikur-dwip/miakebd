@@ -38,12 +38,31 @@
     @php
         $isHomepage = request()->is('/');
 
-        // Central constants — change these in ONE place.
-        $suglowPhone     = '+8801709786330';
-        $suglowPhoneText = '01709786330';
-        $siteUrl         = rtrim(url('/'), '/');
+        // Central constants — change these in ONE place (SiteSchema), so the
+        // JSON-LD graph and the noscript block can never disagree.
+        $suglowPhone     = \App\Support\SiteSchema::PHONE;
+        $suglowPhoneText = \App\Support\SiteSchema::PHONE_TEXT;
+        // Config-derived, not url(): article:publisher and the noscript links
+        // below must not vary with the host a request happened to arrive on.
+        $siteUrl         = rtrim((string) config('app.url'), '/');
 
         $companyName = Settings::group('company')->get('company_name') ?: 'Suglow';
+
+        // Social preview card. This must NOT be images/required/theme-favicon-logo.png:
+        // that file is the stock ShopKing template mark at 120x120, so sharing a
+        // link showed someone else's orange crown logo, and at 120px it is under
+        // the ~200x200 floor WhatsApp, Messenger and RCS need before they render
+        // a preview image at all. og-suglow.jpg is the real Suglow badge on a
+        // 1200x630 canvas — the ratio every one of those clients crops to —
+        // kept as a ~58KB JPEG because WhatsApp silently skips heavy images.
+        $brandImage  = asset('images/required/og-suglow.jpg');
+        $brandImageW = 1200;
+        $brandImageH = 630;
+
+        // The admin-uploaded logo, for the JSON-LD entity. Google wants the true
+        // brand logo here; $favicon is set from theme_favicon_logo by
+        // RootController::shell() and may be null on a fresh install.
+        $brandLogo = ($favicon ?? null) ?: $brandImage;
 
         // Controller-supplied SEO wins. It is built from product_seos, the live
         // selling/variation price and real stock counts.
@@ -64,7 +83,7 @@
                 : $controllerSeo['title'] . ' | ' . $companyName;
             $seoSocialTitle = $seoTitle;
             $seoDescription = $controllerSeo['description'];
-            $seoImage       = $controllerSeo['image'] ?: asset('images/required/theme-favicon-logo.png');
+            $seoImage       = $controllerSeo['image'] ?: $brandImage;
             $seoType        = $controllerSeo['type'] ?? 'product';
             $seoRobots      = $controllerSeo['robots'] ?? 'index, follow, max-image-preview:large';
             $seoCanonical   = $controllerSeo['canonical'] ?? url()->current();
@@ -86,7 +105,7 @@
             $seoTitle       = 'Suglow — Buy Authentic Cosmetics & Skincare Online in Bangladesh';
             $seoSocialTitle = $seoTitle;
             $seoDescription = "Bangladesh's largest authentic cosmetics store. Imported from Malaysia, Thailand & Indonesia. Cash on delivery nationwide. Call {$suglowPhoneText}. Open 24/7.";
-            $seoImage       = asset('images/required/theme-favicon-logo.png');
+            $seoImage       = $brandImage;
             $seoType        = 'website';
             $seoRobots      = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
             $seoCanonical   = url()->current();
@@ -96,12 +115,19 @@
             $seoTitle       = $companyName . ' — Authentic Cosmetics & Skincare in Bangladesh';
             $seoSocialTitle = $seoTitle;
             $seoDescription = "Shop authentic cosmetics & skincare at Suglow. Imported from Malaysia, Thailand & Indonesia. Cash on delivery across Bangladesh. Call {$suglowPhoneText}.";
-            $seoImage       = asset('images/required/theme-favicon-logo.png');
+            $seoImage       = $brandImage;
             $seoType        = 'website';
             $seoRobots      = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
             $seoCanonical   = url()->current();
             $seoKeywords    = null;
         }
+
+        // og:image:width/height let a crawler lay out the card before it has
+        // finished downloading the image — WhatsApp in particular will drop the
+        // preview rather than wait. Only emitted for the brand card, whose size
+        // is known here; a product photo is whatever the admin uploaded, and
+        // declaring the wrong size is worse than declaring none.
+        $seoImageIsBrand = $seoImage === $brandImage;
 
         // Commerce facts for the product:* tags Facebook renders beneath a link
         // preview, from whichever source supplied them. The controller path is
@@ -152,11 +178,33 @@
     <meta property="og:description" content="{{ $seoDescription }}">
     <meta property="og:image" content="{{ $seoImage }}">
     <meta property="og:image:secure_url" content="{{ $seoImage }}">
+    @if ($seoImageIsBrand)
+        <meta property="og:image:type" content="image/jpeg">
+        <meta property="og:image:width" content="{{ $brandImageW }}">
+        <meta property="og:image:height" content="{{ $brandImageH }}">
+    @endif
     <meta property="og:image:alt" content="{{ $product['name'] ?? ($controllerSeo['title'] ?? 'Suglow — authentic cosmetics and skincare in Bangladesh') }}">
     <meta property="og:url" content="{{ $seoCanonical }}">
     <meta property="og:site_name" content="Suglow">
     <meta property="og:locale" content="en_US">
     <meta property="og:locale:alternate" content="bn_BD">
+
+    {{-- article:* is what makes a blog post render as a dated article in a
+         Facebook/LinkedIn preview rather than an undated page. Only emitted
+         when the controller resolved a real post. --}}
+    @if (!empty($controllerSeo['article']))
+        @if (!empty($controllerSeo['article']['published_time']))
+            <meta property="article:published_time" content="{{ $controllerSeo['article']['published_time'] }}">
+        @endif
+        @if (!empty($controllerSeo['article']['modified_time']))
+            <meta property="article:modified_time" content="{{ $controllerSeo['article']['modified_time'] }}">
+        @endif
+        @if (!empty($controllerSeo['article']['section']))
+            <meta property="article:section" content="{{ $controllerSeo['article']['section'] }}">
+        @endif
+        <meta property="article:author" content="{{ $controllerSeo['article']['author'] ?? 'Suglow' }}">
+        <meta property="article:publisher" content="{{ $siteUrl }}/">
+    @endif
 
     @if ($commerce)
         {{-- Facebook shows price directly under the product preview --}}
@@ -181,195 +229,18 @@
         <script type="application/ld+json">{!! json_encode($structuredData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
     @endisset
 
-    @if ($isHomepage)
-        {{-- ============ HOMEPAGE STRUCTURED DATA ============
-             Homepage only — emitting Organization/Store schema on every page
-             would create duplicate entity declarations across the whole site.
+    {{-- ============ SITE-WIDE STRUCTURED DATA ============
+         Emitted on EVERY page, not just the homepage: the WebSite entity
+         carries the SearchAction (sitelinks search box) and the Organization
+         entity establishes the brand — both keyed by stable @ids, so Google
+         merges them with the richer homepage declaration rather than seeing
+         duplicates. On the homepage SiteSchema::graph() additionally returns
+         the two physical Store entities and the FAQPage graph.
 
-             Built with json_encode() rather than a hand-typed string so no
-             apostrophe can break the JSON, and so the HEX flags below make it
-             impossible to escape the <script> block. --}}
-        <script type="application/ld+json">
-{!! json_encode([
-    '@context' => 'https://schema.org',
-    '@graph' => [
-
-        // ---------- The business itself ----------
-        [
-            '@type' => ['Organization', 'OnlineStore'],
-            '@id' => $siteUrl . '/#organization',
-            'name' => 'Suglow',
-            'alternateName' => ['Suglow BD', 'Suglow Bangladesh'],
-            'url' => $siteUrl . '/',
-            'logo' => [
-                '@type' => 'ImageObject',
-                'url' => asset('images/required/theme-favicon-logo.png'),
-            ],
-            'image' => asset('images/required/theme-favicon-logo.png'),
-            'description' => "Bangladesh's largest authentic cosmetics and skincare retailer. Products imported directly from Malaysia, Thailand and Indonesia. Online delivery nationwide across Bangladesh, plus two physical outlets in Rangpur. Customer service available 24/7.",
-            'slogan' => 'Authentic cosmetics, delivered anywhere in Bangladesh',
-            'telephone' => $suglowPhone,
-            'currenciesAccepted' => 'BDT',
-            'paymentAccepted' => 'Cash on Delivery, Online Payment',
-            'areaServed' => ['@type' => 'Country', 'name' => 'Bangladesh'],
-            'contactPoint' => [
-                '@type' => 'ContactPoint',
-                'telephone' => $suglowPhone,
-                'contactType' => 'customer service',
-                'areaServed' => 'BD',
-                'availableLanguage' => ['Bengali', 'English'],
-                'hoursAvailable' => [
-                    '@type' => 'OpeningHoursSpecification',
-                    'dayOfWeek' => ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
-                    'opens' => '00:00',
-                    'closes' => '23:59',
-                ],
-            ],
-            'hasOfferCatalog' => [
-                '@type' => 'OfferCatalog',
-                'name' => 'Cosmetics and Skincare',
-                'itemListElement' => [
-                    ['@type' => 'OfferCatalog', 'name' => 'Skin Care'],
-                    ['@type' => 'OfferCatalog', 'name' => 'Personal Care'],
-                    ['@type' => 'OfferCatalog', 'name' => 'Fragrance'],
-                    ['@type' => 'OfferCatalog', 'name' => 'Hair Care'],
-                    ['@type' => 'OfferCatalog', 'name' => 'Sunscreen'],
-                    ['@type' => 'OfferCatalog', 'name' => 'Baby Care'],
-                    ['@type' => 'OfferCatalog', 'name' => 'Moisturizer'],
-                    ['@type' => 'OfferCatalog', 'name' => "Men's Skin Care"],
-                    ['@type' => 'OfferCatalog', 'name' => 'Accessories'],
-                ],
-            ],
-        ],
-
-        // ---------- Physical outlet 1 ----------
-        [
-            '@type' => ['Store', 'HealthAndBeautyBusiness'],
-            '@id' => $siteUrl . '/#store-ramc',
-            'name' => 'Suglow — RAMC Shopping Complex Outlet',
-            'parentOrganization' => ['@id' => $siteUrl . '/#organization'],
-            'url' => $siteUrl . '/',
-            'image' => asset('images/required/theme-favicon-logo.png'),
-            'telephone' => $suglowPhone,
-            'currenciesAccepted' => 'BDT',
-            'priceRange' => 'BDT 100 - BDT 5000',
-            'paymentAccepted' => 'Cash, Cash on Delivery, Online Payment',
-            'areaServed' => ['@type' => 'Country', 'name' => 'Bangladesh'],
-            'address' => [
-                '@type' => 'PostalAddress',
-                'streetAddress' => 'Shop No. 52, Level 1, RAMC Shopping Complex',
-                'addressLocality' => 'Rangpur',
-                'addressRegion' => 'Rangpur Division',
-                'addressCountry' => 'BD',
-            ],
-            'openingHoursSpecification' => [
-                '@type' => 'OpeningHoursSpecification',
-                'dayOfWeek' => ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
-                'opens' => '00:00',
-                'closes' => '23:59',
-            ],
-        ],
-
-        // ---------- Physical outlet 2 ----------
-        [
-            '@type' => ['Store', 'HealthAndBeautyBusiness'],
-            '@id' => $siteUrl . '/#store-prime',
-            'name' => 'Suglow — Prime Medical College Gate Outlet',
-            'parentOrganization' => ['@id' => $siteUrl . '/#organization'],
-            'url' => $siteUrl . '/',
-            'image' => asset('images/required/theme-favicon-logo.png'),
-            'telephone' => $suglowPhone,
-            'currenciesAccepted' => 'BDT',
-            'priceRange' => 'BDT 100 - BDT 5000',
-            'paymentAccepted' => 'Cash, Cash on Delivery, Online Payment',
-            'areaServed' => ['@type' => 'Country', 'name' => 'Bangladesh'],
-            'address' => [
-                '@type' => 'PostalAddress',
-                'streetAddress' => 'Prime Medical College Gate, Badarganj Road',
-                'addressLocality' => 'Rangpur',
-                'addressRegion' => 'Rangpur Division',
-                'addressCountry' => 'BD',
-            ],
-            'openingHoursSpecification' => [
-                '@type' => 'OpeningHoursSpecification',
-                'dayOfWeek' => ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
-                'opens' => '00:00',
-                'closes' => '23:59',
-            ],
-        ],
-
-        // ---------- The website ----------
-        [
-            '@type' => 'WebSite',
-            '@id' => $siteUrl . '/#website',
-            'url' => $siteUrl . '/',
-            'name' => 'Suglow',
-            'inLanguage' => 'en',
-            'publisher' => ['@id' => $siteUrl . '/#organization'],
-        ],
-
-        // ---------- FAQ ----------
-        // Every answer below is also rendered as visible text in the <noscript>
-        // block and on the site itself. Google requires FAQ markup to match
-        // content the visitor can actually see.
-        [
-            '@type' => 'FAQPage',
-            '@id' => $siteUrl . '/#faq',
-            'mainEntity' => [
-                [
-                    '@type' => 'Question',
-                    'name' => 'Where does Suglow import its cosmetics from?',
-                    'acceptedAnswer' => [
-                        '@type' => 'Answer',
-                        'text' => 'Suglow imports cosmetics and skincare products directly from Malaysia, Thailand and Indonesia, operating its own warehouse in Kuala Lumpur. Direct importing is how Suglow keeps products authentic and prices competitive in Bangladesh.',
-                    ],
-                ],
-                [
-                    '@type' => 'Question',
-                    'name' => 'Does Suglow deliver across all of Bangladesh?',
-                    'acceptedAnswer' => [
-                        '@type' => 'Answer',
-                        'text' => 'Yes. Suglow delivers nationwide across Bangladesh, including Dhaka, Chittagong, Rangpur, Sylhet, Khulna, Rajshahi and Barisal. Cash on delivery is available on orders anywhere in the country.',
-                    ],
-                ],
-                [
-                    '@type' => 'Question',
-                    'name' => 'Does Suglow have physical stores?',
-                    'acceptedAnswer' => [
-                        '@type' => 'Answer',
-                        'text' => 'Yes, Suglow has two outlets in Rangpur City: Shop No. 52, Level 1, RAMC Shopping Complex, and one at Prime Medical College Gate on Badarganj Road. Customers anywhere else in Bangladesh can order online at suglow.com.',
-                    ],
-                ],
-                [
-                    '@type' => 'Question',
-                    'name' => 'Is cash on delivery available at Suglow?',
-                    'acceptedAnswer' => [
-                        '@type' => 'Answer',
-                        'text' => 'Yes. Suglow accepts cash on delivery on orders across Bangladesh, so customers pay only when the product reaches them. Online payment is also accepted.',
-                    ],
-                ],
-                [
-                    '@type' => 'Question',
-                    'name' => 'How do I contact Suglow?',
-                    'acceptedAnswer' => [
-                        '@type' => 'Answer',
-                        'text' => 'Suglow customer service is available 24/7 on ' . $suglowPhoneText . '. Support is offered in both Bengali and English.',
-                    ],
-                ],
-                [
-                    '@type' => 'Question',
-                    'name' => 'What products does Suglow sell?',
-                    'acceptedAnswer' => [
-                        '@type' => 'Answer',
-                        'text' => 'Suglow stocks over 440 products across skin care, personal care, fragrance, hair care, sunscreen, baby care, moisturizers, mens skin care and beauty accessories, from brands including Nivea, Dove, Garnier, Vaseline, CeraVe, Fogg, Lotus, Enchanteur, Bioaqua and Sadoer.',
-                    ],
-                ],
-            ],
-        ],
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
-        </script>
-    @endif
+         Built in App\Support\SiteSchema with json_encode() so no apostrophe
+         can break the JSON, and the HEX flags make it impossible to escape
+         the <script> block. --}}
+    <script type="application/ld+json">{!! json_encode(\App\Support\SiteSchema::graph($isHomepage, $brandImage, $brandLogo), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
     {{-- ==================== END SEO BLOCK ==================== --}}
 
     <!-- FAV ICON -->
@@ -421,6 +292,38 @@
                 @endif
                 <p>Available at Suglow with cash on delivery across Bangladesh.
                    Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
+            @elseif (!empty($blogPost))
+                {{-- The full article, for crawlers that do not run JS. Rendered
+                     as markup rather than stripped text so headings, lists and
+                     internal links survive — those are the structure Google
+                     reads an article by.
+
+                     {!! !!} is deliberate: this is admin-authored content from
+                     the editor, the same trust level as the CMS page bodies and
+                     analytics blocks already rendered raw in this file. --}}
+                <h1>{{ $blogPost['name'] }}</h1>
+                @if (!empty($blogPost['article']['published_time']))
+                    <p><time datetime="{{ $blogPost['article']['published_time'] }}">{{ \Illuminate\Support\Carbon::parse($blogPost['article']['published_time'])->format('d M, Y') }}</time>
+                       @if (!empty($blogPost['article']['author'])) — {{ $blogPost['article']['author'] }} @endif
+                    </p>
+                @endif
+                @if (!empty($blogPost['image']))
+                    <img src="{{ $blogPost['image'] }}" alt="{{ $blogPost['name'] }}" width="1200" height="630" style="max-width:100%;height:auto">
+                @endif
+                {!! $blogPost['body'] !!}
+                <p><a href="{{ $siteUrl }}/blog">More articles on the Suglow blog</a> ·
+                   <a href="{{ $siteUrl }}/product">Shop authentic cosmetics</a></p>
+            @elseif (!empty($blogCategory))
+                <h1>{{ $blogCategory['name'] }}</h1>
+                <p>{{ $blogCategory['description'] }}</p>
+                @if (!empty($blogCategory['posts']))
+                    <ul>
+                        @foreach ($blogCategory['posts'] as $blogCategoryPost)
+                            <li><a href="{{ $blogCategoryPost['url'] }}">{{ $blogCategoryPost['name'] }}</a></li>
+                        @endforeach
+                    </ul>
+                @endif
+                <p><a href="{{ $siteUrl }}/blog">All Suglow blog articles</a></p>
             @elseif ($controllerSeo)
                 <h1>{{ $controllerSeo['title'] }}</h1>
                 @if (!empty($controllerSeo['image']))

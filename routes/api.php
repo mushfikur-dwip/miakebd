@@ -6,6 +6,9 @@ use App\Http\Controllers\Admin\AnalyticController;
 use App\Http\Controllers\Admin\AnalyticSectionController;
 use App\Http\Controllers\Admin\BarcodeController;
 use App\Http\Controllers\Admin\BenefitController;
+use App\Http\Controllers\Admin\BlogCategoryController;
+use App\Http\Controllers\Admin\BlogPostController;
+use App\Http\Controllers\Admin\BlogTagController;
 use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CookiesController;
@@ -84,6 +87,7 @@ use App\Http\Controllers\Auth\SignupController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Frontend\AddressController as FrontendAddressController;
 use App\Http\Controllers\Frontend\BenefitController as FrontendBenefitController;
+use App\Http\Controllers\Frontend\BlogController as FrontendBlogController;
 use App\Http\Controllers\Frontend\CookiesController as FrontendCookiesController;
 use App\Http\Controllers\Frontend\CountryCodeController as FrontendCountryCodeController;
 use App\Http\Controllers\Frontend\CountryStateCityController as FrontendCountryStateCityController;
@@ -133,7 +137,7 @@ Route::match(['get', 'post'], '/login', function () {
 
 Route::match(['get', 'post'], '/refresh-token', [RefreshTokenController::class, 'refreshToken'])->middleware(['installed']);
 
-Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name('auth.')->namespace('Auth')->group(function () {
+Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->namespace('Auth')->group(function () {
     // Throttled against password spraying — nothing in this group was rate
     // limited, and the app registers no global API limiter.
     Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:10,1');
@@ -141,7 +145,7 @@ Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name
     // The OTP is only otp_digit_limit digits (4 by default) and a code stays
     // usable until it expires, so an unthrottled verify endpoint is a few
     // thousand requests away from any account. send-otp costs a real SMS.
-    Route::prefix('forgot-password')->name('forgot-password.')->middleware('throttle:15,1')->group(function () {
+    Route::prefix('forgot-password')->middleware('throttle:15,1')->group(function () {
         Route::post('/', [ForgotPasswordController::class, 'forgotPassword']);
         Route::post('/otp-phone', [ForgotPasswordController::class, 'otpPhone'])->middleware('throttle:5,1');
         Route::post('/otp-email', [ForgotPasswordController::class, 'otpEmail'])->middleware('throttle:5,1');
@@ -150,7 +154,7 @@ Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name
         Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:6,1');
     });
 
-    Route::prefix('signup')->name('signup.')->middleware('throttle:15,1')->group(function () {
+    Route::prefix('signup')->middleware('throttle:15,1')->group(function () {
         Route::post('/otp-phone', [SignupController::class, 'otpPhone'])->middleware('throttle:5,1');
         Route::post('/otp-email', [SignupController::class, 'otpEmail'])->middleware('throttle:5,1');
         Route::post('/verify-phone', [SignupController::class, 'verifyPhone'])->middleware('throttle:6,1');
@@ -162,7 +166,7 @@ Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name
 
     // Guest checkout. The rate limits are deliberate: send-otp costs a real
     // SMS, and claim is brute-forcible.
-    Route::prefix('guest')->name('guest.')->group(function () {
+    Route::prefix('guest')->group(function () {
         Route::post('/start', [GuestController::class, 'start'])
             ->middleware('throttle:10,1')->name('start');
 
@@ -186,19 +190,19 @@ Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name
 });
 
 /* all routes must be singular word */
-Route::prefix('profile')->name('profile.')->middleware(['installed', 'apiKey', 'auth:sanctum', 'localization'])->group(function () {
+Route::prefix('profile')->middleware(['installed', 'apiKey', 'auth:sanctum', 'localization'])->group(function () {
     Route::get('/', [ProfileController::class, 'profile']);
     Route::match(['post', 'put', 'patch'], '/', [ProfileController::class, 'update']);
     Route::match(['put', 'patch'], '/change-password', [ProfileController::class, 'changePassword']);
     Route::post('/change-image', [ProfileController::class, 'changeImage']);
 });
 
-Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(function () {
-    Route::prefix('timezone')->name('timezone.')->group(function () {
+Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('timezone')->group(function () {
         Route::get('/', [TimezoneController::class, 'index']);
     });
 
-    Route::prefix('dashboard')->name('dashboard.')->group(function () {
+    Route::prefix('dashboard')->group(function () {
         Route::get('/total-sales', [DashboardController::class, 'totalSales']);
         Route::get('/total-orders', [DashboardController::class, 'totalOrders']);
         Route::get('/total-customers', [DashboardController::class, 'totalCustomers']);
@@ -212,23 +216,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/branch-sales-summary', [DashboardController::class, 'branchSalesSummary']);
     });
 
-    Route::prefix('setting')->name('setting.')->group(function () {
-        Route::prefix('company')->name('company.')->group(function () {
+    Route::prefix('setting')->group(function () {
+        Route::prefix('company')->group(function () {
             Route::get('/', [CompanyController::class, 'index']);
             Route::match(['put', 'patch'], '/', [CompanyController::class, 'update']);
         });
 
-        Route::prefix('site')->name('site.')->group(function () {
+        Route::prefix('site')->group(function () {
             Route::get('/', [SiteController::class, 'index']);
             Route::match(['put', 'patch'], '/', [SiteController::class, 'update']);
         });
 
-        Route::prefix('theme')->name('theme.')->group(function () {
+        Route::prefix('theme')->group(function () {
             Route::get('/', [ThemeController::class, 'index']);
             Route::post('/', [ThemeController::class, 'update']);
         });
 
-        Route::prefix('analytic')->name('analytic.')->group(function () {
+        Route::prefix('analytic')->group(function () {
             Route::get('/', [AnalyticController::class, 'index']);
             Route::get('/show/{analytic}', [AnalyticController::class, 'show']);
             Route::post('/', [AnalyticController::class, 'store']);
@@ -236,7 +240,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{analytic}', [AnalyticController::class, 'destroy']);
         });
 
-        Route::prefix('analytic-section')->name('analytic-section.')->group(function () {
+        Route::prefix('analytic-section')->group(function () {
             Route::get('/{analytic}', [AnalyticSectionController::class, 'index']);
             Route::post('/{analytic}', [AnalyticSectionController::class, 'store']);
             Route::match(
@@ -247,34 +251,34 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{analytic}/{analyticSection}', [AnalyticSectionController::class, 'destroy']);
         });
 
-        Route::prefix('mail')->name('mail.')->group(function () {
+        Route::prefix('mail')->group(function () {
             Route::get('/', [MailController::class, 'index']);
             Route::match(['put', 'patch'], '/', [MailController::class, 'update']);
         });
 
-        Route::prefix('telegram')->name('telegram.')->group(function () {
+        Route::prefix('telegram')->group(function () {
             Route::get('/', [TelegramController::class, 'index']);
             Route::match(['put', 'patch'], '/', [TelegramController::class, 'update']);
         });
 
-        Route::prefix('shipping-setup')->name('shipping-setup.')->group(function () {
+        Route::prefix('shipping-setup')->group(function () {
             Route::get('/', [ShippingSetupController::class, 'index']);
             Route::match(['put', 'patch'], '/', [ShippingSetupController::class, 'update']);
         });
 
-        Route::prefix('wallet-setting')->name('wallet-setting.')->group(function () {
+        Route::prefix('wallet-setting')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\WalletSettingController::class, 'show']);
             Route::match(['put', 'patch'], '/', [\App\Http\Controllers\Admin\WalletSettingController::class, 'update']);
         });
 
-        Route::prefix('order-area')->name('order-area.')->group(function () {
+        Route::prefix('order-area')->group(function () {
             Route::get('/', [OrderAreaController::class, 'index']);
             Route::post('/', [OrderAreaController::class, 'store']);
             Route::match(['put', 'patch'], '/{orderArea}', [OrderAreaController::class, 'update']);
             Route::delete('/{orderArea}', [OrderAreaController::class, 'destroy']);
         });
 
-        Route::prefix('currency')->name('currency.')->group(function () {
+        Route::prefix('currency')->group(function () {
             Route::get('/', [CurrencyController::class, 'index']);
             Route::get('/show/{currency}', [CurrencyController::class, 'show']);
             Route::post('/', [CurrencyController::class, 'store']);
@@ -282,7 +286,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{currency}', [CurrencyController::class, 'destroy']);
         });
 
-        Route::prefix('tax')->name('tax.')->group(function () {
+        Route::prefix('tax')->group(function () {
             Route::get('/', [TaxController::class, 'index']);
             Route::get('/show/{tax}', [TaxController::class, 'show']);
             Route::post('/', [TaxController::class, 'store']);
@@ -290,7 +294,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{tax}', [TaxController::class, 'destroy']);
         });
 
-        Route::prefix('product-category')->name('product-category.')->group(function () {
+        Route::prefix('product-category')->group(function () {
             Route::get('/', [ProductCategoryController::class, 'index']);
             Route::get('/depth-tree', [ProductCategoryController::class, 'depthTree']);
             Route::get('/show/{productCategory}', [ProductCategoryController::class, 'show']);
@@ -304,7 +308,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::post('/import/file', [ProductCategoryController::class, 'import']);
         });
 
-        Route::prefix('product-brand')->name('product-brand.')->group(function () {
+        Route::prefix('product-brand')->group(function () {
             Route::get('/', [ProductBrandController::class, 'index']);
             Route::get('/show/{productBrand}', [ProductBrandController::class, 'show']);
             Route::post('/', [ProductBrandController::class, 'store']);
@@ -312,7 +316,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{productBrand}', [ProductBrandController::class, 'destroy']);
         });
 
-        Route::prefix('supplier')->name('supplier.')->group(function () {
+        Route::prefix('supplier')->group(function () {
             Route::get('/', [SupplierController::class, 'index']);
             Route::get('/show/{supplier}', [SupplierController::class, 'show']);
             Route::post('/', [SupplierController::class, 'store']);
@@ -320,22 +324,22 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{supplier}', [SupplierController::class, 'destroy']);
         });
 
-        Route::prefix('otp')->name('otp.')->group(function () {
+        Route::prefix('otp')->group(function () {
             Route::get('/', [OtpController::class, 'index']);
             Route::match(['put', 'patch'], '/', [OtpController::class, 'update']);
         });
 
-        Route::prefix('social-media')->name('social-media.')->group(function () {
+        Route::prefix('social-media')->group(function () {
             Route::get('/', [SocialMediaController::class, 'index']);
             Route::match(['put', 'patch'], '/', [SocialMediaController::class, 'update']);
         });
 
-        Route::prefix('sms-gateway')->name('sms-gateway.')->group(function () {
+        Route::prefix('sms-gateway')->group(function () {
             Route::get('/', [SmsGatewayController::class, 'index']);
             Route::match(['put', 'patch'], '/', [SmsGatewayController::class, 'update']);
         });
 
-        Route::prefix('slider')->name('slider.')->group(function () {
+        Route::prefix('slider')->group(function () {
             Route::get('/', [SliderController::class, 'index']);
             Route::get('/show/{slider}', [SliderController::class, 'show']);
             Route::post('/', [SliderController::class, 'store']);
@@ -343,7 +347,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{slider}', [SliderController::class, 'destroy']);
         });
 
-        Route::prefix('language')->name('language.')->group(function () {
+        Route::prefix('language')->group(function () {
             Route::get('/', [LanguageController::class, 'index']);
             Route::post('/', [LanguageController::class, 'store']);
             Route::get('/show/{language}', [LanguageController::class, 'show']);
@@ -355,12 +359,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::post('/file-text/store', [LanguageController::class, 'fileTextStore']);
         });
 
-        Route::prefix('cookies')->name('cookies.')->group(function () {
+        Route::prefix('cookies')->group(function () {
             Route::get('/', [CookiesController::class, 'index']);
             Route::match(['put', 'patch'], '/', [CookiesController::class, 'update']);
         });
 
-        Route::prefix('page')->name('page.')->group(function () {
+        Route::prefix('page')->group(function () {
             Route::get('/', [PageController::class, 'index']);
             Route::get('/show/{page}', [PageController::class, 'show']);
             Route::post('/', [PageController::class, 'store']);
@@ -368,16 +372,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{page}', [PageController::class, 'destroy']);
         });
 
-        Route::prefix('license')->name('license.')->group(function () {
+        Route::prefix('license')->group(function () {
             Route::get('/', [LicenseController::class, 'index']);
             Route::match(['put', 'patch'], '/', [LicenseController::class, 'update']);
         });
 
-        Route::prefix('menu-section')->name('menu-section.')->group(function () {
+        Route::prefix('menu-section')->group(function () {
             Route::get('/', [MenuSectionController::class, 'index']);
         });
 
-        Route::prefix('menu-template')->name('menu-template.')->group(function () {
+        Route::prefix('menu-template')->group(function () {
             Route::get('/', [MenuTemplateController::class, 'index']);
             Route::get('/show/{menuTemplate}', [MenuTemplateController::class, 'show']);
             Route::post('/', [MenuTemplateController::class, 'store']);
@@ -385,7 +389,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{menuTemplate}', [MenuTemplateController::class, 'destroy']);
         });
 
-        Route::prefix('product-attribute')->name('product-attribute.')->group(function () {
+        Route::prefix('product-attribute')->group(function () {
             Route::get('/', [ProductAttributeController::class, 'index']);
             Route::get('/show/{productAttribute}', [ProductAttributeController::class, 'show']);
             Route::post('/', [ProductAttributeController::class, 'store']);
@@ -393,7 +397,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{productAttribute}', [ProductAttributeController::class, 'destroy']);
         });
 
-        Route::prefix('product-attribute-option')->name('product-attribute-option.')->group(function () {
+        Route::prefix('product-attribute-option')->group(function () {
             Route::get('/{productAttribute}', [ProductAttributeOptionController::class, 'index']);
             Route::get('/{productAttribute}/show/{productAttributeOption}', [ProductAttributeOptionController::class, 'show']);
             Route::post('/{productAttribute}', [ProductAttributeOptionController::class, 'store']);
@@ -401,7 +405,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{productAttribute}/{productAttributeOption}', [ProductAttributeOptionController::class, 'destroy']);
         });
 
-        Route::prefix('unit')->name('unit.')->group(function () {
+        Route::prefix('unit')->group(function () {
             Route::get('/', [UnitController::class, 'index']);
             Route::get('/show/{unit}', [UnitController::class, 'show']);
             Route::post('/', [UnitController::class, 'store']);
@@ -409,21 +413,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{unit}', [UnitController::class, 'destroy']);
         });
 
-        Route::prefix('barcode')->name('barcode.')->group(function () {
+        Route::prefix('barcode')->group(function () {
             Route::get('/', [BarcodeController::class, 'index']);
         });
 
-        Route::prefix('payment-gateway')->name('payment-gateway.')->group(function () {
+        Route::prefix('payment-gateway')->group(function () {
             Route::get('/', [PaymentGatewayController::class, 'index']);
             Route::match(['put', 'patch'], '/', [PaymentGatewayController::class, 'update']);
         });
 
-        Route::prefix('notification')->name('notification.')->group(function () {
+        Route::prefix('notification')->group(function () {
             Route::get('/', [NotificationController::class, 'index']);
             Route::post('/', [NotificationController::class, 'update']);
         });
 
-        Route::prefix('role')->name('role.')->group(function () {
+        Route::prefix('role')->group(function () {
             Route::get('/', [RoleController::class, 'index']);
             Route::post('/', [RoleController::class, 'store']);
             Route::get('/show/{role}', [RoleController::class, 'show']);
@@ -431,12 +435,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{role}', [RoleController::class, 'destroy']);
         });
 
-        Route::prefix('permission')->name('permission.')->group(function () {
+        Route::prefix('permission')->group(function () {
             Route::get('/{role}', [PermissionController::class, 'index']);
             Route::match(['put', 'patch'], '/{role}', [PermissionController::class, 'update']);
         });
 
-        Route::prefix('benefit')->name('benefit.')->group(function () {
+        Route::prefix('benefit')->group(function () {
             Route::get('/', [BenefitController::class, 'index']);
             Route::get('/show/{benefit}', [BenefitController::class, 'show']);
             Route::post('/', [BenefitController::class, 'store']);
@@ -444,12 +448,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{benefit}', [BenefitController::class, 'destroy']);
         });
 
-        Route::prefix('notification-alert')->name('notification-alert.')->group(function () {
+        Route::prefix('notification-alert')->group(function () {
             Route::get('/', [NotificationAlertController::class, 'index']);
             Route::match(['put', 'patch'], '/', [NotificationAlertController::class, 'update']);
         });
 
-        Route::prefix('return-reason')->name('return-reason.')->group(function () {
+        Route::prefix('return-reason')->group(function () {
             Route::get('/', [ReturnReasonController::class, 'index']);
             Route::get('/show/{returnReason}', [ReturnReasonController::class, 'show']);
             Route::post('/', [ReturnReasonController::class, 'store']);
@@ -457,7 +461,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{returnReason}', [ReturnReasonController::class, 'destroy']);
         });
 
-        Route::prefix('outlet')->name('outlet.')->group(function () {
+        Route::prefix('outlet')->group(function () {
             Route::get('/', [OutletController::class, 'index']);
             Route::get('/show/{outlet}', [OutletController::class, 'show']);
             Route::post('/', [OutletController::class, 'store']);
@@ -465,7 +469,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
             Route::delete('/{outlet}', [OutletController::class, 'destroy']);
         });
 
-        Route::prefix('mobile-section')->name('mobile-section.')->group(function () {
+        Route::prefix('mobile-section')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\MobileSectionController::class, 'index']);
             Route::post('/button', [\App\Http\Controllers\Admin\MobileSectionController::class, 'storeButton']);
             Route::match(['put', 'patch'], '/button/{id}', [\App\Http\Controllers\Admin\MobileSectionController::class, 'updateButton']);
@@ -474,7 +478,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         });
     });
 
-    Route::prefix('product')->name('product.')->group(function () {
+    Route::prefix('product')->group(function () {
         Route::get('/', [ProductController::class, 'index']);
         Route::get('/show/{product}', [ProductController::class, 'show']);
         Route::get('/pos-product/{product}', [ProductController::class, 'posProduct']);
@@ -495,7 +499,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/download-barcode/{product}', [ProductController::class, 'downloadBarcode']);
         Route::get('/barcode-product/{barcode}', [ProductController::class, 'barcodeProduct']);
 
-        Route::prefix('variation')->name('variation.')->group(function () {
+        Route::prefix('variation')->group(function () {
             Route::get('/{product}', [ProductVariationController::class, 'index']);
             Route::get('/{product}/tree', [ProductVariationController::class, 'tree']);
             Route::get('/{product}/single-tree', [ProductVariationController::class, 'singleTree']);
@@ -513,26 +517,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/children-variation/{productVariation}', [ProductVariationController::class, 'childrenVariation']);
         Route::get('/ancestors-and-self-id/{productVariation}', [ProductVariationController::class, 'ancestorsAndSelfId']);
 
-        Route::prefix('video')->name('video.')->group(function () {
+        Route::prefix('video')->group(function () {
             Route::get('/{product}', [ProductVideoController::class, 'index']);
             Route::post('/{product}', [ProductVideoController::class, 'store']);
             Route::match(['put', 'patch'], '/{product}/{productVideo}', [ProductVideoController::class, 'update']);
             Route::delete('/{product}/{productVideo}', [ProductVideoController::class, 'destroy']);
         });
 
-        Route::prefix('seo')->name('seo.')->group(function () {
+        Route::prefix('seo')->group(function () {
             Route::get('/{product}', [ProductSeoController::class, 'index']);
             Route::match(['post', 'put', 'patch'], '/{product}/update', [ProductSeoController::class, 'update']);
         });
     });
 
-    Route::prefix('country-code')->name('country-code.')->group(function () {
+    Route::prefix('country-code')->group(function () {
         Route::get('/', [CountryCodeController::class, 'index']);
         Route::get('/show/{country}', [CountryCodeController::class, 'show']);
         Route::get('/calling-code/{callingCode}', [CountryCodeController::class, 'callingCode']);
     });
 
-    Route::prefix('country')->name('country')->group(function () {
+    Route::prefix('country')->group(function () {
         Route::get('/', [CountryController::class, 'index']);
         Route::get('/show/{country}', [CountryController::class, 'show']);
         Route::post('/', [CountryController::class, 'store']);
@@ -540,7 +544,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::match(['put', 'patch', 'post'], '/{country}', [CountryController::class, 'update']);
     });
 
-    Route::prefix('state')->name('state')->group(function () {
+    Route::prefix('state')->group(function () {
         Route::get('/', [StateController::class, 'index']);
         Route::get('/simple-lists', [StateController::class, 'simpleLists']);
         Route::get('/show/{state}', [StateController::class, 'show']);
@@ -550,7 +554,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/states/{country}', [StateController::class, 'statesByCountry']);
     });
 
-    Route::prefix('city')->name('city')->group(function () {
+    Route::prefix('city')->group(function () {
         Route::get('/', [CityController::class, 'index']);
         Route::get('/show/{city}', [CityController::class, 'show']);
         Route::post('/', [CityController::class, 'store']);
@@ -559,7 +563,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/cities/{state}', [CityController::class, 'citiesByState']);
     });
 
-    Route::prefix('administrator')->name('administrator.')->group(function () {
+    Route::prefix('administrator')->group(function () {
         Route::get('/', [AdministratorController::class, 'index']);
         Route::get('/show/{administrator}', [AdministratorController::class, 'show']);
         Route::post('/', [AdministratorController::class, 'store']);
@@ -576,7 +580,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::delete('/address/{administrator}/{address}', [AdministratorAddressController::class, 'destroy']);
     });
 
-    Route::prefix('customer')->name('customer.')->group(function () {
+    Route::prefix('customer')->group(function () {
         Route::get('/', [CustomerController::class, 'index']);
         Route::post('/', [CustomerController::class, 'store']);
         Route::get('/show/{customer}', [CustomerController::class, 'show']);
@@ -600,7 +604,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::delete('/address/{customer}/{address}', [CustomerAddressController::class, 'destroy']);
     });
 
-    Route::prefix('employee')->name('employee.')->group(function () {
+    Route::prefix('employee')->group(function () {
         Route::get('/', [EmployeeController::class, 'index']);
         Route::post('/', [EmployeeController::class, 'store']);
         Route::get('/show/{employee}', [EmployeeController::class, 'show']);
@@ -617,11 +621,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::delete('/address/{employee}/{address}', [EmployeeAddressController::class, 'destroy']);
     });
 
-    Route::prefix('my-order')->name('my-order.')->group(function () {
+    Route::prefix('my-order')->group(function () {
         Route::get('/show/{user}/{order}', [MyOrderDetailsController::class, 'orderDetails']);
     });
 
-    Route::prefix('promotion')->name('promotion.')->group(function () {
+    Route::prefix('promotion')->group(function () {
         Route::get('/', [PromotionController::class, 'index']);
         Route::get('/show/{promotion}', [PromotionController::class, 'show']);
         Route::post('/', [PromotionController::class, 'store']);
@@ -635,7 +639,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::delete('/product/{promotion}/{promotionProduct}', [PromotionProductController::class, 'destroy']);
     });
 
-    Route::prefix('product-section')->name('product-section.')->group(function () {
+    Route::prefix('product-section')->group(function () {
         Route::get('/', [ProductSectionController::class, 'index']);
         Route::get('/show/{productSection}', [ProductSectionController::class, 'show']);
         Route::post('/', [ProductSectionController::class, 'store']);
@@ -648,19 +652,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::delete('/product/{productSection}/{productSectionProduct}', [ProductSectionProductController::class, 'destroy']);
     });
 
-    Route::prefix('transaction')->name('transaction.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('transaction')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [TransactionController::class, 'index']);
         Route::get('/export', [TransactionController::class, 'export']);
     });
 
-    Route::prefix('sales-report')->name('sales-report.')->group(function () {
+    Route::prefix('sales-report')->group(function () {
         Route::get('/', [SalesReportController::class, 'index']);
         Route::get('/overview', [SalesReportController::class, 'salesReportOverview']);
         Route::get('/export', [SalesReportController::class, 'export']);
         Route::get('/export-pdf', [SalesReportController::class, 'exportPdf']);
     });
 
-    Route::prefix('store-sales-report')->name('store-sales-report.')->group(function () {
+    Route::prefix('store-sales-report')->group(function () {
         Route::get('/', [StoreSalesReportController::class, 'index']);
         Route::get('/overview', [StoreSalesReportController::class, 'overview']);
         Route::get('/branch-summary', [StoreSalesReportController::class, 'branchSummary']);
@@ -668,13 +672,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/export-pdf', [StoreSalesReportController::class, 'exportPdf']);
     });
 
-    Route::prefix('credit-balance-report')->name('credit-balance-report.')->group(function () {
+    Route::prefix('credit-balance-report')->group(function () {
         Route::get('/', [CreditBalanceReportController::class, 'index']);
         Route::get('/export', [CreditBalanceReportController::class, 'export']);
         Route::get('/export-pdf', [CreditBalanceReportController::class, 'exportPdf']);
     });
 
-    Route::prefix('push-notification')->name('push-notification.')->group(function () {
+    Route::prefix('push-notification')->group(function () {
         Route::get('/', [PushNotificationController::class, 'index']);
         Route::post('/', [PushNotificationController::class, 'store']);
         Route::get('/show/{pushNotification}', [PushNotificationController::class, 'show']);
@@ -682,10 +686,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/export', [PushNotificationController::class, 'export']);
     });
 
-    Route::prefix('users')->name('users.')->group(function () {
+    Route::prefix('users')->group(function () {
         Route::get('/', [SimpleUserController::class, 'index']);
     });
-    Route::prefix('coupon')->name('coupon.')->group(function () {
+    Route::prefix('coupon')->group(function () {
         Route::get('/', [CouponController::class, 'index']);
         Route::get('/show/{coupon}', [CouponController::class, 'show']);
         Route::post('/', [CouponController::class, 'store']);
@@ -694,7 +698,31 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/export', [CouponController::class, 'export']);
     });
 
-    Route::prefix('purchase')->name('purchase.')->group(function () {
+    Route::prefix('blog')->group(function () {
+        Route::get('/', [BlogPostController::class, 'index']);
+        Route::get('/show/{blogPost}', [BlogPostController::class, 'show']);
+        Route::post('/', [BlogPostController::class, 'store']);
+        Route::match(['post', 'put', 'patch'], '/{blogPost}', [BlogPostController::class, 'update']);
+        Route::delete('/{blogPost}', [BlogPostController::class, 'destroy']);
+    });
+
+    Route::prefix('blog-category')->group(function () {
+        Route::get('/', [BlogCategoryController::class, 'index']);
+        Route::get('/show/{blogCategory}', [BlogCategoryController::class, 'show']);
+        Route::post('/', [BlogCategoryController::class, 'store']);
+        Route::match(['post', 'put', 'patch'], '/{blogCategory}', [BlogCategoryController::class, 'update']);
+        Route::delete('/{blogCategory}', [BlogCategoryController::class, 'destroy']);
+    });
+
+    Route::prefix('blog-tag')->group(function () {
+        Route::get('/', [BlogTagController::class, 'index']);
+        Route::get('/show/{blogTag}', [BlogTagController::class, 'show']);
+        Route::post('/', [BlogTagController::class, 'store']);
+        Route::match(['post', 'put', 'patch'], '/{blogTag}', [BlogTagController::class, 'update']);
+        Route::delete('/{blogTag}', [BlogTagController::class, 'destroy']);
+    });
+
+    Route::prefix('purchase')->group(function () {
         Route::get('/', [PurchaseController::class, 'index']);
         Route::post('/', [PurchaseController::class, 'store']);
         Route::get('/show/{purchase}', [PurchaseController::class, 'show']);
@@ -709,18 +737,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::delete('/payment/{purchase}/{purchasePayment}', [PurchaseController::class, 'paymentDestroy']);
     });
 
-    Route::prefix('stock')->name('stock.')->group(function () {
+    Route::prefix('stock')->group(function () {
         Route::get('/', [StockController::class, 'index']);
         Route::get('/export', [StockController::class, 'export']);
     });
 
-    Route::prefix('reviews')->name('reviews.')->group(function () {
+    Route::prefix('reviews')->group(function () {
         Route::get('/', [ReviewController::class, 'index']);
         Route::get('/show/{productReview}', [ReviewController::class, 'show']);
         Route::get('/export', [ReviewController::class, 'export']);
     });
 
-    Route::prefix('return-order')->name('return-order.')->group(function () {
+    Route::prefix('return-order')->group(function () {
         Route::get('/', [ReturnOrderController::class, 'index']);
         Route::post('/', [ReturnOrderController::class, 'store']);
         Route::get('/show/{returnOrder}', [ReturnOrderController::class, 'show']);
@@ -731,7 +759,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/download-attachment/{returnOrder}', [ReturnOrderController::class, 'downloadAttachment']);
     });
 
-    Route::prefix('damage')->name('damage.')->group(function () {
+    Route::prefix('damage')->group(function () {
         Route::get('/', [DamageController::class, 'index']);
         Route::post('/', [DamageController::class, 'store']);
         Route::get('/show/{damage}', [DamageController::class, 'show']);
@@ -742,7 +770,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/download-attachment/{damage}', [DamageController::class, 'downloadAttachment']);
     });
 
-    Route::prefix('online-order')->name('onlineOrder.')->group(function () {
+    Route::prefix('online-order')->group(function () {
         Route::get('/', [OnlineOrderController::class, 'index']);
         Route::get('/show/{order}', [OnlineOrderController::class, 'show']);
         Route::delete('/{order}', [OnlineOrderController::class, 'destroy']);
@@ -751,14 +779,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::post('/change-payment-status/{order}', [OnlineOrderController::class, 'changePaymentStatus']);
     });
 
-    Route::prefix('products-report')->name('products-report.')->group(function () {
+    Route::prefix('products-report')->group(function () {
         Route::get('/', [ProductsReportController::class, 'index']);
         Route::get('/overview', [ProductsReportController::class, 'productsReportOverview']);
         Route::get('/export', [ProductsReportController::class, 'export']);
         Route::get('/export-pdf', [ProductsReportController::class, 'exportPdf']);
     });
 
-    Route::prefix('pos-order')->name('posOrder.')->group(function () {
+    Route::prefix('pos-order')->group(function () {
         Route::get('/', [PosOrderController::class, 'index']);
         Route::get('show/{order}', [PosOrderController::class, 'show']);
         Route::delete('/{order}', [PosOrderController::class, 'destroy']);
@@ -767,19 +795,19 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::post('/change-payment-status/{order}', [PosOrderController::class, 'changePaymentStatus']);
     });
 
-    Route::prefix('pos')->name('pos.')->group(function () {
+    Route::prefix('pos')->group(function () {
         Route::post('/', [PosController::class, 'store']);
         Route::post('/customer', [PosController::class, 'storeCustomer']);
     });
 
-    Route::prefix('return-and-refund')->name('return-and-refund.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('return-and-refund')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [ReturnAndRefundController::class, 'index']);
         Route::get('/show/{returnAndRefund}', [ReturnAndRefundController::class, 'show']);
         Route::post('/change-status/{returnAndRefund}', [ReturnAndRefundController::class, 'changeStatus']);
         Route::get('/export', [ReturnAndRefundController::class, 'export']);
     });
 
-    Route::prefix('subscriber')->name('subscriber.')->group(function () {
+    Route::prefix('subscriber')->group(function () {
         Route::get('/', [SubscriberController::class, 'index']);
         Route::delete('/{subscriber}', [SubscriberController::class, 'destroy']);
         Route::get('/export', [SubscriberController::class, 'export']);
@@ -789,28 +817,32 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
 
 Route::prefix('checkout')->middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/', [CheckoutController::class, 'list']);
-    Route::post('/order', [CheckoutController::class, 'order']);
+    // Removed: POST /order (CheckoutController@order). Nothing in the
+    // storefront called it, and its CheckoutService took subtotal/tax/total
+    // and wallet_discount straight from the request with no balance check —
+    // an authenticated user could mint an order for any amount and drive any
+    // account's wallet negative. The live order path is POST /frontend/order.
     Route::get('/{order}/{paymentGateway}/payment', [CheckoutController::class, 'payment']);
     Route::get('/{order}/{paymentGateway}/success', [CheckoutController::class, 'success']);
     Route::get('/{order}/{paymentGateway}/fail', [CheckoutController::class, 'fail']);
     Route::get('/{order}/{paymentGateway}/cancel', [CheckoutController::class, 'cancel']);
 });
 
-Route::group(['prefix' => 'frontend', 'as' => 'frontend.'], function () {
+Route::group(['prefix' => 'frontend'], function () {
     Route::get('language/{code}', [FrontendLanguageController::class, 'language']);
     Route::get('overview', [OverviewController::class, 'index']);
 
-    Route::prefix('setting')->name('setting.')->group(function () {
+    Route::prefix('setting')->group(function () {
         Route::get('/', [FrontendSettingController::class, 'index']);
     });
 
-    Route::prefix('country-code')->name('country-code.')->group(function () {
+    Route::prefix('country-code')->group(function () {
         Route::get('/', [FrontendCountryCodeController::class, 'index']);
         Route::get('/show/{country}', [FrontendCountryCodeController::class, 'show']);
         Route::get('/calling-code/{callingCode}', [FrontendCountryCodeController::class, 'callingCode']);
     });
 
-    Route::prefix('address')->name('address.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('address')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendAddressController::class, 'index']);
         Route::get('/show/{address}', [FrontendAddressController::class, 'show']);
         Route::post('/', [FrontendAddressController::class, 'store']);
@@ -818,27 +850,27 @@ Route::group(['prefix' => 'frontend', 'as' => 'frontend.'], function () {
         Route::delete('/{address}', [FrontendAddressController::class, 'destroy']);
     });
 
-    Route::prefix('language')->name('language.')->group(function () {
+    Route::prefix('language')->group(function () {
         Route::get('/', [FrontendLanguageController::class, 'index']);
         Route::get('/show/{language}', [FrontendLanguageController::class, 'show']);
     });
 
-    Route::prefix('slider')->name('slider.')->group(function () {
+    Route::prefix('slider')->group(function () {
         Route::get('/', [FrontendSliderController::class, 'index']);
     });
     
-    Route::prefix('mobile-section')->name('mobile-section.')->group(function () {
+    Route::prefix('mobile-section')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\MobileSectionController::class, 'index']);
     });
 
-    Route::prefix('product-category')->name('product-category.')->group(function () {
+    Route::prefix('product-category')->group(function () {
         Route::get('/', [FrontendProductCategoryController::class, 'index']);
         Route::get('/ancestors-and-self/{productCategory:slug}', [FrontendProductCategoryController::class, 'ancestorsAndSelf']);
         Route::get('/tree', [FrontendProductCategoryController::class, 'tree']);
         Route::get('/show/{productCategory:slug}', [FrontendProductCategoryController::class, 'show']);
     });
 
-    Route::prefix('product')->name('product.')->group(function () {
+    Route::prefix('product')->group(function () {
         Route::get('/', [FrontendProductController::class, 'index']);
         Route::get('/show/{product:slug}', [FrontendProductController::class, 'show']);
         Route::get('/popular-products', [FrontendProductController::class, 'mostPopularProducts']);
@@ -854,89 +886,101 @@ Route::group(['prefix' => 'frontend', 'as' => 'frontend.'], function () {
         Route::get('/show-with-trashed/{product:slug}', [FrontendProductController::class, 'showWithTrashed'])->withTrashed();
     });
 
-    Route::prefix('page')->name('page.')->group(function () {
+    Route::prefix('page')->group(function () {
         Route::get('/', [FrontendPageController::class, 'index']);
         Route::get('/show/{page:slug}', [FrontendPageController::class, 'show']);
         Route::get('/page-info/{page}', [FrontendPageController::class, 'show']);
     });
 
-    Route::prefix('promotion')->name('promotion.')->group(function () {
+    Route::prefix('blog')->group(function () {
+        Route::get('/', [FrontendBlogController::class, 'index']);
+        // Declared before /show/{slug} so neither literal path can be captured
+        // as a post slug.
+        Route::get('/overview', [FrontendBlogController::class, 'overview']);
+        Route::get('/categories', [FrontendBlogController::class, 'categories']);
+        Route::get('/tags', [FrontendBlogController::class, 'tags']);
+        Route::get('/sections', [FrontendBlogController::class, 'sections']);
+        Route::get('/show/{slug}', [FrontendBlogController::class, 'show']);
+        Route::get('/related/{slug}', [FrontendBlogController::class, 'related']);
+    });
+
+    Route::prefix('promotion')->group(function () {
         Route::get('/', [FrontendPromotionController::class, 'index']);
         Route::get('/show/{promotion:slug}', [FrontendPromotionController::class, 'show']);
         Route::get('/products/{promotion:slug}', [FrontendPromotionProductController::class, 'index']);
     });
 
-    Route::prefix('product-section')->name('productSection.')->group(function () {
+    Route::prefix('product-section')->group(function () {
         Route::get('/', [FrontendProductSectionController::class, 'index']);
         Route::get('/show/{productSection:slug}', [FrontendProductSectionController::class, 'show']);
         Route::get('/products/{productSection:slug}', [FrontendProductSectionProductController::class, 'index']);
     });
 
-    Route::prefix('product-brand')->name('product-brand.')->group(function () {
+    Route::prefix('product-brand')->group(function () {
         Route::get('/', [FrontendProductBrandController::class, 'index']);
     });
 
-    Route::prefix('benefit')->name('benefit.')->group(function () {
+    Route::prefix('benefit')->group(function () {
         Route::get('/', [FrontendBenefitController::class, 'index']);
     });
 
-    Route::prefix('wishlist')->middleware(['auth:sanctum'])->name('wishlist.')->group(function () {
+    Route::prefix('wishlist')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendWishlistController::class, 'index']);
         Route::post('/toggle', [FrontendWishlistController::class, 'toggle']);
     });
 
-    Route::prefix('coupon')->name('coupon.')->group(function () {
+    Route::prefix('coupon')->group(function () {
         Route::get('/', [FrontendCouponController::class, 'index']);
         Route::post('/coupon-checking', [FrontendCouponController::class, 'couponChecking']);
     });
 
-    Route::prefix('payment-gateway')->name('payment-gateway.')->group(function () {
+    Route::prefix('payment-gateway')->group(function () {
         Route::get('/', [FrontendPaymentGatewayController::class, 'index']);
     });
 
-    Route::prefix('order-area')->name('order-area.')->group(function () {
+    Route::prefix('order-area')->group(function () {
         Route::get('/', [FrontendOrderAreaController::class, 'index']);
     });
 
-    Route::prefix('order')->name('order.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('order')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendOrderController::class, 'index']);
         Route::get('/show/{frontendOrder}', [FrontendOrderController::class, 'show']);
         Route::post('/', [FrontendOrderController::class, 'store']);
         Route::post('/change-status/{frontendOrder}', [FrontendOrderController::class, 'changeStatus']);
     });
 
-    Route::prefix('device-token')->name('device-token.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('device-token')->middleware(['auth:sanctum'])->group(function () {
         Route::post('/web', [TokenStoreController::class, 'webToken']);
         Route::post('/mobile', [TokenStoreController::class, 'deviceToken']);
     });
 
-    Route::prefix('subscriber')->name('subscriber.')->group(function () {
+    Route::prefix('subscriber')->group(function () {
         Route::post('/', [FrontendSubscriberController::class, 'store']);
     });
 
-    Route::prefix('return-reason')->name('return-reason.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('return-reason')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendReturnReasonController::class, 'index']);
     });
 
-    Route::prefix('return-order')->name('return-order.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('return-order')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendReturnAndRefundController::class, 'index']);
         Route::post('/request/{order}', [FrontendReturnAndRefundController::class, 'store']);
         Route::get('/show/{returnAndRefund}', [FrontendReturnAndRefundController::class, 'show']);
     });
 
-    Route::prefix('overview')->name('overview.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('overview')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/total-orders', [OverviewController::class, 'totalOrders']);
         Route::get('/total-complete-orders', [OverviewController::class, 'totalCompletedOrders']);
         Route::get('/total-return-orders', [OverviewController::class, 'totalReturnedOrders']);
         Route::get('/wallet-balance', [OverviewController::class, 'walletBalance']);
     });
 
-    Route::prefix('wallet')->name('wallet.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('wallet')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/balance', [FrontendWalletController::class, 'balance']);
         Route::get('/transactions', [FrontendWalletController::class, 'transactions']);
     });
 
-    Route::prefix('product-review')->name('product-review.')->middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('product-review')->middleware(['auth:sanctum'])->group(function () {
         Route::post('/', [ProductReviewController::class, 'store']);
         Route::get('/show/{productReview}', [ProductReviewController::class, 'show']);
         Route::match(['post', 'put', 'patch'], '/{productReview}', [ProductReviewController::class, 'update']);
@@ -944,18 +988,18 @@ Route::group(['prefix' => 'frontend', 'as' => 'frontend.'], function () {
         Route::get('/delete-image/{productReview}/{index}', [ProductReviewController::class, 'deleteImage']);
     });
 
-    Route::prefix('cookies')->name('cookies.')->group(function () {
+    Route::prefix('cookies')->group(function () {
         Route::get('/', [FrontendCookiesController::class, 'get']);
         Route::post('/', [FrontendCookiesController::class, 'set']);
     });
 
-    Route::prefix('country-state-city')->name('country-state-city')->group(function () {
+    Route::prefix('country-state-city')->group(function () {
         Route::get('/countries', [FrontendCountryStateCityController::class, 'countries']);
         Route::get('/states/{country}', [FrontendCountryStateCityController::class, 'statesByCountry']);
         Route::get('/cities/{state}', [FrontendCountryStateCityController::class, 'citiesByState']);
     });
 
-    Route::prefix('outlet')->name('outlet.')->group(function () {
+    Route::prefix('outlet')->group(function () {
         Route::get('/', [FrontendOutletController::class, 'index']);
     });
 });

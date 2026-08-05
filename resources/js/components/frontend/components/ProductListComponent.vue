@@ -1,14 +1,19 @@
 <template>
     <div v-if="products.length > 0" v-for="product in products"
-        class="sm:p-2 miron rounded-2xl sm:shadow-card transition-all duration-300 sm:hover:shadow-hover group">
+        class="p-2 miron rounded-2xl bg-white shadow-card transition-all duration-300 sm:hover:shadow-hover sm:hover:-translate-y-1 group">
         <div class="relative overflow-hidden rounded-xl isolate">
             <label
                 class="capitalize text-xs font-semibold rounded-xl py-1 px-2 shadow-badge absolute top-3 left-3 z-10 bg-secondary text-white"
                 v-if="product.is_offer && product.flash_sale">{{ $t('label.flash_sale') }}</label>
 
+            <label v-if="discountPercent(product) > 0"
+                class="text-xs font-bold rounded-full py-0.5 px-2 shadow-badge absolute bottom-3 left-3 z-10 bg-shopperz-red text-white">
+                -{{ discountPercent(product) }}%
+            </label>
+
             <button type="button" @click.prevent="wishlist(product, product.wishlist = !product.wishlist)"
                 :class="product.wishlist ? 'lab-fill-heart text-primary' : 'lab-line-heart'"
-                class="w-7 h-7 leading-7 rounded-full text-center text-base shadow-badge absolute top-3 right-3 z-10 bg-white">
+                class="w-7 h-7 leading-7 rounded-full text-center text-base shadow-badge absolute top-3 right-3 z-10 bg-white transition-all duration-300 hover:scale-110 active:scale-95">
             </button>
 
             <router-link class="overflow-hidden rounded-xl w-full"
@@ -18,14 +23,14 @@
                     :alt="product.name"
                     :width="372"
                     :height="405"
-                    img-class="w-full h-full object-cover rounded-xl transition-all duration-300 group-hover:scale-105 group-hover:rotate-3"
+                    img-class="w-full h-full object-cover rounded-xl transition-transform duration-500 group-hover:scale-105"
                 />
             </router-link>
         </div>
 
-        <router-link class="block overflow-hidden text-ellipsis" :to="{ name: 'frontend.product.details', params: { slug: product.slug } }">
+        <router-link class="block" :to="{ name: 'frontend.product.details', params: { slug: product.slug } }">
             <div class="px-1 sm:px-0 pt-4 pb-2">
-                <h3 class="capitalize text-base font-semibold whitespace-nowrap transition-all duration-300 hover:text-primary">
+                <h3 :title="product.name" class="capitalize text-base font-semibold leading-snug text-heading line-clamp-2 min-h-[2.75rem] transition-colors duration-300 hover:text-primary">
                     {{ product.name }}
                 </h3>
 
@@ -45,15 +50,15 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap-reverse items-center gap-x-3 gap-y-1" v-if="product.is_offer">
-                    <h3 class="text-xl sm:text-[22px] font-bold">
+                <div class="flex flex-wrap-reverse items-baseline gap-x-3 gap-y-1" v-if="product.is_offer">
+                    <h3 class="text-xl sm:text-[22px] font-bold text-primary">
                         <span>{{ product.discounted_price }}</span>
                     </h3>
-                    <h4 class="text-sm sm:text-base font-semibold text-shopperz-red">
+                    <h4 class="text-sm font-medium text-text">
                         <del>{{ product.currency_price }}</del>
                     </h4>
                 </div>
-                <h4 class="text-xl sm:text-[22px] font-bold" v-else>
+                <h4 class="text-xl sm:text-[22px] font-bold text-primary" v-else>
                     <span>{{ product.currency_price }}</span>
                 </h4>
             </div>
@@ -61,9 +66,9 @@
 
         <div class="px-1 sm:px-0 pb-2">
             <button @click.prevent="addToCart(product)" type="button"
-                class="w-full py-2.5 px-4 rounded-lg bg-primary text-white font-semibold text-sm transition-all duration-300 hover:bg-primary/90 hover:shadow-lg flex items-center justify-center gap-2">
+                class="w-full h-11 rounded-full bg-primary text-white font-bold text-sm transition-all duration-300 hover:bg-primary/90 hover:shadow-btn-primary active:scale-[0.98] flex items-center justify-center gap-2">
                 <i class="lab-line-shopping-bag text-base"></i>
-                <span>Add to Cart</span>
+                <span>{{ $t('button.add_to_cart') }}</span>
             </button>
         </div>
     </div>
@@ -90,6 +95,14 @@ export default {
         }
     },
     methods: {
+        discountPercent: function (product) {
+            const price = parseFloat(product.flat_price);
+            const discounted = parseFloat(product.flat_discounted_price);
+            if (!product.is_offer || !price || !discounted || discounted >= price) {
+                return 0;
+            }
+            return Math.round(((price - discounted) / price) * 100);
+        },
         wishlist: function (product, toggle) {
             this.$store.dispatch("frontendWishlist/toggle", {
                 product_id: product.id,

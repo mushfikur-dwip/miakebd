@@ -583,6 +583,14 @@ class PermissionTableSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
+                'title'      => 'Blog',
+                'name'       => 'blog',
+                'guard_name' => 'sanctum',
+                'url'        => 'blog',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
                 'title'      => 'Settings',
                 'name'       => 'settings',
                 'guard_name' => 'sanctum',

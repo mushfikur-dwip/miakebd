@@ -114,16 +114,33 @@ export default {
                 this.loading.isActive = false;
             }).catch((err) => {
                 this.loading.isActive = false;
-                alertService.error(err.response.data.message);
+                // Optional chaining: a non-HTTP failure (a thrown TypeError in
+                // the .then above) has no err.response, and reading it threw a
+                // second error that hid the real one.
+                alertService.error(err?.response?.data?.message || err.message);
             });
         },
         seoTag: function (objects) {
-            objects = JSON.parse(objects);
-            let seoTags = [];
-            _.forEach(objects, (object) => {
-                seoTags.push({ "text": object, "tiClasses": ["ti-valid"] });
-            });
-            return seoTags;
+            // ProductSeoResource::keywords() already returns a decoded array,
+            // so the old unconditional JSON.parse() coerced it to "a,b,c" and
+            // threw SyntaxError. That rejected inside list()'s .then(), the
+            // catch then blew up on err.response of a SyntaxError, and the tab
+            // was left with a stuck spinner and no keywords loaded — so saving
+            // posted an empty meta_keyword and failed `required`.
+            if (typeof objects === "string") {
+                try {
+                    objects = JSON.parse(objects);
+                } catch (e) {
+                    // Legacy rows stored as a plain comma-separated string.
+                    objects = objects.split(",").map((item) => item.trim()).filter(Boolean);
+                }
+            }
+
+            if (!Array.isArray(objects)) {
+                return [];
+            }
+
+            return objects.map((object) => ({ text: object, tiClasses: ["ti-valid"] }));
         },
         save: function () {
             try {

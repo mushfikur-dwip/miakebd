@@ -22,8 +22,8 @@ export default {
     data() {
         return {
             activeClass: [
-                "bg-blue-50",
-                "border-blue-500",
+                "bg-primary-slate",
+                "border-primary",
                 "text-primary"
             ]
         }

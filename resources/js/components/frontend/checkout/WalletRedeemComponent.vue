@@ -131,7 +131,18 @@ export default {
             }
             
             if (amount > this.total) {
-                this.error = this.$t('message.wallet_amount_exceeds_order_total');
+                // wallet_amount_exceeds_cart_total — the _order_total variant
+                // this used to reference was never translated, so the user saw
+                // the raw key.
+                this.error = this.$t('message.wallet_amount_exceeds_cart_total');
+                return;
+            }
+
+            // All-or-nothing, same rule the backend enforces: every gateway
+            // charges the full order total, so a partial wallet payment would
+            // overcharge the customer at the gateway.
+            if (amount < this.total) {
+                this.error = this.$t('message.wallet_must_cover_full_total');
                 return;
             }
             

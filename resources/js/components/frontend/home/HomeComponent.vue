@@ -5,17 +5,31 @@
 
     <CategoryComponent />
 
-    <PromotionComponent />
+    <!-- Below-the-fold sections render (and fetch) only as they approach the
+         viewport — see LazyRenderComponent. -->
+    <LazyRenderComponent>
+        <PromotionComponent />
+    </LazyRenderComponent>
 
-    <ProductSectionComponent />
+    <LazyRenderComponent>
+        <ProductSectionComponent />
+    </LazyRenderComponent>
 
-    <MostPopularComponent />
+    <LazyRenderComponent>
+        <MostPopularComponent />
+    </LazyRenderComponent>
 
-    <FlashSaleComponent />
+    <LazyRenderComponent>
+        <FlashSaleComponent />
+    </LazyRenderComponent>
 
-    <ProductBrandComponent />
+    <LazyRenderComponent>
+        <ProductBrandComponent />
+    </LazyRenderComponent>
 
-    <BenefitComponent />
+    <LazyRenderComponent>
+        <BenefitComponent />
+    </LazyRenderComponent>
 </template>
 
 <script>
@@ -28,6 +42,7 @@ import ProductSectionComponent from "./ProductSectionComponent.vue";
 import FlashSaleComponent from "./FlashSaleComponent.vue";
 import ProductBrandComponent from "./ProductBrandComponent.vue";
 import MostPopularComponent from "./MostPopularComponent.vue";
+import LazyRenderComponent from "../components/LazyRenderComponent.vue";
 
 export default {
     name: "HomeComponent",
@@ -41,6 +56,7 @@ export default {
         PromotionComponent,
         ProductSectionComponent,
         ProductBrandComponent,
+        LazyRenderComponent,
     },
 };
 </script>

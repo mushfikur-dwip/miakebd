@@ -4,9 +4,16 @@
 
 @layer base {
     :root {
-        --primary: 34 34 34;
-        --primary-light: 255 237 244;
-        --primary-slate: 255 244 241;
+        /* Suglow rose, taken from the logo badge.
+           #A9616B. The logo's own pinks are far paler (#F0D0C0 / #F0C0C0), but
+           every primary button in this theme is `bg-primary text-white`, and
+           white on that blush measures 2.5:1 — unreadable, and an accessibility
+           failure. #A9616B is the lightest rose in the same family that still
+           clears WCAG AA at 4.56:1, so "Add to Cart" stays legible.
+           The true blush tones live below, where they sit behind dark text. */
+        --primary: 169 97 107;
+        --primary-light: 249 233 227;
+        --primary-slate: 253 246 242;
         --client-font: 'Urbanist', sans-serif;
         --admin-font: 'Public Sans', sans-serif;
         --icon-font: 'Iconly';
@@ -730,20 +737,25 @@
     }
 
     .co-thumb {
-        flex: 0 0 46px;
-        height: 46px;
-        border-radius: 8px;
+        flex: 0 0 56px;
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
         object-fit: cover;
         background: linear-gradient(135deg, rgb(var(--primary-light)), rgb(var(--primary-slate)));
         border: 1px solid #f0e4e9;
     }
 
     .co-item-text {
+        flex: 1 1 0;
         min-width: 0;
     }
 
     .co-item-text b {
-        display: block;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
         font-size: 13.5px;
         font-weight: 600;
         line-height: 1.35;

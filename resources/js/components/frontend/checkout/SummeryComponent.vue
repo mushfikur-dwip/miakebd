@@ -19,7 +19,7 @@
                 <div v-for="(cart, index) in carts" :key="index" class="co-item">
                     <img class="co-thumb" :src="cart.image" :alt="cart.name" loading="lazy" />
                     <div class="co-item-text">
-                        <b>{{ cart.name }}</b>
+                        <b :title="cart.name">{{ cart.name }}</b>
                         <span>{{ $t('label.quantity') }} {{ cart.quantity }} &times; {{ money(cart.price) }}</span>
                     </div>
                     <span class="co-price">{{ money(lineTotal(cart)) }}</span>

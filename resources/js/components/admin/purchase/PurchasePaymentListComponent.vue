@@ -173,11 +173,11 @@ export default {
                         alertService.successFlip(null, this.$t("menu.purchase_payments"));
                     }).catch((err) => {
                         this.loading.isActive = false;
-                        alertService.error(err.response.data.message);
+                        alertService.downloadError(err);
                     });
                 } catch (err) {
                     this.loading.isActive = false;
-                    alertService.error(err.response.data.message);
+                    alertService.downloadError(err);
                 }
             }).catch((err) => {
                 this.loading.isActive = false;

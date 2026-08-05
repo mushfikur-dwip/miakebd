@@ -120,17 +120,29 @@ class ProductSectionService
     public function productSectionWithProduct()
     {
         try {
-            return ProductSection::select('product_sections.id', 'product_sections.name', 'product_sections.slug', 'product_sections.status')->with(['products' => function ($query) {
-                $query->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
-                    ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
-                    ->withReviewRating()
-                    ->with('media', 'variations', 'reviews')
-                    ->active('products.status')
-                    ->whereNull('deleted_at');
-            }])->active('product_sections.status')->orderBy('id', 'asc')->get()->map(function ($query) {
-                $query->setRelation('products', $query->products->take(8));
-                return $query;
-            });
+            // Previously this eager-loaded EVERY product of EVERY section (with
+            // media, variations and reviews) and then did ->take(8) in PHP,
+            // discarding the rest — the home page fetched hundreds of products
+            // to show a few dozen. Eager loads can't limit per parent without
+            // an extra package, so each section gets its own small query:
+            // 1 + N queries of at most 8 products each instead of one monster.
+            return ProductSection::select('product_sections.id', 'product_sections.name', 'product_sections.slug', 'product_sections.status')
+                ->active('product_sections.status')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(function ($section) {
+                    $products = $section->products()
+                        ->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
+                        ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
+                        ->withReviewRating()
+                        ->with('media', 'variations', 'taxes')
+                        ->active('products.status')
+                        ->whereNull('deleted_at')
+                        ->take(8)
+                        ->get();
+                    $section->setRelation('products', $products);
+                    return $section;
+                });
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

@@ -233,20 +233,31 @@ class AppLibrary
 
     public static function currencyAmountFormat($amount): string
     {
-        if (env('CURRENCY_POSITION') == CurrencyPosition::LEFT) {
-            return env('CURRENCY_SYMBOL') . number_format($amount, env('CURRENCY_DECIMAL_POINT'), '.', '');
+        // env() re-reads on every call and this runs per product card; memoize.
+        static $position = null, $symbol = null, $decimals = null;
+        if ($position === null) {
+            $position = env('CURRENCY_POSITION');
+            $symbol   = env('CURRENCY_SYMBOL');
+            $decimals = env('CURRENCY_DECIMAL_POINT');
         }
-        return number_format($amount, env('CURRENCY_DECIMAL_POINT'), '.', '') . env('CURRENCY_SYMBOL');
+        if ($position == CurrencyPosition::LEFT) {
+            return $symbol . number_format($amount, $decimals, '.', '');
+        }
+        return number_format($amount, $decimals, '.', '') . $symbol;
     }
 
     public static function flatAmountFormat($amount): string
     {
-        return number_format($amount, env('CURRENCY_DECIMAL_POINT'), '.', '');
+        static $decimals = null;
+        $decimals ??= env('CURRENCY_DECIMAL_POINT');
+        return number_format($amount, $decimals, '.', '');
     }
 
     public static function convertAmountFormat($amount): float
     {
-        return (float)number_format($amount, env('CURRENCY_DECIMAL_POINT'), '.', '');
+        static $decimals = null;
+        $decimals ??= env('CURRENCY_DECIMAL_POINT');
+        return (float)number_format($amount, $decimals, '.', '');
     }
 
     public static function fcmDataBind($request): void

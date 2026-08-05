@@ -58,6 +58,28 @@ Route::get('/product', function (\Illuminate\Http\Request $request) {
 
     return app(RootController::class)->index();
 })->middleware(['installed'])->name('product.listing');
+// Blog. Server-rendered metadata for the same reason the product and category
+// routes exist: Vue writes the head only after JS runs, and an article that
+// serves generic HTML to crawlers cannot rank for what it was written for.
+//
+// The category route is declared BEFORE /blog/{slug} so "category" is never
+// swallowed as a post slug.
+Route::prefix('blog')->middleware(['installed'])->group(function () {
+    Route::get('/', [RootController::class, 'blogIndex'])->name('blog.index');
+
+    Route::get('/category/{slug}', [RootController::class, 'blogCategory'])
+        ->where('slug', '[A-Za-z0-9\-_.]+')
+        ->name('blog.category');
+
+    Route::get('/tag/{slug}', [RootController::class, 'blogTag'])
+        ->where('slug', '[A-Za-z0-9\-_.]+')
+        ->name('blog.tag');
+
+    Route::get('/{slug}', [RootController::class, 'blogPost'])
+        ->where('slug', '[A-Za-z0-9\-_.]+')
+        ->name('blog.show');
+});
+
 Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(function () {
     Route::get('/{paymentGateway:slug}/pay/{order}', [PaymentController::class, 'index'])->name('index');
     Route::post('/{order}/pay', [PaymentController::class, 'payment'])->name('store');

@@ -35,7 +35,11 @@ export const globalState = {
             if (typeof payload === 'object') {
                 for (const key in payload) {
                     if (payload.hasOwnProperty(key)) {
-                        if(!state.lists[key]) {
+                        // Nullish, not truthiness. `!state.lists[key]` treated a
+                        // legitimate 0 or "" as unset and overwrote it — which
+                        // matters here because language_id and display_mode can
+                        // both be 0, and two callers race to init this.
+                        if (state.lists[key] === undefined || state.lists[key] === null) {
                             state.lists[key] = payload[key];
                         }
                     }

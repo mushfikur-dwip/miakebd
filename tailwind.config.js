@@ -86,7 +86,9 @@ export default {
                 "db-card": "0 2px 6px 0 rgb(67 89 113 / 12%)",
                 "widget": "0px 4px 32px rgba(0, 0, 0, 0.06)",
                 "cart": "0px 6px 10px rgba(242, 62, 20, 0.34)",
-                "btn-primary": "0px 8px 15px rgba(242, 62, 20, 0.18)",
+                // Was rgba(242,62,20) — the orange left over from the ShopKing
+                // template, which glowed orange under the new rose buttons.
+                "btn-primary": "0px 8px 15px rgba(169, 97, 107, 0.22)",
                 "btn-secondary": "0px 4px 8px rgba(0, 0, 0, 0.04), 0px 0px 2px rgba(0, 0, 0, 0.06), 0px 0px 1px rgba(0, 0, 0, 0.04)",
             },
         },

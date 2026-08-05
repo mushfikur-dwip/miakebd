@@ -231,12 +231,12 @@ export default {
                 });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = this.$t("menu.stock");
+                link.download = this.$t("menu.stock") + ".xlsx";
                 link.click();
                 URL.revokeObjectURL(link.href);
             }).catch((err) => {
                 this.loading.isActive = false;
-                alertService.error(err.response.data.message);
+                alertService.downloadError(err);
             });
         },
     }

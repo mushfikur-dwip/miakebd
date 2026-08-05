@@ -88,7 +88,7 @@ class ProductSectionProductService
             return $productSection->products()
                 ->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
                 ->withReviewRating()
-                ->with('media', 'variations', 'reviews')
+                ->with('media', 'variations', 'taxes')
                 ->active('products.status')
                 ->paginate($perPage);
         } catch (Exception $exception) {

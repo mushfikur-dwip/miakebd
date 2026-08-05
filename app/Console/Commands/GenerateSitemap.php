@@ -3,6 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Enums\Status;
+use App\Models\BlogCategory;
+use App\Models\BlogPost;
+use App\Models\BlogTag;
 use App\Models\Page;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -104,6 +107,74 @@ class GenerateSitemap extends Command
                         $page->updated_at,
                         'monthly',
                         '0.6'
+                    );
+                    $count++;
+                }
+            });
+
+        // Blog. The index changes as often as posts are added; articles are
+        // advertised at 0.7 — below products, since they earn traffic rather
+        // than revenue directly, but above CMS pages.
+        $this->writeUrl($writer, "{$baseUrl}/blog", now(), 'daily', '0.8');
+        $count++;
+
+        BlogCategory::query()
+            ->select(['id', 'slug', 'updated_at'])
+            ->where('status', Status::ACTIVE)
+            ->whereNotNull('slug')
+            ->where('slug', '<>', '')
+            ->orderBy('id')
+            ->chunkById(200, function ($categories) use ($writer, $baseUrl, &$count): void {
+                foreach ($categories as $category) {
+                    $this->writeUrl(
+                        $writer,
+                        "{$baseUrl}/blog/category/".rawurlencode($category->slug),
+                        $category->updated_at,
+                        'weekly',
+                        '0.7'
+                    );
+                    $count++;
+                }
+            });
+
+        // Concern landing pages. Only those with published posts behind them —
+        // BlogMetaResolver 404s an empty concern, so listing one would send
+        // Google to a dead URL.
+        BlogTag::query()
+            ->where('status', Status::ACTIVE)
+            ->whereNotNull('slug')
+            ->where('slug', '<>', '')
+            ->whereHas('posts', fn($query) => $query->published())
+            ->orderBy('id')
+            ->chunkById(200, function ($tags) use ($writer, $baseUrl, &$count): void {
+                foreach ($tags as $tag) {
+                    $this->writeUrl(
+                        $writer,
+                        "{$baseUrl}/blog/tag/".rawurlencode($tag->slug),
+                        $tag->updated_at,
+                        'weekly',
+                        '0.7'
+                    );
+                    $count++;
+                }
+            });
+
+        // published() rather than a bare status check: a draft or a post dated
+        // for next week must not be advertised, or Google crawls a 404.
+        BlogPost::query()
+            ->published()
+            ->select(['id', 'slug', 'updated_at'])
+            ->whereNotNull('slug')
+            ->where('slug', '<>', '')
+            ->orderBy('id')
+            ->chunkById(500, function ($posts) use ($writer, $baseUrl, &$count): void {
+                foreach ($posts as $post) {
+                    $this->writeUrl(
+                        $writer,
+                        "{$baseUrl}/blog/".rawurlencode($post->slug),
+                        $post->updated_at,
+                        'monthly',
+                        '0.7'
                     );
                     $count++;
                 }

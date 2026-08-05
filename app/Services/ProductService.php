@@ -359,6 +359,7 @@ class ProductService
 
             return Product::select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
                 ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
+                ->with('media', 'variations', 'taxes')
                 ->withReviewRating()
                 ->withCount('orderCountable')
                 ->where(['status' => Status::ACTIVE])
@@ -646,7 +647,7 @@ class ProductService
             });
 
             $variationArray         = [];
-            $productAttributeOption = ProductAttributeOption::get()->pluck('name', 'id')->toArray();
+            $productAttributeOption = ProductAttributeOption::pluck('name', 'id')->toArray();
             if ($variations) {
                 foreach ($variations->toArray() as $variation) {
                     if (count($variation)) {
@@ -709,7 +710,7 @@ class ProductService
             return Product::select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
                 ->withReviewRating()
                 ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
-                ->with('media', 'variations', 'reviews')
+                ->with('media', 'variations', 'taxes')
                 ->active('products.status')
                 ->where('products.add_to_flash_sale', Ask::YES)
                 ->where('products.offer_start_date', '<=', $now)
@@ -738,7 +739,7 @@ class ProductService
             return Product::select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
                 ->withReviewRating()
                 ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
-                ->with('media', 'variations', 'reviews')
+                ->with('media', 'variations', 'taxes')
                 ->active('products.status')
                 ->where('products.offer_start_date', '<=', $now)
                 ->where('products.offer_end_date', '>=', $now)
@@ -805,7 +806,7 @@ class ProductService
                 return Product::select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
                     ->withReviewRating()
                     ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
-                    ->with('media', 'variations', 'reviews', 'tags')
+                    ->with('media', 'variations', 'taxes', 'tags')
                     ->active('products.status')
                     ->whereHas('tags', function ($query) use ($productTags) {
                         if (count($productTags) > 0) {
@@ -848,7 +849,7 @@ class ProductService
 
             return Product::select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
                 ->withReviewRating()
-                ->with('media', 'variations', 'reviews', 'wishlist')
+                ->with('media', 'variations', 'taxes', 'wishlist')
                 ->whereHas('wishlist', function ($query) {
                     return $query->where('user_id', Auth::user()->id);
                 })

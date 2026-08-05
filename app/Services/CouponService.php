@@ -223,8 +223,14 @@ class CouponService
                 if ($coupon->minimum_order > $request->total) {
                     throw new Exception(trans('all.message.minimum_order_amount') . AppLibrary::convertAmountFormat($coupon->minimum_order), 422);
                 } else {
-                    if (strtotime($coupon->end_date) >= strtotime(Carbon::now())) {
-                        $ordered_coupon_count = OrderCoupon::where(['user_id' => auth()->user()->id, 'coupon_id' => $coupon->id])->count();
+                    // Was end-date only: a coupon scheduled for next month was
+                    // redeemable today.
+                    if (strtotime($coupon->start_date) <= strtotime(Carbon::now())
+                        && strtotime($coupon->end_date) >= strtotime(Carbon::now())) {
+                        // $user->id, not auth()->user()->id: this route has no
+                        // auth:sanctum middleware, so the default guard is null
+                        // for token-only clients and the count query fatals.
+                        $ordered_coupon_count = OrderCoupon::where(['user_id' => $user->id, 'coupon_id' => $coupon->id])->count();
                         if ($coupon->limit_per_user <= $ordered_coupon_count) {
                             throw new Exception(trans('all.message.coupon_limit_exceeded'), 422);
                         }

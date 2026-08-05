@@ -26,6 +26,10 @@ const  CheckoutPaymentComponent = () => import("../../components/frontend/checko
 const  PaymentHeaderComponent = () => import("../../components/frontend/checkout/payment/HeaderComponent");
 const  ProductReviewComponent = () => import("../../components/frontend/account/review/ProductReviewComponent");
 const  MostPopularProductComponent = () => import("../../components/frontend/product/MostPopularProductComponent.vue");
+const  BlogComponent = () => import("../../components/frontend/blog/BlogComponent");
+const  BlogDetailsComponent = () => import("../../components/frontend/blog/BlogDetailsComponent");
+const  BlogCategoryComponent = () => import("../../components/frontend/blog/BlogCategoryComponent");
+const  BlogTagPageComponent = () => import("../../components/frontend/blog/BlogTagPageComponent");
 
 export default [
     {
@@ -62,6 +66,45 @@ export default [
         path: "/product/:slug",
         component: ProductDetailsComponent,
         name: "frontend.product.details",
+        meta: {
+            isFrontend: true,
+            auth: false,
+        },
+    },
+    {
+        path: "/blog",
+        component: BlogComponent,
+        name: "frontend.blog",
+        meta: {
+            isFrontend: true,
+            auth: false,
+        },
+    },
+    {
+        // Declared before /blog/:slug so "category" is not matched as a post
+        // slug — the same ordering the server-side routes use.
+        path: "/blog/category/:slug",
+        component: BlogCategoryComponent,
+        name: "frontend.blog.category",
+        meta: {
+            isFrontend: true,
+            auth: false,
+        },
+    },
+    {
+        // Also declared before /blog/:slug, same reason as the category route.
+        path: "/blog/tag/:slug",
+        component: BlogTagPageComponent,
+        name: "frontend.blog.tag",
+        meta: {
+            isFrontend: true,
+            auth: false,
+        },
+    },
+    {
+        path: "/blog/:slug",
+        component: BlogDetailsComponent,
+        name: "frontend.blog.details",
         meta: {
             isFrontend: true,
             auth: false,

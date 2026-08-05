@@ -358,6 +358,52 @@ class MenuTableSeeder extends Seeder
                 ]
             ],
             [
+                'name'       => 'Blog',
+                'language'   => 'blog',
+                'url'        => '#',
+                'icon'       => 'lab lab-line-page',
+                'priority'   => 100,
+                'status'     => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+                'children'   => [
+                    [
+                        'name'       => 'All Posts',
+                        'language'   => 'blog_posts',
+                        'url'        => 'blog',
+                        'icon'       => 'lab lab-line-page',
+                        'priority'   => 100,
+                        'status'     => 1,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ],
+                    [
+                        'name'       => 'Blog Categories',
+                        'language'   => 'blog_categories',
+                        'url'        => 'blog-categories',
+                        'icon'       => 'lab lab-line-category',
+                        'priority'   => 100,
+                        'status'     => 1,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ],
+                    // Was only in migration 2026_08_01_100002, which returns
+                    // early when `permissions` is empty — so a fresh
+                    // `migrate:fresh --seed` created the route and API but no
+                    // sidebar link to reach Concerns & Tags.
+                    [
+                        'name'       => 'Concerns & Tags',
+                        'language'   => 'blog_tags',
+                        'url'        => 'blog-tags',
+                        'icon'       => 'lab lab-line-tag',
+                        'priority'   => 100,
+                        'status'     => 1,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]
+                ]
+            ],
+            [
                 'name'       => 'Setup',
                 'language'   => 'setup',
                 'url'        => '#',

@@ -8,6 +8,9 @@ import { analyticSection } from "./modules/analyticSection";
 import { auth } from "./modules/auth";
 import { barcode } from "./modules/barcode";
 import { benefit } from "./modules/benefit";
+import { blogCategory } from "./modules/blogCategory";
+import { blogPost } from "./modules/blogPost";
+import { blogTag } from "./modules/blogTag";
 import { city } from "./modules/city";
 import { company } from "./modules/company";
 import { cookies } from "./modules/cookies";
@@ -25,6 +28,7 @@ import { employee } from "./modules/employee";
 import { employeeAddress } from "./modules/employeeAddress";
 import { frontendAddress } from "./modules/frontend/frontendAddress";
 import { frontendBenefit } from "./modules/frontend/frontendBenefit";
+import { frontendBlog } from "./modules/frontend/frontendBlog";
 import { frontendCart } from "./modules/frontend/frontendCart";
 import { frontendCountryCode } from "./modules/frontend/frontendCountryCode";
 import { frontendCountryStateCity } from "./modules/frontend/frontendCountryStateCity";
@@ -127,6 +131,10 @@ export default new createStore({
         license,
         cookies,
         page,
+        blogPost,
+        blogCategory,
+        blogTag,
+        frontendBlog,
         analytic,
         analyticSection,
         theme,

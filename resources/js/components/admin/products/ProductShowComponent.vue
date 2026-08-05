@@ -620,7 +620,7 @@ export default {
                     });
                 } catch (err) {
                     this.loading.isActive = false;
-                    alertService.error(err.response.data.message);
+                    alertService.downloadError(err);
                 }
             }
         },
@@ -638,11 +638,11 @@ export default {
                         this.deleteIndex = 0;
                     }).catch((err) => {
                         this.loading.isActive = false;
-                        alertService.error(err.response.data.message);
+                        alertService.downloadError(err);
                     });
                 } catch (err) {
                     this.loading.isActive = false;
-                    alertService.error(err.response.data.message);
+                    alertService.downloadError(err);
                 }
             }).catch((err) => {
                 this.loading.isActive = false;
@@ -664,7 +664,7 @@ export default {
                 });
             } catch (err) {
                 this.loading.isActive = false;
-                alertService.error(err.response.data.message);
+                alertService.downloadError(err);
             }
         },
         offerSsave: function () {
@@ -683,7 +683,7 @@ export default {
                 });
             } catch (err) {
                 this.loading.isActive = false;
-                alertService.error(err.response.data.message);
+                alertService.downloadError(err);
             }
         },
         downloadBarcode: function (sku) {
@@ -734,11 +734,11 @@ export default {
                         }
                     }).catch((err) => {
                         this.loading.isActive = false;
-                        alertService.error(err.response.data.message);
+                        alertService.downloadError(err);
                     })
                 } catch (err) {
                     this.loading.isActive = false;
-                    alertService.error(err.response.data.message);
+                    alertService.downloadError(err);
                 }
             }).catch((err) => {
                 this.loading.isActive = false;

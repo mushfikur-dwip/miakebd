@@ -317,11 +317,11 @@ export default {
                         alertService.successFlip(null, this.$t('menu.pos_orders'));
                     }).catch((err) => {
                         this.loading.isActive = false;
-                        alertService.error(err.response.data.message);
+                        alertService.downloadError(err);
                     })
                 } catch (err) {
                     this.loading.isActive = false;
-                    alertService.error(err.response.data.message);
+                    alertService.downloadError(err);
                 }
             }).catch((err) => {
                 this.loading.isActive = false;
@@ -336,12 +336,12 @@ export default {
                 });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = this.$t("menu.pos_orders");
+                link.download = this.$t("menu.pos_orders") + ".xlsx";
                 link.click();
                 URL.revokeObjectURL(link.href);
             }).catch((err) => {
                 this.loading.isActive = false;
-                alertService.error(err.response.data.message);
+                alertService.downloadError(err);
             });
         },
     }

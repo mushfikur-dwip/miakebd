@@ -21,6 +21,7 @@ use App\Events\SendOrderMail;
 use App\Events\SendOrderPush;
 use App\Models\ProductVariation;
 use App\Models\OrderOutletAddress;
+use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\OrderRequest;
 use Illuminate\Support\Facades\Log;
@@ -116,6 +117,29 @@ class FrontendOrderService
 
                 $attributes = $request->validated();
 
+                // Wallet redemption. Validated up front so a bad amount rolls
+                // back before anything is written. All-or-nothing by design:
+                // every gateway charges orders.total, so a PARTIAL wallet
+                // discount would make the customer pay the full total at the
+                // gateway AND lose wallet balance. Full coverage is also the
+                // only case /payment/successful can mark paid.
+                $walletDiscount = (float) ($attributes['wallet_discount'] ?? 0);
+                $walletUser     = null;
+                if ($walletDiscount > 0) {
+                    $walletUser = Auth::user();
+
+                    if (round($walletDiscount, 2) !== round((float) ($attributes['total'] ?? 0), 2)) {
+                        throw new Exception(trans('all.message.wallet_must_cover_full_total'), 422);
+                    }
+
+                    if ($walletDiscount > (float) $walletUser->balance) {
+                        throw new Exception(trans('all.message.insufficient_wallet_balance'), 422);
+                    }
+                } else {
+                    // Never let a stray client value land on the order row.
+                    unset($attributes['wallet_discount']);
+                }
+
                 // orders.outlet_id is a foreign key to outlets, so 0 is not a
                 // usable value — MySQL rejects the whole insert with a foreign
                 // key error that reaches the customer as nothing more than
@@ -182,6 +206,17 @@ class FrontendOrderService
                 if ($request->order_type == OrderType::DELIVERY) {
                     $shippingAddress = Address::find($request->shipping_id);
                     $billingAddress  = Address::find($request->billing_id);
+
+                    // The ids come from the client. Without an ownership check
+                    // a customer could attach ANY user's saved address to their
+                    // order and read the victim's name, phone and address back
+                    // in their own order details.
+                    foreach ([$shippingAddress, $billingAddress] as $deliveryAddress) {
+                        if ($deliveryAddress && (int) $deliveryAddress->user_id !== (int) Auth::id()) {
+                            throw new Exception(trans('all.message.address_does_not_belong_to_you'), 422);
+                        }
+                    }
+
                     if ($shippingAddress) {
                         OrderAddress::create([
                             'order_id'     => $this->order->id,
@@ -203,7 +238,10 @@ class FrontendOrderService
                     if ($billingAddress) {
                         OrderAddress::create([
                             'order_id'     => $this->order->id,
-                            'user_id'      => $shippingAddress->user_id,
+                            // Was $shippingAddress->user_id: a fatal null-pointer
+                            // whenever only the billing id resolved, and the wrong
+                            // owner on the row when both existed.
+                            'user_id'      => $billingAddress->user_id,
                             'address_type' => AddressType::BILLING,
                             'full_name'    => $billingAddress->full_name,
                             'email'        => $billingAddress->email,
@@ -244,6 +282,30 @@ class FrontendOrderService
                         'coupon_id' => $request->coupon_id,
                         'user_id'   => Auth::user()->id,
                         'discount'  => $request->discount
+                    ]);
+                }
+
+                // Debit the wallet the order was validated for above. The row
+                // already carries wallet_discount from the create; this is the
+                // money movement plus its audit trail. PaymentController's
+                // /payment/successful route marks the order PAID when the
+                // wallet covered the full total.
+                if ($walletDiscount > 0 && $walletUser) {
+                    $balanceBefore        = (float) $walletUser->balance;
+                    $walletUser->balance  = $balanceBefore - $walletDiscount;
+                    $walletUser->save();
+
+                    Transaction::create([
+                        'order_id'        => $this->order->id,
+                        'transaction_no'  => 'TXN-' . time() . '-' . $this->order->id,
+                        'amount'          => $walletDiscount,
+                        'payment_method'  => 'wallet',
+                        'type'            => 'payment',
+                        'sign'            => '-',
+                        'user_id'         => $walletUser->id,
+                        'note'            => 'Wallet payment for order #' . $this->order->order_serial_no,
+                        'balance_before'  => $balanceBefore,
+                        'balance_after'   => $walletUser->balance,
                     ]);
                 }
             });

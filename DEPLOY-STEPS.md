@@ -158,7 +158,32 @@ composer dump-autoload      # REQUIRED — see below
 php artisan optimize:clear
 php artisan migrate --force
 php artisan sitemap:generate
+
+# Boot-time caches. Safe, and they shave work off every single request.
+php artisan route:cache
+php artisan view:cache
 ```
+
+### ⛔ Never run `php artisan config:cache` or `php artisan optimize`
+
+`optimize` runs `config:cache` internally, so both are the same trap.
+
+This app calls `env()` in **38 places outside `config/`** — including
+`ApiKeyMiddleware` (`env('VITE_API_KEY')`), `AppLibrary` (every price format),
+`OtpManagerService`, and `master.blade.php` itself:
+
+```php
+const APP_KEY = "{{ env('VITE_API_KEY') }}";
+```
+
+Once the config is cached, Laravel stops reading `.env` and `env()` returns
+**null everywhere outside `config/`**. The API key becomes empty, so
+`ApiKeyMiddleware` rejects every request and the whole storefront goes down —
+prices, OTP and SMS break too.
+
+`route:cache` and `view:cache` are unaffected and safe. To make `config:cache`
+usable, those 38 `env()` calls must first move into `config/` files and be read
+through `config()`.
 
 **`composer dump-autoload` is not optional.** This deploy adds six new PHP
 classes. Production installs normally run an optimized autoloader, which uses a

@@ -502,11 +502,11 @@ export default {
                         alertService.successFlip(null, this.$t('menu.products'));
                     }).catch((err) => {
                         this.loading.isActive = false;
-                        alertService.error(err.response.data.message);
+                        alertService.downloadError(err);
                     })
                 } catch (err) {
                     this.loading.isActive = false;
-                    alertService.error(err.response.data.message);
+                    alertService.downloadError(err);
                 }
             }).catch((err) => {
                 this.loading.isActive = false;
@@ -521,12 +521,12 @@ export default {
                 });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = this.$t("menu.products");
+                link.download = this.$t("menu.products") + ".xlsx";
                 link.click();
                 URL.revokeObjectURL(link.href);
             }).catch((err) => {
                 this.loading.isActive = false;
-                alertService.error(err.response.data.message);
+                alertService.downloadError(err);
             });
         },
         download: function () {
@@ -538,12 +538,12 @@ export default {
                 });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = this.$t("menu.products");
+                link.download = this.$t("menu.products") + ".xlsx";
                 link.click();
                 URL.revokeObjectURL(link.href);
             }).catch((err) => {
                 this.loading.isActive = false;
-                alertService.error(err.response.data.message);
+                alertService.downloadError(err);
             });
         },
     }

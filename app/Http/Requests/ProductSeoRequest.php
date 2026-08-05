@@ -27,7 +27,14 @@ class ProductSeoRequest extends FormRequest
             'product_id'   => ['required', 'numeric'],
             'title'        => ['required', 'string', 'max:190'],
             'description'  => ['required', 'string', 'max:5000'],
-            'meta_keyword' => ['required', 'max:190'],
+            // The admin panel posts this as a JSON array string built by
+            // vue-tags-input, e.g. ["vaseline","vaseline price in bangladesh"].
+            // `max:190` counted CHARACTERS of that JSON, not keywords, so a
+            // normal six-keyword set (~165 chars average across the 440 rows
+            // already stored, 17 of them past 190) failed validation and the
+            // whole SEO tab silently refused to save. The column is LONGTEXT;
+            // 2000 is a sane ceiling that fits ~40 keywords.
+            'meta_keyword' => ['required', 'string', 'max:2000'],
             'image'        => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048']
         ];
     }

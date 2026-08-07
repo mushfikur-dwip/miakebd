@@ -41,9 +41,14 @@ export default {
     },
     mounted() {
         this.loading.isActive = true;
+        // paginate:1 + per_page, NOT rand. The service sorts by
+        // order_countable_count desc, but scopeRandAndLimitOrOrderBy() replaces
+        // that with inRandomOrder() whenever rand > 0 — so this block was
+        // showing 8 RANDOM products under a "Most Popular" heading. Paginating
+        // keeps the best-selling sort and still returns only 8 rows.
         this.$store.dispatch("frontendProduct/popularProducts", {
-            paginate: 0,
-            rand: 8
+            paginate: 1,
+            per_page: 8
         }).then(res => {
             this.loading.isActive = false;
         }).catch((err) => {

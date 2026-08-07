@@ -113,7 +113,8 @@
         "blog": "Blog",
         "blog_posts": "Blog Posts",
         "blog_categories": "Blog Categories",
-        "blog_tags": "Concerns & Tags"
+        "blog_tags": "Concerns & Tags",
+        "campaigns": "Campaigns"
     },
     "label": {
         "license_code": "License Code",
@@ -814,7 +815,24 @@
         "concerns_placeholder": "acne, sunburn, tan …",
         "tag_name_placeholder": "Acne, Sunburn, Tan …",
         "browse_by_concern": "Browse by Concern",
-        "view_all": "View all"
+        "view_all": "View all",
+        "support_24_7": "24/7 Support",
+        "offer_link": "Offer Link",
+        "our_stores": "Our Stores",
+        "clearance_sale": "Clearance Sale",
+        "special_price": "Special Price",
+        "campaign_price": "Campaign Price",
+        "campaign_state": "Currently",
+        "campaign_ended": "This Sale Has Ended",
+        "running": "Running",
+        "not_running": "Not Running",
+        "expired": "expired",
+        "ends_in": "Ends in",
+        "days": "days",
+        "hours": "hrs",
+        "minutes": "min",
+        "seconds": "sec",
+        "shop_now": "Shop Now"
     },
     "button": {
         "add": "Add",
@@ -933,7 +951,8 @@
         "add_post": "Add Post",
         "edit_post": "Edit Post",
         "add_category": "Add Category",
-        "add_tag": "Add Concern"
+        "add_tag": "Add Concern",
+        "add_campaign": "Add Campaign"
     },
     "number": {
         "10": "10",
@@ -1065,6 +1084,9 @@
         "concerns_hint": "What skin problem does this post address? Each concern gets its own page.",
         "tag_seo_hint": "Leave blank and these are generated from the concern name.",
         "blog_tags_intro": "Concerns are what readers actually search for — acne, sunburn, tan. A post can carry several, and each gets its own indexable page at /blog/tag/{slug}.",
-        "meta_keywords_chip_hint": "Press Enter or comma to add. 5-15 works best."
+        "meta_keywords_chip_hint": "Press Enter or comma to add. 5-15 works best.",
+        "campaign_window_hint": "The campaign prices products only between the start and end times. Outside that window the page hides itself and every product goes back to its normal price.",
+        "special_price_hint": "The price customers pay on this campaign page only. It is not taken from the product's normal price and does not change it.",
+        "campaign_ended": "These prices are no longer available. Browse the store for current offers."
     }
 }

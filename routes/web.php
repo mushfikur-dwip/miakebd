@@ -86,7 +86,12 @@ Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(fun
     Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/success', [PaymentController::class, 'success'])->name('success');
     Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/fail', [PaymentController::class, 'fail'])->name('fail');
     Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/cancel', [PaymentController::class, 'cancel'])->name('cancel');
-    Route::get('/successful/{order}', [PaymentController::class, 'successful'])->name('successful');
+    // Throttled because the route takes an order id and no credential — the
+    // per-order idempotency guard in the controller is the real protection, but
+    // this keeps anyone from sweeping the id range at speed.
+    Route::get('/successful/{order}', [PaymentController::class, 'successful'])
+        ->middleware('throttle:30,1')
+        ->name('successful');
 });
 
 Route::fallback(function (\Illuminate\Http\Request $request) {

@@ -633,7 +633,12 @@ export default {
                 price: this.temp.price,
                 old_price: this.temp.oldPrice,
                 total_price: this.temp.totalPrice,
-                maximum_purchase_quantity: this.temp.maximum_purchase_quantity
+                maximum_purchase_quantity: this.temp.maximum_purchase_quantity,
+                // Product detail always shows the retail price — campaign
+                // pricing is scoped to the campaign page — so a line added
+                // here is always a catalogue line.
+                price_source: 'catalogue',
+                campaign_id: null
             }
 
             if (this.selectedVariation) {

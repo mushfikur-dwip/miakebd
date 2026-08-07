@@ -5,6 +5,12 @@ import shippingMethodEnum from "../../../enums/modules/shippingMethodEnum";
 import ShippingTypeEnum from "../../../enums/modules/shippingTypeEnum";
 import AskEnum from "../../../enums/modules/askEnum";
 
+/**
+ * Price source of a cart line that came from the normal catalogue. Campaign
+ * lines carry "campaign:<id>" instead, so the same product bought from a
+ * campaign page and from the listing stays two lines at two prices.
+ */
+const CATALOGUE_SOURCE = "catalogue";
 
 export const frontendCart = {
     namespaced: true,
@@ -100,8 +106,28 @@ export const frontendCart = {
                     if (context.state.lists.length === 0) {
                         isNew = true;
                     } else {
+                        const payloadSource = payload.price_source || CATALOGUE_SOURCE;
+
                         _.forEach(context.state.lists, (list, listKey) => {
-                            if (list.product_id === payload.product_id && list.variation_id === payload.variation_id) {
+                            // Keyed by price_source as well as product and
+                            // variation. The same product added from a campaign
+                            // page and from the normal listing is two lines at
+                            // two prices — that is intended. Merging on product
+                            // alone would collapse them into one line and keep
+                            // whichever price happened to land first, silently
+                            // charging the wrong amount.
+                            //
+                            // Falls back to CATALOGUE_SOURCE on both sides: the
+                            // cart is persisted to localStorage, so lines saved
+                            // before campaigns existed carry no price_source
+                            // and must still merge with a normal add.
+                            const listSource = list.price_source || CATALOGUE_SOURCE;
+
+                            if (
+                                list.product_id === payload.product_id
+                                && list.variation_id === payload.variation_id
+                                && listSource === payloadSource
+                            ) {
                                 productMatch = true;
                                 if ((payload.quantity + list.quantity) <= list.stock) {
                                     if ((payload.quantity + list.quantity) <= list.maximum_purchase_quantity) {
@@ -146,7 +172,9 @@ export const frontendCart = {
                             subtotal: 0,
                             total: 0,
                             total_price: payload.total_price,
-                            maximum_purchase_quantity: payload.maximum_purchase_quantity
+                            maximum_purchase_quantity: payload.maximum_purchase_quantity,
+                            price_source: payload.price_source || CATALOGUE_SOURCE,
+                            campaign_id: payload.campaign_id || null
                         });
                         isNew = false;
                     }

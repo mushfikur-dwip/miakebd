@@ -10,6 +10,14 @@
                         <h4 class="font-semibold capitalize whitespace-nowrap overflow-hidden text-ellipsis mb-1">
                             {{ cart.name }}
                         </h4>
+                        <!-- The same product can legitimately appear twice at
+                             two prices: once from a campaign page, once from
+                             the normal listing. Without this the two rows look
+                             identical and the price difference reads as a bug. -->
+                        <span v-if="cart.campaign_id"
+                            class="inline-block mb-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary">
+                            {{ $t('label.campaign_price') }}
+                        </span>
                         <div v-if="cart.variation_id > 0" class="flex flex-wrap mb-2">
                             <span class="text-xs capitalize inline-flex items-center">{{ cart.variation_names }}</span>
                         </div>

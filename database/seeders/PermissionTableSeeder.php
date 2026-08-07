@@ -325,6 +325,48 @@ class PermissionTableSeeder extends Seeder
                 ]
             ],
             [
+                'title'      => 'Campaigns',
+                'name'       => 'campaigns',
+                'guard_name' => 'sanctum',
+                'url'        => 'campaigns',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'children'   => [
+                    [
+                        'title'      => 'Campaigns Create',
+                        'name'       => 'campaigns_create',
+                        'guard_name' => 'sanctum',
+                        'url'        => 'campaigns/create',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                    [
+                        'title'      => 'Campaigns Edit',
+                        'name'       => 'campaigns_edit',
+                        'guard_name' => 'sanctum',
+                        'url'        => 'campaigns/edit',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                    [
+                        'title'      => 'Campaigns Delete',
+                        'name'       => 'campaigns_delete',
+                        'guard_name' => 'sanctum',
+                        'url'        => 'campaigns/delete',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                    [
+                        'title'      => 'Campaigns Show',
+                        'name'       => 'campaigns_show',
+                        'guard_name' => 'sanctum',
+                        'url'        => 'campaigns/show',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                ]
+            ],
+            [
                 'title'      => 'Product Sections',
                 'name'       => 'product-sections',
                 'guard_name' => 'sanctum',

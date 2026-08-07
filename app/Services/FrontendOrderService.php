@@ -22,6 +22,7 @@ use App\Events\SendOrderPush;
 use App\Models\ProductVariation;
 use App\Models\OrderOutletAddress;
 use App\Models\Transaction;
+use App\Support\OrderPriceGuard;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\OrderRequest;
 use Illuminate\Support\Facades\Log;
@@ -116,6 +117,21 @@ class FrontendOrderService
                 }
 
                 $attributes = $request->validated();
+
+                // Line prices, recomputed from the database. Same reasoning as
+                // the wallet check below — validated before anything is written
+                // so a bad price never reaches an order row.
+                //
+                // This is what makes campaign pricing safe to trust: a campaign
+                // line only carries its special price because the browser sent
+                // it, so the guard confirms that price really is the campaign's
+                // and that the campaign is still running. A cart left sitting
+                // past the end of a sale is refused here instead of quietly
+                // ordering at the old price.
+                OrderPriceGuard::assertPricesAreGenuine(
+                    (array) json_decode($request->products),
+                    $attributes['subtotal'] ?? null
+                );
 
                 // Wallet redemption. Validated up front so a bad amount rolls
                 // back before anything is written. All-or-nothing by design:

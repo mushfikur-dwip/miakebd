@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\BenefitController;
 use App\Http\Controllers\Admin\BlogCategoryController;
 use App\Http\Controllers\Admin\BlogPostController;
 use App\Http\Controllers\Admin\BlogTagController;
+use App\Http\Controllers\Admin\CampaignController;
+use App\Http\Controllers\Admin\CampaignProductController;
 use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CookiesController;
@@ -88,6 +90,7 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Frontend\AddressController as FrontendAddressController;
 use App\Http\Controllers\Frontend\BenefitController as FrontendBenefitController;
 use App\Http\Controllers\Frontend\BlogController as FrontendBlogController;
+use App\Http\Controllers\Frontend\CampaignController as FrontendCampaignController;
 use App\Http\Controllers\Frontend\CookiesController as FrontendCookiesController;
 use App\Http\Controllers\Frontend\CountryCodeController as FrontendCountryCodeController;
 use App\Http\Controllers\Frontend\CountryStateCityController as FrontendCountryStateCityController;
@@ -639,6 +642,19 @@ Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
         Route::delete('/product/{promotion}/{promotionProduct}', [PromotionProductController::class, 'destroy']);
     });
 
+    Route::prefix('campaign')->group(function () {
+        Route::get('/', [CampaignController::class, 'index']);
+        Route::get('/show/{campaign}', [CampaignController::class, 'show']);
+        Route::post('/', [CampaignController::class, 'store']);
+        Route::match(['post', 'put', 'patch'], '/{campaign}', [CampaignController::class, 'update']);
+        Route::delete('/{campaign}', [CampaignController::class, 'destroy']);
+
+        Route::get('/product/{campaign}', [CampaignProductController::class, 'index']);
+        Route::post('/product/{campaign}', [CampaignProductController::class, 'store']);
+        Route::match(['put', 'patch'], '/product/{campaign}/{campaignProduct}', [CampaignProductController::class, 'update']);
+        Route::delete('/product/{campaign}/{campaignProduct}', [CampaignProductController::class, 'destroy']);
+    });
+
     Route::prefix('product-section')->group(function () {
         Route::get('/', [ProductSectionController::class, 'index']);
         Route::get('/show/{productSection}', [ProductSectionController::class, 'show']);
@@ -908,6 +924,15 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::get('/', [FrontendPromotionController::class, 'index']);
         Route::get('/show/{promotion:slug}', [FrontendPromotionController::class, 'show']);
         Route::get('/products/{promotion:slug}', [FrontendPromotionProductController::class, 'index']);
+    });
+
+    // Campaign pricing. `index` returns only campaigns inside their active
+    // window and feeds the nav; `show` and `products` reject an expired
+    // campaign server-side, so an old shared link cannot resurrect its prices.
+    Route::prefix('campaign')->group(function () {
+        Route::get('/', [FrontendCampaignController::class, 'index']);
+        Route::get('/show/{campaign:slug}', [FrontendCampaignController::class, 'show']);
+        Route::get('/products/{campaign:slug}', [FrontendCampaignController::class, 'products']);
     });
 
     Route::prefix('product-section')->group(function () {

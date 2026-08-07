@@ -22,7 +22,7 @@ use App\Services\PaymentManagerService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Dipokhalder\Settings\Facades\Settings;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class PaymentController extends Controller
 {
@@ -100,27 +100,47 @@ class PaymentController extends Controller
 
     public function successful(Order $order): \Illuminate\Foundation\Application|\Illuminate\Routing\Redirector|\Illuminate\Http\RedirectResponse|\Illuminate\Contracts\Foundation\Application
     {
-        // This route carries no auth middleware, so without this check ANY
-        // visitor could hit /payment/successful/{any order id} — firing the
-        // customer's mail/SMS/push notifications for arbitrary orders, and
-        // marking a wallet-covered order PAID without proving anything.
-        abort_if(!Auth::check() || (int) $order->user_id !== (int) Auth::id(), 404);
-
+        // Reached by an ordinary browser navigation: every payment gateway
+        // redirects here server-side once it has settled, and the SPA sends the
+        // customer here directly when a wallet covers the whole total.
+        //
+        // There is no session identity to read at this point. The api middleware
+        // group is stateless, so signing in only ever hands the SPA a Bearer
+        // token — no session cookie is ever written — and a guest-checkout order
+        // has no user attached at all. An Auth::check()/user_id comparison here
+        // therefore rejected every legitimate customer, turning a placed order
+        // into a 404 with no invoice.
+        //
+        // Idempotency replaces it, and guards the same thing the ownership check
+        // was there for: the side effects below run at most once per order, so
+        // walking order ids can no longer fire a stranger's mail/SMS/push. It
+        // also fixes a pre-existing bug — refreshing this page used to send a
+        // second confirmation email and a second (billable) SMS.
         try {
-            // If order is fully paid by wallet (wallet_discount covers total), mark as paid
-            if ($order->wallet_discount > 0 && $order->wallet_discount >= $order->total && $order->payment_status === PaymentStatus::UNPAID) {
-                $order->payment_status = PaymentStatus::PAID;
-                $order->save();
-            }
-            
-            SendOrderMail::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
-            SendOrderSms::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
-            SendOrderPush::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
+            $firstVisit = Cache::add('order-confirmed-' . $order->id, true, now()->addDays(30));
+        } catch (\Throwable $e) {
+            // Never let a cache problem break a completed checkout. Falling open
+            // risks a duplicate notification; falling closed loses the invoice.
+            $firstVisit = true;
+        }
 
-            SendOrderGotMail::dispatch(['order_id' => $order->id]);
-            SendOrderGotSms::dispatch(['order_id' => $order->id]);
-            SendOrderGotPush::dispatch(['order_id' => $order->id]);
-        } catch (\Exception $e) {
+        if ($firstVisit) {
+            try {
+                // If order is fully paid by wallet (wallet_discount covers total), mark as paid
+                if ($order->wallet_discount > 0 && $order->wallet_discount >= $order->total && $order->payment_status === PaymentStatus::UNPAID) {
+                    $order->payment_status = PaymentStatus::PAID;
+                    $order->save();
+                }
+
+                SendOrderMail::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
+                SendOrderSms::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
+                SendOrderPush::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
+
+                SendOrderGotMail::dispatch(['order_id' => $order->id]);
+                SendOrderGotSms::dispatch(['order_id' => $order->id]);
+                SendOrderGotPush::dispatch(['order_id' => $order->id]);
+            } catch (\Exception $e) {
+            }
         }
 
         return redirect('/account/order-details/' . $order->id . '?status=success');

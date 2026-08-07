@@ -62,7 +62,11 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
-        }
+        },
+        "classmap": [
+            "app/Http/Exports",
+            "app/Http/PaymentGateways"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

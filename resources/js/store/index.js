@@ -11,6 +11,8 @@ import { benefit } from "./modules/benefit";
 import { blogCategory } from "./modules/blogCategory";
 import { blogPost } from "./modules/blogPost";
 import { blogTag } from "./modules/blogTag";
+import { campaign } from "./modules/campaign";
+import { campaignProduct } from "./modules/campaignProduct";
 import { city } from "./modules/city";
 import { company } from "./modules/company";
 import { cookies } from "./modules/cookies";
@@ -29,6 +31,7 @@ import { employeeAddress } from "./modules/employeeAddress";
 import { frontendAddress } from "./modules/frontend/frontendAddress";
 import { frontendBenefit } from "./modules/frontend/frontendBenefit";
 import { frontendBlog } from "./modules/frontend/frontendBlog";
+import { frontendCampaign } from "./modules/frontend/frontendCampaign";
 import { frontendCart } from "./modules/frontend/frontendCart";
 import { frontendCountryCode } from "./modules/frontend/frontendCountryCode";
 import { frontendCountryStateCity } from "./modules/frontend/frontendCountryStateCity";
@@ -203,6 +206,9 @@ export default new createStore({
         frontendSignup,
         frontendGuest,
         frontendCart,
+        frontendCampaign,
+        campaign,
+        campaignProduct,
         frontendCoupon,
         stock,
         storeSalesReport,

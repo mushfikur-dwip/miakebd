@@ -97,6 +97,33 @@
                                 {{ $t("label.offers") }}
                             </router-link>
                         </li>
+
+                        <li class="header-nav-item">
+                            <router-link class="header-nav-menu"
+                                :class="checkIsPathAndRoutePathSame('/flash-sale') ? 'router-link-active router-link-exact-active' : ''"
+                                :to="{ name: 'frontend.flashSale.products' }">
+                                {{ $t("label.flash_sale") }}
+                            </router-link>
+                        </li>
+
+                        <!-- Running campaigns plus Wholesale; see navSections.
+                             Nothing is hardcoded, so a link never points at a
+                             page that has not been set up or has expired. -->
+                        <li class="header-nav-item" v-for="section in navSections" :key="section.id">
+                            <router-link class="header-nav-menu"
+                                :class="isNavSectionActive(section) ? 'router-link-active router-link-exact-active' : ''"
+                                :to="{ name: section.routeName, params: { slug: section.slug } }">
+                                {{ section.name }}
+                            </router-link>
+                        </li>
+
+                        <li class="header-nav-item">
+                            <router-link class="header-nav-menu"
+                                :class="currentRoute.startsWith('/blog') ? 'router-link-active router-link-exact-active' : ''"
+                                :to="{ name: 'frontend.blog' }">
+                                {{ $t("label.blog") }}
+                            </router-link>
+                        </li>
                     </ul>
                 </nav>
                 <!-- MenuBar End -->
@@ -142,6 +169,21 @@
                 </router-link>
                 <!-- WishList End -->
 
+
+                <!-- 24/7 helpline. tel: so a tap dials on mobile. Falls back to
+                     the store's own number if company_phone is unset. -->
+                <a :href="'tel:' + helplineNumber"
+                    class="hidden xl:flex items-center gap-2.5 flex-shrink-0 group">
+                    <i class="lab-line-call text-2xl text-primary"></i>
+                    <span class="flex flex-col leading-tight">
+                        <span class="text-[11px] font-bold uppercase tracking-wide text-primary">
+                            {{ $t('label.support_24_7') }}
+                        </span>
+                        <span dir="ltr" class="text-sm font-semibold text-heading group-hover:text-primary transition-colors">
+                            {{ helplineNumber }}
+                        </span>
+                    </span>
+                </a>
 
                 <!-- My Account Start -->
                 <!-- Click to open, NOT hover. A hover panel closes the instant
@@ -328,6 +370,7 @@ import activityEnum from "../../../enums/modules/activityEnum";
 import roleEnum from "../../../enums/modules/roleEnum";
 import MenuChildrenComponent from "../../frontend/components/MenuChildrenComponent";
 import orderTypeEnum from "../../../enums/modules/orderTypeEnum";
+import campaignTypeEnum from "../../../enums/modules/campaignTypeEnum";
 import _ from "lodash";
 import axios from 'axios';
 import { useCanvas } from "../../../composables/canvas";
@@ -406,6 +449,48 @@ export default {
         },
         categories: function () {
             return this.$store.getters['frontendProductCategory/trees'];
+        },
+        /**
+         * Extra links promoted into the main nav.
+         *
+         * Clearance is a Campaign now (Admin -> Promo -> Campaigns), not a
+         * Product Section: only campaigns inside their active window come back
+         * from the API, so an expired sale drops out of the header on its own
+         * with no one having to unpublish anything.
+         *
+         * Flash campaigns are excluded — /flash-sale already has its own
+         * hardcoded link above and renders the running flash campaign, so
+         * including them here would show the same sale twice.
+         *
+         * Wholesale is unchanged: still a Product Section, still hidden until
+         * that section exists.
+         */
+        navSections: function () {
+            const campaigns = (this.$store.getters['frontendCampaign/lists'] || [])
+                .filter(campaign => campaign.type !== campaignTypeEnum.FLASH)
+                .map(campaign => ({
+                    id: 'campaign-' + campaign.id,
+                    name: campaign.name,
+                    slug: campaign.slug,
+                    routeName: 'frontend.campaign.products',
+                }));
+
+            const sections = this.$store.getters['frontendProductSection/lists'] || [];
+            const wholesale = sections.find(section => section.slug === 'wholesale');
+
+            if (wholesale) {
+                campaigns.push({
+                    id: 'section-' + wholesale.id,
+                    name: wholesale.name,
+                    slug: wholesale.slug,
+                    routeName: 'frontend.productSection.products',
+                });
+            }
+
+            return campaigns;
+        },
+        helplineNumber: function () {
+            return this.setting?.company_phone || '01709786330';
         },
         wishlists: function () {
             return this.$store.getters['frontendWishlist/lists'];
@@ -511,6 +596,20 @@ export default {
             this.loading.isActive = false;
         });
 
+        // Both feed navSections. Only fetched when the store is empty — Vuex
+        // state survives SPA navigation, so this costs one request per full
+        // page load, not one per route change. Fire-and-forget: the nav renders
+        // without them and the extra links appear when they land.
+        if ((this.$store.getters['frontendProductSection/lists'] || []).length === 0) {
+            this.$store.dispatch('frontendProductSection/lists', { paginate: 0 }).catch(() => {});
+        }
+
+        // Running campaigns. The flash-sale page reads the same store, so a
+        // customer arriving anywhere on the site has it primed.
+        if ((this.$store.getters['frontendCampaign/lists'] || []).length === 0) {
+            this.$store.dispatch('frontendCampaign/lists').catch(() => {});
+        }
+
         if (this.logged) {
             this.loading.isActive = true;
             this.$store.dispatch("frontendWishlist/lists").then((res) => {
@@ -556,6 +655,15 @@ export default {
             if (this.currentRoute === path) {
                 return true;
             }
+        },
+        // navSections now mixes two route types, so the highlight can no
+        // longer assume the /product-section/ prefix.
+        isNavSectionActive: function (section) {
+            const prefix = section.routeName === 'frontend.campaign.products'
+                ? '/campaign/'
+                : '/product-section/';
+
+            return this.currentRoute === prefix + section.slug;
         },
         changeLanguage: function (id, code, mode) {
             this.defaultLanguage = id;

@@ -110,7 +110,8 @@
         "blog": "Blog",
         "blog_posts": "Blog Posts",
         "blog_categories": "Blog Categories",
-        "blog_tags": "Concerns & Tags"
+        "blog_tags": "Concerns & Tags",
+        "campaigns": "الحملات"
     },
     "label": {
         "license_code": "رمز الترخيص",
@@ -777,7 +778,24 @@
         "concerns_placeholder": "acne, sunburn, tan …",
         "tag_name_placeholder": "Acne, Sunburn, Tan …",
         "browse_by_concern": "Browse by Concern",
-        "view_all": "View all"
+        "view_all": "View all",
+        "support_24_7": "24/7 Support",
+        "offer_link": "Offer Link",
+        "our_stores": "Our Stores",
+        "clearance_sale": "تصفية المخزون",
+        "special_price": "السعر الخاص",
+        "campaign_price": "سعر الحملة",
+        "campaign_state": "الحالة",
+        "campaign_ended": "انتهت هذه الحملة",
+        "running": "جارية",
+        "not_running": "غير جارية",
+        "expired": "منتهية",
+        "ends_in": "تنتهي خلال",
+        "days": "يوم",
+        "hours": "ساعة",
+        "minutes": "دقيقة",
+        "seconds": "ثانية",
+        "shop_now": "تسوق الآن"
     },
     "button": {
         "add": "إضافة",
@@ -893,7 +911,8 @@
         "add_post": "Add Post",
         "edit_post": "Edit Post",
         "add_category": "Add Category",
-        "add_tag": "Add Concern"
+        "add_tag": "Add Concern",
+        "add_campaign": "إضافة حملة"
     },
     "number": {
         "10": "10",
@@ -1025,6 +1044,9 @@
         "concerns_hint": "What skin problem does this post address? Each concern gets its own page.",
         "tag_seo_hint": "Leave blank and these are generated from the concern name.",
         "blog_tags_intro": "Concerns are what readers actually search for — acne, sunburn, tan. A post can carry several, and each gets its own indexable page at /blog/tag/{slug}.",
-        "meta_keywords_chip_hint": "Press Enter or comma to add. 5-15 works best."
+        "meta_keywords_chip_hint": "Press Enter or comma to add. 5-15 works best.",
+        "campaign_window_hint": "تسري أسعار الحملة بين وقت البدء ووقت الانتهاء فقط. خارج هذه الفترة تختفي الصفحة ويعود كل منتج إلى سعره العادي.",
+        "special_price_hint": "السعر الذي يدفعه العميل في صفحة هذه الحملة فقط. لا يُؤخذ من السعر العادي للمنتج ولا يغيّره.",
+        "campaign_ended": "لم تعد هذه الأسعار متاحة. تصفح المتجر للاطلاع على العروض الحالية."
     }
 }

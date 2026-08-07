@@ -12,6 +12,7 @@ const  ProductComponent = () => import("../../components/frontend/product/Produc
 const  ProductDetailsComponent = () => import("../../components/frontend/product/ProductDetailsComponent");
 const  PromotionProductComponent = () => import("../../components/frontend/product/PromotionProductComponent");
 const  ProductSectionProductComponent = () => import("../../components/frontend/product/ProductSectionProductComponent");
+const  CampaignProductComponent = () => import("../../components/frontend/product/CampaignProductComponent");
 const  FlashSaleProductComponent = () => import("../../components/frontend/product/FlashSaleProductComponent");
 const  OfferProductComponent = () => import("../../components/frontend/product/OfferProductComponent");
 const  OverviewComponent = () => import("../../components/frontend/account/overview/OverviewComponent");
@@ -132,6 +133,17 @@ export default [
         path: "/product-section/:slug",
         component: ProductSectionProductComponent,
         name: "frontend.productSection.products",
+        meta: {
+            isFrontend: true,
+            auth: false,
+        },
+    },
+    // Campaign pages (Clearance, Flash). The special price lives on this page
+    // only — every other listing keeps the retail price.
+    {
+        path: "/campaign/:slug",
+        component: CampaignProductComponent,
+        name: "frontend.campaign.products",
         meta: {
             isFrontend: true,
             auth: false,

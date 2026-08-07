@@ -178,10 +178,12 @@
     .cs-custom-radio:checked { @apply before:border-primary after:bg-primary }
 
     /* HEADER */
-    .header-nav-list { @apply flex items-center justify-center gap-10 }
+    .header-nav-list { @apply flex items-center justify-center gap-6 xl:gap-10 }
     .header-nav-item { @apply relative }
     .header-nav-item:hover > div { @apply scale-y-100 }
-    .header-nav-menu { @apply capitalize font-semibold py-5 }
+    /* whitespace-nowrap: two-word items ("Flash Sale", "Clearance Sale") were
+       wrapping onto a second line and pushing the header taller than the logo. */
+    .header-nav-menu { @apply capitalize font-semibold py-5 whitespace-nowrap }
     .header-nav-menu.router-link-active { @apply text-primary }
 
     /* BANNER */
@@ -214,6 +216,34 @@
             CLIENT SIDE PART END
     ==================================*/
 
+
+    /* FOOTER */
+    /* A hairline of brand colour along the top edge, then a slow vertical lift
+       out of --secondary. Reads richer than a flat block without introducing a
+       second colour. */
+    .site-footer {
+        background:
+            linear-gradient(to bottom, rgb(255 255 255 / 0.04), transparent 240px),
+            #1F1F39;
+        border-top: 2px solid rgb(var(--primary));
+    }
+    /* Small, spaced and muted. The old 22px solid-white headings competed with
+       the links underneath them for attention. */
+    .footer-heading { @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45 mb-5 }
+    /* w-fit keeps the underline tight to the text; whitespace-nowrap stops
+       two-word links ("All Product", "Flash Sale", "About Us") splitting. */
+    .footer-link { @apply w-fit text-[13px] font-medium capitalize whitespace-nowrap text-white/70 transition-colors duration-200 hover:text-white }
+    .footer-helpline { @apply w-fit flex items-center gap-2 mt-1 px-3.5 py-2 rounded-full text-[13px] font-semibold tracking-wide whitespace-nowrap text-white bg-white/[0.07] ring-1 ring-white/10 transition-all duration-300 hover:bg-primary hover:ring-primary }
+    .footer-social { @apply w-8 h-8 !leading-8 text-center rounded-full text-sm text-white/70 bg-white/[0.07] ring-1 ring-white/10 transition-all duration-300 hover:text-white hover:bg-primary hover:ring-primary }
+    .footer-grid { @apply grid gap-8 grid-cols-2 md:grid-cols-3; }
+    @media (min-width: 1024px) {
+        /* auto-fit collapses empty tracks, so hiding the Help or Top Categories
+           column redistributes the width instead of leaving a gap. */
+        .footer-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+        /* The addresses need more room than a link list; two tracks stops
+           "Prime Medical College Gate" breaking after "College". */
+        .footer-stores { grid-column: span 2; }
+    }
 
     /*===================================
               ADMIN SIDE PART START

@@ -178,9 +178,11 @@ export default {
     },
     mounted() {
         this.applyHead();
-        this.$store.dispatch("frontendBlog/categories");
-        // Fire-and-forget: the concern chips and category rows render when they
-        // arrive rather than blocking the hero and feed above them.
+        // Fire-and-forget: the nav, concern chips and category rows render when
+        // they arrive rather than blocking the hero and feed above them. Each
+        // needs its own catch — a rejected dispatch with no handler surfaces as
+        // an uncaught promise rejection in the console.
+        this.$store.dispatch("frontendBlog/categories").catch(() => {});
         this.$store.dispatch("frontendBlog/tags").catch(() => {});
         this.$store.dispatch("frontendBlog/sections").catch(() => {});
 

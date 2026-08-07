@@ -54,7 +54,7 @@ export const frontendBlog = {
     actions: {
         lists: function (context, payload) {
             return new Promise((resolve, reject) => {
-                let url = "blog";
+                let url = "frontend/blog";
                 if (payload) {
                     url = url + appService.requestHandler(payload);
                 }
@@ -73,7 +73,7 @@ export const frontendBlog = {
         // anything painted.
         overview: function (context) {
             return new Promise((resolve, reject) => {
-                axios.get("blog/overview").then((res) => {
+                axios.get("frontend/blog/overview").then((res) => {
                     context.commit("featured", res.data.featured);
                     context.commit("recent", res.data.recent);
                     context.commit("popular", res.data.popular);
@@ -85,7 +85,7 @@ export const frontendBlog = {
         },
         categories: function (context) {
             return new Promise((resolve, reject) => {
-                axios.get("blog/categories").then((res) => {
+                axios.get("frontend/blog/categories").then((res) => {
                     context.commit("categories", res.data.data);
                     resolve(res);
                 }).catch((err) => {
@@ -96,7 +96,7 @@ export const frontendBlog = {
         // Concerns — acne, sunburn, tan.
         tags: function (context) {
             return new Promise((resolve, reject) => {
-                axios.get("blog/tags").then((res) => {
+                axios.get("frontend/blog/tags").then((res) => {
                     context.commit("tags", res.data.data);
                     resolve(res);
                 }).catch((err) => {
@@ -107,7 +107,7 @@ export const frontendBlog = {
         // Category-wise rows for the landing page.
         sections: function (context) {
             return new Promise((resolve, reject) => {
-                axios.get("blog/sections").then((res) => {
+                axios.get("frontend/blog/sections").then((res) => {
                     context.commit("sections", res.data.sections);
                     resolve(res);
                 }).catch((err) => {
@@ -117,7 +117,7 @@ export const frontendBlog = {
         },
         show: function (context, payload) {
             return new Promise((resolve, reject) => {
-                axios.get(`blog/show/${payload}`).then((res) => {
+                axios.get(`frontend/blog/show/${payload}`).then((res) => {
                     context.commit("show", res.data.data);
                     resolve(res);
                 }).catch((err) => {
@@ -127,7 +127,7 @@ export const frontendBlog = {
         },
         related: function (context, payload) {
             return new Promise((resolve, reject) => {
-                axios.get(`blog/related/${payload}`).then((res) => {
+                axios.get(`frontend/blog/related/${payload}`).then((res) => {
                     context.commit("related", res.data.data);
                     resolve(res);
                 }).catch((err) => {

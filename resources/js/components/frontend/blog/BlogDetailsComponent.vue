@@ -131,7 +131,9 @@ export default {
     },
     mounted() {
         this.postSetup();
-        this.$store.dispatch("frontendBlog/categories");
+        // Catch even though nothing is done with the result — the category nav
+        // is optional chrome, but an unhandled rejection logs a console error.
+        this.$store.dispatch("frontendBlog/categories").catch(() => {});
     },
     methods: {
         postSetup: function () {

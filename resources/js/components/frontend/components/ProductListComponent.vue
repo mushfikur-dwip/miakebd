@@ -135,7 +135,13 @@ export default {
                 price: finalPrice,
                 old_price: oldPrice,
                 total_price: finalPrice,
-                maximum_purchase_quantity: product.maximum_purchase_quantity || 999
+                maximum_purchase_quantity: product.maximum_purchase_quantity || 999,
+                // Only campaign resources emit price_source; every other
+                // listing that renders this card falls through to "catalogue".
+                // It is what keeps a campaign-priced line and a normally
+                // priced line for the same product apart in the cart.
+                price_source: product.price_source || 'catalogue',
+                campaign_id: product.campaign_id || null
             };
 
             this.$store.dispatch("frontendCart/lists", productArray).then((res) => {

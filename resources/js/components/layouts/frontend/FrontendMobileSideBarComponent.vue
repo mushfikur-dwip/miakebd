@@ -30,6 +30,27 @@
                     </router-link>
 
                     <router-link v-on:click="hideTarget('mobile-sidebar-canvas', 'canvas-active')"
+                        class="text-base font-medium capitalize py-3 border-b border-slate-100 text-heading"
+                        :to="{ name: 'frontend.flashSale.products' }">
+                        {{ $t("label.flash_sale") }}
+                    </router-link>
+
+                    <!-- Running campaigns plus Wholesale; see navSections in
+                         the desktop navbar for why these are not hardcoded. -->
+                    <router-link v-for="section in navSections" :key="section.id"
+                        v-on:click="hideTarget('mobile-sidebar-canvas', 'canvas-active')"
+                        class="text-base font-medium capitalize py-3 border-b border-slate-100 text-heading"
+                        :to="{ name: section.routeName, params: { slug: section.slug } }">
+                        {{ section.name }}
+                    </router-link>
+
+                    <router-link v-on:click="hideTarget('mobile-sidebar-canvas', 'canvas-active')"
+                        class="text-base font-medium capitalize py-3 border-b border-slate-100 text-heading"
+                        :to="{ name: 'frontend.blog' }">
+                        {{ $t("label.blog") }}
+                    </router-link>
+
+                    <router-link v-on:click="hideTarget('mobile-sidebar-canvas', 'canvas-active')"
                         v-if="pages.length > 0" v-for="page in pages" :key="page"
                         :to="{ name: 'frontend.page', params: { slug: page.slug } }"
                         class="text-base font-medium capitalize py-3 border-b border-slate-100 text-heading">{{
@@ -97,6 +118,7 @@
 import { loadLocale } from "../../../i18n";
 import targetService from "../../../services/targetService";
 import activityEnum from "../../../enums/modules/activityEnum";
+import campaignTypeEnum from "../../../enums/modules/campaignTypeEnum";
 
 export default {
     name: "FrontendMobileSideBarComponent",
@@ -110,6 +132,32 @@ export default {
     computed: {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
+        },
+        // Mirrors navSections in FrontendNavBarComponent. Reads the same
+        // stores the navbar already populates, so this adds no extra request.
+        navSections: function () {
+            const campaigns = (this.$store.getters['frontendCampaign/lists'] || [])
+                .filter(campaign => campaign.type !== campaignTypeEnum.FLASH)
+                .map(campaign => ({
+                    id: 'campaign-' + campaign.id,
+                    name: campaign.name,
+                    slug: campaign.slug,
+                    routeName: 'frontend.campaign.products',
+                }));
+
+            const sections = this.$store.getters['frontendProductSection/lists'] || [];
+            const wholesale = sections.find(section => section.slug === 'wholesale');
+
+            if (wholesale) {
+                campaigns.push({
+                    id: 'section-' + wholesale.id,
+                    name: wholesale.name,
+                    slug: wholesale.slug,
+                    routeName: 'frontend.productSection.products',
+                });
+            }
+
+            return campaigns;
         },
         language: function () {
             return this.$store.getters['frontendLanguage/show'];

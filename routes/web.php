@@ -35,6 +35,22 @@ Route::get('/product/{product:slug}', [RootController::class, 'product'])
     ->middleware(['installed'])
     ->name('product.show');
 
+// "All Product" is the root category, so its listing only ever covered its own
+// descendants — 336 of the 440 live products, with Baby Care, Fragrance and
+// Moisturizer sitting outside the tree. Send it to the unfiltered listing, which
+// has no category filter at all.
+//
+// A 301 rather than a client-side hop alone: this URL is already indexed, and a
+// permanent redirect consolidates its ranking onto /product instead of leaving
+// Google with a page that contradicts its own name. Declared before the
+// {slug} route so the literal path wins.
+Route::get('/product-category/all-product', function (\Illuminate\Http\Request $request) {
+    // Carry the query string across, same as the ?category= hop below. Dropping
+    // it turned a shared "all products, brand=5, sorted by price" link into a
+    // bare listing, and because the hop is a 301 the browser caches that loss.
+    return redirect()->route('product.listing', $request->query(), 301);
+})->middleware(['installed']);
+
 // Clean category URL. Must be declared before the catch-all fallback so the
 // server can render category-specific metadata instead of the SPA shell.
 Route::get('/product-category/{slug}', [RootController::class, 'category'])

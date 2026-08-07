@@ -70,7 +70,34 @@ it back up in Step 7.
 
 ---
 
-## Step 4 — Upload the changed files
+## Step 4 — Upload the release zip
+
+> ### ⛔ Do not use the per-file list below
+>
+> It is a snapshot of an **older release** and is no longer maintained. It names
+> `master.blade.php` and `RootController.php` but none of the classes those files
+> now depend on — `App\Support\SiteSchema`, `BlogMetaResolver`, the Blog and
+> Campaign classes, or the new migrations. Uploading only the listed files gives
+> you `Class "App\Support\SiteSchema" not found` — a 500 on **every page of the
+> site**, because `master.blade.php` is the layout every route renders through.
+>
+> The list is kept only as a record of what shipped in that release.
+
+**Use the release zip instead.** It is built from the working tree, so it cannot
+fall behind the code the way a hand-written list does.
+
+```bash
+cd ~/domains/suglow.com/public_html
+unzip -o suglow-FIX-4.zip && rm suglow-FIX-4.zip
+```
+
+`unzip -o` **merges** into the existing tree. Do **not** extract with the cPanel
+File Manager — it *replaces* whole directories, which is what emptied `app/`
+(705 files down to 38), deleted `public/index.php` and took the site down for the
+afternoon of 5 Aug 2026.
+
+<details>
+<summary><b>Historical file list from the previous release — do not follow</b></summary>
 
 **38 files.** Upload each into the same path it has here. Overwrite when asked.
 
@@ -137,13 +164,15 @@ public/themes/default/fonts/iconly/iconly.min.css
 ⚠️ These are **five separate files**. Do not upload the `public` folder.
 </details>
 
-### Then the built frontend
+</details>
 
-Delete the server's `public/build` folder and upload your local `public/build`
-in its place.
+### The built frontend
 
-`public/build` contains only generated files — it holds no images and is safe to
-replace. **`public/storage` is a different folder. Leave it alone.**
+The zip already carries `public/build`, so `unzip -o` covers it.
+
+If you ever upload it by hand instead: `public/build` contains only generated
+files — it holds no images and is safe to replace. **`public/storage` is a
+different folder. Leave it alone.**
 
 ---
 

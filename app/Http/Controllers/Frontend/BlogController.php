@@ -66,14 +66,20 @@ class BlogController extends Controller
                 return response(['status' => false, 'message' => 'Post not found.'], 404);
             }
 
-            // increment() writes directly and skips the model's updated_at, so
-            // a view does not bump the sitemap's lastmod for every visitor.
-            //
             // Skipped for crawlers. Googlebot, WhatsApp's preview fetcher and
             // the AI crawlers all hit this endpoint, and counting them made
             // "Most read" rank by crawl frequency rather than by readers.
             if (!$this->isCrawler(request()->userAgent())) {
+                // timestamps disabled around the increment. Eloquent's
+                // increment() does NOT skip updated_at — Builder::increment()
+                // passes $extra through addUpdatedAtColumn() — so a view counter
+                // was rewriting updated_at on every request. That column is
+                // published as <lastmod> by GenerateSitemap and as dateModified
+                // by BlogMetaResolver, so an article that had not been edited in
+                // months still told Google it changed seconds ago.
+                $post->timestamps = false;
                 $post->increment('views');
+                $post->timestamps = true;
             }
 
             return new BlogDetailsResource($post);

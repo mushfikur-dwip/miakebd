@@ -69,7 +69,7 @@ class PromotionProductService
             if ($promotion->id == $promotionProduct->promotion_id) {
                 $promotionProduct->delete();
             } else {
-                throw new Exception(trans('all.product_match'), 422);
+                throw new Exception(trans('all.message.product_match'), 422);
             }
         } catch (Exception $exception) {
             Log::info($exception->getMessage());

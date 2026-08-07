@@ -130,19 +130,24 @@ export default {
                 return;
             }
             
-            if (amount > this.total) {
-                // wallet_amount_exceeds_cart_total — the _order_total variant
-                // this used to reference was never translated, so the user saw
-                // the raw key.
-                this.error = this.$t('message.wallet_amount_exceeds_cart_total');
-                return;
-            }
-
             // All-or-nothing, same rule the backend enforces: every gateway
             // charges the full order total, so a partial wallet payment would
             // overcharge the customer at the gateway.
-            if (amount < this.total) {
-                this.error = this.$t('message.wallet_must_cover_full_total');
+            //
+            // Compared to the paisa rather than exactly. The cart total is a
+            // float carrying percentage tax, so it routinely has more than two
+            // decimals while the field only accepts step="0.01" — every value
+            // the customer could type was rejected as either over or under, and
+            // wallet redemption could not be used at all. The input is
+            // pre-filled with the exact total (see walletAmount below), so
+            // normally there is nothing to type.
+            if (Math.abs(amount - this.total) > 0.005) {
+                this.error = amount > this.total
+                    // wallet_amount_exceeds_cart_total — the _order_total
+                    // variant this used to reference was never translated, so
+                    // the user saw the raw key.
+                    ? this.$t('message.wallet_amount_exceeds_cart_total')
+                    : this.$t('message.wallet_must_cover_full_total');
                 return;
             }
             
@@ -172,11 +177,26 @@ export default {
         }).catch(() => {});
     },
     watch: {
-        walletBalance(newVal, oldVal) {
-            // Watch for balance changes
+        // Redemption is all-or-nothing, so the only accepted value is the exact
+        // order total. Asking the customer to type a float they can only see
+        // rounded made that unguessable — fill it in for them and let Apply be
+        // the whole interaction. Rounded to the paisa so the field (step="0.01")
+        // can hold it; applyWallet() compares with the matching tolerance.
+        //
+        // immediate so it is set on first render, and skipped once applied so
+        // the watcher cannot overwrite what the customer already committed.
+        total: {
+            immediate: true,
+            handler: function (value) {
+                if (!this.walletApplied && this.walletBalance >= value && value > 0) {
+                    this.walletAmount = Math.round(value * 100) / 100;
+                }
+            }
         },
-        walletApplied(newVal, oldVal) {
-            // Watch for applied status changes
+        walletBalance: function (value) {
+            if (!this.walletApplied && value >= this.total && this.total > 0) {
+                this.walletAmount = Math.round(this.total * 100) / 100;
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ use App\Libraries\QueryExceptionLibrary;
 use App\Models\Campaign;
 use App\Models\CampaignProduct;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class CampaignProductService
@@ -53,7 +54,7 @@ class CampaignProductService
     {
         try {
             if ($campaign->id != $campaignProduct->campaign_id) {
-                throw new Exception(trans('all.product_match'), 422);
+                throw new Exception(trans('all.message.product_match'), 422);
             }
 
             $campaignProduct->update($request->validated());
@@ -72,7 +73,7 @@ class CampaignProductService
     {
         try {
             if ($campaign->id != $campaignProduct->campaign_id) {
-                throw new Exception(trans('all.product_match'), 422);
+                throw new Exception(trans('all.message.product_match'), 422);
             }
 
             $campaignProduct->delete();
@@ -111,6 +112,14 @@ class CampaignProductService
                 )
                 ->withReviewRating()
                 ->with('media', 'variations', 'taxes')
+                // CampaignProductResource renders (bool) $this->wishlist. Without
+                // this constrained eager load the hasOne resolves lazily and
+                // unfiltered, so it matched ANY user's wishlist row — every
+                // visitor saw hearts filled in for products someone else had
+                // saved — and did it one query per product. Same constraint
+                // ProductService::list() applies; user_id 0 for guests matches
+                // nothing.
+                ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::id() : 0)])
                 ->active('products.status')
                 ->paginate($perPage);
         } catch (Exception $exception) {

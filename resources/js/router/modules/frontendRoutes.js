@@ -52,6 +52,24 @@ export default [
         },
     },
     {
+        // "All Product" is an ordinary category that happens to be the root of
+        // the tree, so listing it showed only its descendants — 336 of the 440
+        // live products. Baby Care, Fragrance and Moisturizer are top-level
+        // categories in their own right and sit outside it, taking 104 products
+        // with them.
+        //
+        // Redirecting here rather than rewriting the nine templates that build
+        // category links means every entry point is covered at once — footer,
+        // mega menu, mobile menu, homepage tiles, breadcrumb — along with old
+        // bookmarks and anything Google has already indexed. Declared before
+        // /product-category/:slug so the literal slug wins over the parameter.
+        path: "/product-category/all-product",
+        // Function form so the query survives the hop — the object form drops
+        // it, and ProductComponent reads ?name=, ?brand= and ?category= off the
+        // route. Mirrors the 301 in routes/web.php.
+        redirect: (to) => ({ name: "frontend.product", query: to.query }),
+    },
+    {
         // Clean category URL. Renders the same listing component as /product;
         // the component reads route.params.slug when present and falls back to
         // route.query.category so old links keep working.

@@ -22,6 +22,7 @@ use App\Events\SendOrderPush;
 use App\Models\ProductVariation;
 use App\Models\OrderOutletAddress;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Support\OrderPriceGuard;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\OrderRequest;
@@ -142,7 +143,15 @@ class FrontendOrderService
                 $walletDiscount = (float) ($attributes['wallet_discount'] ?? 0);
                 $walletUser     = null;
                 if ($walletDiscount > 0) {
-                    $walletUser = Auth::user();
+                    // Locked for the life of this transaction, not read off the
+                    // in-memory Auth::user(). The balance is checked here and
+                    // overwritten ~170 lines below; without the row lock two
+                    // confirms submitted together both read the same starting
+                    // balance, both pass this check and the second save()
+                    // clobbers the first — the customer spends the same money
+                    // twice. lockForUpdate() serialises them so the second sees
+                    // the debited balance and is rejected.
+                    $walletUser = User::where('id', Auth::id())->lockForUpdate()->first();
 
                     if (round($walletDiscount, 2) !== round((float) ($attributes['total'] ?? 0), 2)) {
                         throw new Exception(trans('all.message.wallet_must_cover_full_total'), 422);

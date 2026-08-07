@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Frontend;
 
 
 use App\Enums\Activity;
+use App\Enums\Ask;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\Status;
 use App\Events\SendOrderGotMail;
 use App\Events\SendOrderGotPush;
 use App\Events\SendOrderGotSms;
@@ -17,12 +19,15 @@ use App\Libraries\AppLibrary;
 use App\Models\Currency;
 use App\Models\Order;
 use App\Models\PaymentGateway;
+use App\Models\Stock;
 use App\Models\ThemeSetting;
 use App\Services\PaymentManagerService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Dipokhalder\Settings\Facades\Settings;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -126,10 +131,32 @@ class PaymentController extends Controller
 
         if ($firstVisit) {
             try {
-                // If order is fully paid by wallet (wallet_discount covers total), mark as paid
+                // A wallet-covered order never passes through a gateway, so
+                // nothing else ever commits it. Every gateway's success() does
+                // these three things together; this is the wallet equivalent.
+                //
+                // active = Ask::YES is the load-bearing one. It defaults to
+                // Ask::NO, which is the same integer (10) as Status::INACTIVE,
+                // and FrontendOrderService::myOrderStore() deletes every order
+                // still sitting at that value when the customer next checks out
+                // — taking its stock, addresses and coupon rows with it. A paid
+                // wallet order was being destroyed on the customer's next
+                // order, with the balance already debited and the Transaction
+                // row left orphaned.
                 if ($order->wallet_discount > 0 && $order->wallet_discount >= $order->total && $order->payment_status === PaymentStatus::UNPAID) {
-                    $order->payment_status = PaymentStatus::PAID;
-                    $order->save();
+                    DB::transaction(function () use ($order) {
+                        $order->payment_status = PaymentStatus::PAID;
+                        $order->active         = Ask::YES;
+                        $order->save();
+
+                        // Same commit the gateways perform: until this runs the
+                        // stock is still provisional and is not deducted.
+                        Stock::where([
+                            'model_id'   => $order->id,
+                            'model_type' => Order::class,
+                            'status'     => Status::INACTIVE,
+                        ])->update(['status' => Status::ACTIVE]);
+                    });
                 }
 
                 SendOrderMail::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
@@ -140,6 +167,17 @@ class PaymentController extends Controller
                 SendOrderGotSms::dispatch(['order_id' => $order->id]);
                 SendOrderGotPush::dispatch(['order_id' => $order->id]);
             } catch (\Exception $e) {
+                // Release the idempotency token. Claiming it up front is what
+                // stops id-walking, but holding it through a failure would
+                // leave the order permanently unconfirmed with no way to retry
+                // — a refresh would find the token already taken and skip the
+                // work silently.
+                Log::error('Order confirmation failed for #' . $order->id . ': ' . $e->getMessage());
+
+                try {
+                    Cache::forget('order-confirmed-' . $order->id);
+                } catch (\Throwable $ignored) {
+                }
             }
         }
 

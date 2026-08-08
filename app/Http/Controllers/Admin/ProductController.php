@@ -107,6 +107,22 @@ class ProductController extends AdminController implements HasMiddleware
         }
     }
 
+    public function reorderImages(Request $request, Product $product): \Illuminate\Foundation\Application|\Illuminate\Http\Response|ProductDetailsAdminResource|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    {
+        try {
+            $validated = $request->validate([
+                'media_ids'   => ['required', 'array', 'min:1'],
+                'media_ids.*' => ['required', 'integer'],
+            ]);
+
+            return new ProductDetailsAdminResource(
+                $this->productService->reorderImages($product, $validated['media_ids'])
+            );
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
     public function deleteImage(Product $product, $index): \Illuminate\Foundation\Application|\Illuminate\Http\Response|ProductDetailsAdminResource|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         try {

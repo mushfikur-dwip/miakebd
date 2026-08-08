@@ -151,6 +151,20 @@ export const product = {
                 });
             });
         },
+        // Reordering IS how the hero image is picked — position 1 is what every
+        // accessor and the storefront read via getMedia()->first().
+        reorderImages: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`/admin/product/reorder-images/${payload.id}`, {
+                    media_ids: payload.mediaIds
+                }).then(res => {
+                    context.commit('show', res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         reset: function (context) {
             context.commit('reset');
         },

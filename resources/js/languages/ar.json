@@ -338,6 +338,7 @@
         "can_purchasable": "يمكن الشراء",
         "refundable": "قابل للاسترداد",
         "maximum_purchase_quantity": "الحد الأقصى لكمية الشراء",
+        "main": "رئيسي",
         "low_stock_quantity_warning": "تحذير كمية المخزون المنخفضة",
         "weight": "الوزن",
         "brand": "العلامة التجارية",

@@ -223,7 +223,7 @@
                 <div class="row py-4 p-3">
                     <div class="w-full max-w-[620px] flex flex-col-reverse sm:flex-row gap-3 sm:gap-5">
                         <nav class="flex-shrink-0 w-full sm:max-w-[90px] flex flex-row sm:flex-col gap-3 sm:gap-5">
-                            <label for="addImage" v-if="product.images && product.images.length < 6"
+                            <label for="addImage" v-if="gallery.length < 6"
                                 class="relative w-full h-16 sm:h-20 flex items-center justify-center rounded-2xl cursor-pointer text-heading bg-gray-200">
                                 <input type="file" id="addImage" @change="saveImage" ref="imageProperty"
                                     class="w-full h-full absolute -z-10 rounded-2xl opacity-0"
@@ -231,14 +231,40 @@
                                 <i class="lab-fill-circle-plus text-xl sm:text-3xl"></i>
                             </label>
 
-                            <button class="w-full" type="button" v-for="(image, index) in product.images">
-                                <img class="w-full h-16 sm:h-20 object-top object-cover rounded-2xl" :src="image"
-                                    alt="product" @click.prevent="switchImage(image, index)" />
-                            </button>
+                            <div class="w-full relative" v-for="(image, index) in gallery" :key="image.id">
+                                <button class="w-full block" type="button"
+                                    @click.prevent="switchImage(image.url, index)">
+                                    <!-- @error swaps in the placeholder. A media row can point at a
+                                         conversion that was never written, or a file lost from disk,
+                                         and the browser then renders a broken-image icon with no
+                                         alt fallback — which is exactly what this tab was showing. -->
+                                    <img class="w-full h-16 sm:h-20 object-top object-cover rounded-2xl border-2 transition-all"
+                                        :class="index === activeIndex ? 'border-primary' : 'border-transparent'"
+                                        :src="image.thumb" alt="product" @error="onImageError" />
+                                </button>
+
+                                <span v-if="index === 0"
+                                    class="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide text-white bg-primary">
+                                    {{ $t('label.main') }}
+                                </span>
+
+                                <div class="flex items-center justify-center gap-1 mt-1">
+                                    <button type="button" :disabled="index === 0" @click.prevent="moveImage(index, -1)"
+                                        class="w-6 h-6 leading-6 text-center rounded text-xs bg-gray-100 text-heading disabled:opacity-30"
+                                        title="Move earlier">&#8592;</button>
+                                    <button type="button" v-if="index !== 0" @click.prevent="makeHero(index)"
+                                        class="w-6 h-6 leading-6 text-center rounded text-xs bg-gray-100 text-heading"
+                                        title="Set as main image">&#9733;</button>
+                                    <button type="button" :disabled="index === gallery.length - 1"
+                                        @click.prevent="moveImage(index, 1)"
+                                        class="w-6 h-6 leading-6 text-center rounded text-xs bg-gray-100 text-heading disabled:opacity-30"
+                                        title="Move later">&#8594;</button>
+                                </div>
+                            </div>
                         </nav>
                         <div class="w-full relative" v-if="livePreview">
                             <img class="w-full h-96 sm:h-[480px] object-top object-cover rounded-2xl" alt="products"
-                                :src="livePreview" />
+                                :src="livePreview" @error="onImageError" />
                             <button v-if="imageCount > 0" @click.prevent="deleteImage"
                                 class="lab-line-cross text-3xl absolute -top-3 -right-3 w-9 h-9 leading-9 text-center rounded-full shadow-md bg-white text-danger"
                                 type="button"></button>
@@ -257,8 +283,13 @@
                 </div>
                 <div class="db-card-body">
                     <div class="row px-3 py-0">
+                        <!-- v-if: an empty src makes the browser re-request the
+                             page itself, and a barcode whose file is missing
+                             404s — both drew a broken-image icon next to the
+                             SKU. Render the image only when there is one. -->
                         <div class="col-12 md:col-4" id="productBarcodePrint">
-                            <img class="db-image" alt="product-barcode" :src="barcodeImage" />
+                            <img v-if="barcodeImage && !barcodeFailed" class="db-image" alt="product-barcode"
+                                :src="barcodeImage" @error="barcodeFailed = true" />
                             <span class="mt-2">{{ product.sku }}</span>
                         </div>
                         <div class="col-12 md:col-8 hidden-print" v-if="barcodeImage">
@@ -532,6 +563,10 @@ export default {
                 }
             },
             deleteIndex: 0,
+            // Which thumbnail is highlighted and shown in the large pane.
+            activeIndex: 0,
+            // Barcode media row exists but its file is gone from disk.
+            barcodeFailed: false,
             imageCount: 0,
             defaultImage: null,
             previewImage: null,
@@ -557,7 +592,12 @@ export default {
         product: function () {
             return this.$store.getters["product/show"];
         },
-
+        // image_gallery carries the media id, which `images` (a plain URL array)
+        // does not — reordering needs the id. Defaults to [] so the template is
+        // safe before the first response lands.
+        gallery: function () {
+            return this.$store.getters["product/show"]?.image_gallery || [];
+        },
     },
     mounted() {
         this.loading.isActive = true;
@@ -573,12 +613,66 @@ export default {
         switchImage: function (link, index) {
             this.livePreview = link;
             this.deleteIndex = index;
+            this.activeIndex = index;
+        },
+        // A conversion that was never generated, or a file lost from disk, 404s
+        // and the browser draws a broken-image icon. Swap the placeholder in so
+        // the gallery stays readable and the admin can still reorder or replace
+        // the entry. Guarded against re-firing if the placeholder itself fails.
+        onImageError: function (event) {
+            const placeholder = "/images/default/product/preview.png";
+
+            if (event.target.getAttribute("src") !== placeholder) {
+                event.target.src = placeholder;
+            }
+        },
+        moveImage: function (index, direction) {
+            const target = index + direction;
+
+            if (target < 0 || target >= this.gallery.length) {
+                return;
+            }
+
+            const ids = this.gallery.map((image) => image.id);
+            ids.splice(target, 0, ids.splice(index, 1)[0]);
+            this.persistOrder(ids, target);
+        },
+        // Position 1 is the hero — nothing stores an "is primary" flag, the
+        // storefront and every accessor just take the first media row.
+        makeHero: function (index) {
+            const ids = this.gallery.map((image) => image.id);
+            ids.unshift(ids.splice(index, 1)[0]);
+            this.persistOrder(ids, 0);
+        },
+        persistOrder: function (mediaIds, activeIndex) {
+            this.loading.isActive = true;
+
+            this.$store.dispatch("product/reorderImages", {
+                id: this.$route.params.id,
+                mediaIds: mediaIds
+            }).then((res) => {
+                this.loading.isActive = false;
+                this.activeIndex = activeIndex;
+
+                // Re-read from the response rather than the pre-move array: the
+                // server keeps any id the client omitted, so its order is the
+                // authoritative one.
+                const gallery = res.data.data.image_gallery || [];
+                this.livePreview = gallery.length ? gallery[activeIndex]?.url ?? gallery[0].url : null;
+                this.deleteIndex = activeIndex;
+
+                alertService.success(this.$t("message.image_update"));
+            }).catch((err) => {
+                this.loading.isActive = false;
+                alertService.error(err);
+            });
         },
         show: function () {
             this.$store.dispatch("product/show", this.$route.params.id).then((res) => {
                 this.defaultImage = res.data.data.preview;
                 this.previewImage = res.data.data.preview;
                 this.barcodeImage = res.data.data.barcode_image;
+                this.barcodeFailed = false;
                 this.livePreview = res.data.data.image;
                 this.imageCount = res.data.data.images.length;
                 this.shippingAndReturnForm.shipping_and_return = res.data.data.shipping_and_return;

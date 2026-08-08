@@ -42,6 +42,9 @@ class ProductDetailsAdminResource extends JsonResource
             "preview"                      => $this->preview,
             "image"                        => $this->preview,
             "images"                       => $this->previews,
+            // Same images, with the media id so the admin gallery can reorder
+            // them. `images` stays a plain URL array — other callers index it.
+            "image_gallery"                => $this->gallery,
             "shipping_and_return"          => $this->shipping_and_return === null ? '' : $this->shipping_and_return,
             "add_to_flash_sale"            => $this->add_to_flash_sale,
             "offer_start_date"             => $this->offer_start_date,

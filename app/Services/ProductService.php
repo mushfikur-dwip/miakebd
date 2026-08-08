@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\ProductRequest;
 use App\Http\Requests\PaginateRequest;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use App\Models\ProductAttributeOption;
 use Picqer\Barcode\BarcodeGeneratorJPG;
 use App\Http\Requests\ChangeImageRequest;
@@ -320,6 +321,40 @@ class ProductService
         try {
             $product->addMedia($request->image)->toMediaCollection('product');
             return $product;
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    /**
+     * Reorder a product's gallery, which is also how the hero image is chosen.
+     *
+     * Nothing stores "is primary" — every accessor and the storefront take
+     * getMedia('product')->first(), so position 1 IS the hero. Setting a new
+     * hero is therefore just moving that media to the front.
+     *
+     * @throws Exception
+     */
+    public function reorderImages(Product $product, array $mediaIds): Product
+    {
+        try {
+            // Only ids that actually belong to this product's collection, in the
+            // order given. Filtering against the collection stops a crafted
+            // request reordering — or stealing — another product's media, since
+            // Media::setNewOrder() writes by id with no ownership check.
+            $owned = $product->getMedia('product')->pluck('id')->all();
+            $order = array_values(array_intersect($mediaIds, $owned));
+
+            // Anything the client left out keeps its relative position at the
+            // end, so a stale gallery can never silently drop an image.
+            $order = array_merge($order, array_values(array_diff($owned, $order)));
+
+            if (count($order)) {
+                Media::setNewOrder($order);
+            }
+
+            return Product::find($product->id);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

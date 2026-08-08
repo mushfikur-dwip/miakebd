@@ -117,41 +117,82 @@ class Product extends Model implements HasMedia
         return $response;
     }
 
+    /**
+     * Resolve a conversion URL, falling back to the original upload.
+     *
+     * getUrl('preview') builds a path whether or not that file was ever written,
+     * so a conversion that failed to generate produced a 404 and a broken-image
+     * icon with no fallback — the collection is not empty, so the placeholder
+     * branch below never ran. hasGeneratedConversion() reads the media row's
+     * already-loaded JSON column, so this costs no disk I/O on listing pages.
+     *
+     * A file that is missing from disk despite being marked generated is handled
+     * client-side by the @error placeholder swap, which needs no stat() call.
+     */
+    private function conversionUrl(?Media $media, string $conversion, string $fallback): string
+    {
+        if (!$media) {
+            return asset($fallback);
+        }
+
+        if ($media->hasGeneratedConversion($conversion)) {
+            return $media->getUrl($conversion);
+        }
+
+        return $media->getUrl();
+    }
+
     public function getThumbAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('product'))) {
-            $product = $this->getMedia('product')->first();
-            return $product->getUrl('thumb');
-        }
-        return asset('images/default/product/thumb.png');
+        return $this->conversionUrl(
+            $this->getMedia('product')->first(),
+            'thumb',
+            'images/default/product/thumb.png'
+        );
     }
 
     public function getCoverAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('product'))) {
-            $product = $this->getMedia('product')->first();
-            return $product->getUrl('cover');
-        }
-        return asset('images/default/product/cover.png');
+        return $this->conversionUrl(
+            $this->getMedia('product')->first(),
+            'cover',
+            'images/default/product/cover.png'
+        );
     }
 
     public function getPreviewAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('product'))) {
-            $product = $this->getMedia('product')->first();
-            return $product->getUrl('preview');
-        }
-        return asset('images/default/product/preview.png');
+        return $this->conversionUrl(
+            $this->getMedia('product')->first(),
+            'preview',
+            'images/default/product/preview.png'
+        );
     }
 
     public function getPreviewsAttribute(): array
     {
         $response = [];
-        if (!empty($this->getFirstMediaUrl('product'))) {
-            $images = $this->getMedia('product');
-            foreach ($images as $image) {
-                $response[] = $image->getUrl('preview');
-            }
+        foreach ($this->getMedia('product') as $image) {
+            $response[] = $this->conversionUrl($image, 'preview', 'images/default/product/preview.png');
+        }
+        return $response;
+    }
+
+    /**
+     * The admin gallery: same images as `previews`, but carrying the media id so
+     * the order can be changed. Media order_column drives which image is the
+     * hero — every accessor above, and the storefront, take ->first().
+     */
+    public function getGalleryAttribute(): array
+    {
+        $response = [];
+        foreach ($this->getMedia('product') as $index => $image) {
+            $response[] = [
+                'id'      => $image->id,
+                'url'     => $this->conversionUrl($image, 'preview', 'images/default/product/preview.png'),
+                'thumb'   => $this->conversionUrl($image, 'thumb', 'images/default/product/thumb.png'),
+                'is_hero' => $index === 0,
+            ];
         }
         return $response;
     }

@@ -110,6 +110,35 @@ Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(fun
         ->name('successful');
 });
 
+// /storage normally resolves through the public/storage symlink and never
+// reaches PHP. On this host it does not work: LiteSpeed does not follow the
+// symlink, so every uploaded image 404'd with an HTML body (proving the request
+// had fallen through to Laravel) even though `ls -la` showed the link intact and
+// the files were sitting in storage/app/public. The zip-based deploys also keep
+// deleting the symlink, and `artisan storage:link` cannot recreate it because
+// this host disables both symlink() and exec() in PHP.
+//
+// Serving the bytes here sidesteps all of that. Declared before the fallback so
+// it wins over the SPA shell; when a working symlink IS present the web server
+// answers first and this route never runs.
+Route::get('/storage/{path}', function (string $path) {
+    $base = realpath(storage_path('app/public'));
+    $file = $base === false ? false : realpath($base . DIRECTORY_SEPARATOR . $path);
+
+    // realpath() has already collapsed any ../ segments, so this prefix test is
+    // what keeps a crafted path from escaping the disk root.
+    if ($file === false || !str_starts_with($file, $base . DIRECTORY_SEPARATOR) || !is_file($file)) {
+        abort(404);
+    }
+
+    // A replaced image gets a new media id and therefore a new URL, so these are
+    // immutable. Long caching lets the CDN absorb the load rather than asking
+    // PHP for every thumbnail on every page.
+    return response()->file($file, [
+        'Cache-Control' => 'public, max-age=31536000, immutable',
+    ]);
+})->where('path', '.*');
+
 Route::fallback(function (\Illuminate\Http\Request $request) {
     // Don't catch API routes
     if ($request->is('api/*')) {

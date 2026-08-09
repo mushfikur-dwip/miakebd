@@ -136,10 +136,49 @@ class Product extends Model implements HasMedia
         }
 
         if ($media->hasGeneratedConversion($conversion)) {
-            return $media->getUrl($conversion);
+            return self::encodeMediaUrl($media->getUrl($conversion));
         }
 
-        return $media->getUrl();
+        return self::encodeMediaUrl($media->getUrl());
+    }
+
+    /**
+     * Percent-encode the path of a media URL.
+     *
+     * Spatie builds media URLs by concatenating the stored file name straight
+     * into the path, unencoded. 125 of this catalogue's product images carry
+     * characters that cannot survive that: 86 contain "&" and 59 contain
+     * non-ASCII (em dashes, mostly, from pasted marketing copy). The browser
+     * and the server then disagree about what was requested and the image 404s.
+     *
+     * Second and third images were hit hardest — their names come from longer
+     * descriptive text — which is why a product's main image loaded while the
+     * rest of its gallery did not.
+     *
+     * Only the path is touched; scheme, host and port are preserved, and the
+     * slashes between segments are kept as separators. Safe to apply to clean
+     * names, and there is no double-encoding risk because Spatie does no
+     * encoding of its own here.
+     */
+    private static function encodeMediaUrl(string $url): string
+    {
+        $parts = parse_url($url);
+
+        if ($parts === false || !isset($parts['path'])) {
+            return $url;
+        }
+
+        $path = implode('/', array_map('rawurlencode', explode('/', $parts['path'])));
+
+        $prefix = '';
+        if (isset($parts['scheme'], $parts['host'])) {
+            $prefix = $parts['scheme'] . '://' . $parts['host'];
+            if (isset($parts['port'])) {
+                $prefix .= ':' . $parts['port'];
+            }
+        }
+
+        return $prefix . $path;
     }
 
     public function getThumbAttribute(): string
@@ -188,8 +227,17 @@ class Product extends Model implements HasMedia
         $response = [];
         foreach ($this->getMedia('product') as $index => $image) {
             $response[] = [
-                'id'      => $image->id,
-                'url'     => $this->conversionUrl($image, 'preview', 'images/default/product/preview.png'),
+                'id' => $image->id,
+                // 'cover' (372x405), NOT 'preview' (1536x1536). Two reasons:
+                //
+                // 1. The preview files are missing from disk for much of the
+                //    catalogue — generated_conversions still flags them as
+                //    present, so hasGeneratedConversion() cannot detect it, and
+                //    the admin gallery 404'd while the storefront rendered fine
+                //    because the storefront only ever asks for cover/thumb.
+                // 2. Even when present, a 1536px file for a 480px pane is ~15x
+                //    the bytes for no visible gain.
+                'url'     => $this->conversionUrl($image, 'cover', 'images/default/product/cover.png'),
                 'thumb'   => $this->conversionUrl($image, 'thumb', 'images/default/product/thumb.png'),
                 'is_hero' => $index === 0,
             ];

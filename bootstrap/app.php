@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ApiKeyMiddleware;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\Installed;
 use App\Http\Middleware\localization;
 use Illuminate\Auth\Middleware\Authenticate;
@@ -61,6 +62,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'apiKey' => ApiKeyMiddleware::class,
             'localization' => localization::class,
             'installed' => Installed::class,
+            'active' => EnsureUserIsActive::class,
 
         ]);
     })

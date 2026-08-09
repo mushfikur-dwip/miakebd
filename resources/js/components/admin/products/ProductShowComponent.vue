@@ -673,7 +673,13 @@ export default {
                 this.previewImage = res.data.data.preview;
                 this.barcodeImage = res.data.data.barcode_image;
                 this.barcodeFailed = false;
-                this.livePreview = res.data.data.image;
+                // From the gallery, not res.data.data.image — that one is the
+                // 'preview' conversion, which is missing from disk across much
+                // of the catalogue. The gallery serves 'cover', the same
+                // conversion the storefront renders successfully.
+                const gallery = res.data.data.image_gallery || [];
+                this.livePreview = gallery.length ? gallery[0].url : res.data.data.image;
+                this.activeIndex = 0;
                 this.imageCount = res.data.data.images.length;
                 this.shippingAndReturnForm.shipping_and_return = res.data.data.shipping_and_return;
                 this.shippingAndReturnForm.shipping_type = res.data.data.shipping_type;

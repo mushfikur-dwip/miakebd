@@ -16,6 +16,7 @@ import "../../public/themes/default/fonts/public/public.css";
 import "../../public/themes/default/fonts/fontawesome/fontawesome.css";
 import 'sweetalert2/dist/sweetalert2.min.css';
 import { createHead } from '@vueuse/head';
+import reveal from './directives/reveal.js';
 const head = createHead();
 
 const toastOptions = {
@@ -66,4 +67,5 @@ app.component('apexchart', defineAsyncComponent(() => import('vue3-apexcharts'))
 app.use(Toast, toastOptions)
 app.use(i18n)
 app.use(head)
+app.directive('reveal', reveal)
 app.mount('#app');

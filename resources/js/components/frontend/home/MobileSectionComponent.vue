@@ -4,6 +4,7 @@
     </div>
     <div
         v-else-if="buttons.length > 0"
+        v-reveal
         class="w-full bg-cover bg-center bg-no-repeat mb-4 py-4 lg:hidden"
         :style="backgroundStyle"
     >

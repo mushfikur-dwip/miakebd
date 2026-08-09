@@ -1,6 +1,6 @@
 <template>
     <LoadingComponent :props="loading"/>
-    <section v-if="products.length > 0" class="mb-7 sm:mb-12">
+    <section v-reveal v-if="products.length > 0" class="cv-auto mb-7 sm:mb-12">
         <div class="container">
             <div class="flex items-center justify-between gap-4 mb-5 sm:mb-7">
                 <h2 class="text-2xl sm:text-4xl font-bold capitalize">

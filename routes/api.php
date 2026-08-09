@@ -200,7 +200,10 @@ Route::prefix('profile')->middleware(['installed', 'apiKey', 'auth:sanctum', 'lo
     Route::post('/change-image', [ProfileController::class, 'changeImage']);
 });
 
-Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
+// 'active' re-checks users.status on every admin request. auth:sanctum alone
+// only proves the bearer token resolves to a user — a deactivated or
+// role-stripped administrator kept full access until their token was deleted.
+Route::prefix('admin')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::prefix('timezone')->group(function () {
         Route::get('/', [TimezoneController::class, 'index']);
     });

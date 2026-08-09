@@ -1,7 +1,7 @@
 <template>
     <div v-if="products.length > 0" v-for="product in products"
-        class="p-2 miron rounded-2xl bg-white shadow-card transition-all duration-300 sm:hover:shadow-hover sm:hover:-translate-y-1 group">
-        <div class="relative overflow-hidden rounded-xl isolate">
+        class="p-2 miron contain-layout rounded-2xl bg-white shadow-card transition-[transform,box-shadow] duration-300 sm:hover:shadow-hover sm:hover:-translate-y-1 group">
+        <div class="relative overflow-hidden rounded-xl isolate card-shine">
             <label
                 class="capitalize text-xs font-semibold rounded-xl py-1 px-2 shadow-badge absolute top-3 left-3 z-10 bg-secondary text-white"
                 v-if="product.is_offer && product.flash_sale">{{ $t('label.flash_sale') }}</label>

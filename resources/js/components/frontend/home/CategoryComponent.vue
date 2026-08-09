@@ -1,6 +1,6 @@
 <template>
     <LoadingComponent :props="loading" />
-    <section v-if="categories.length > 0" class="sm:mb-10">
+    <section v-reveal v-if="categories.length > 0" class="sm:mb-10">
         <div class="container">
             <h2 class="text-2xl sm:text-4xl font-bold -mb-10">Product Categories</h2>
             <Swiper dir="ltr" :speed="1000" :loop="true" :navigation="true" :modules="modules" class="navigate-swiper" :breakpoints="breakpoints">

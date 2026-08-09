@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\Ask;
 use App\Enums\Role as EnumRole;
+use App\Enums\Status;
 use App\Http\Requests\AdministratorRequest;
 use App\Http\Requests\ChangeImageRequest;
 use App\Http\Requests\PaginateRequest;
@@ -99,6 +100,19 @@ class AdministratorService
                     $this->user->password = Hash::make($request->password);
                 }
                 $this->user->save();
+
+                // Revoke every issued token when the account is deactivated or
+                // its password is changed. Sanctum tokens here never expire, so
+                // without this an administrator who was switched off carried on
+                // working from whatever tab already held the token — which is
+                // exactly what was seen after adding a replacement admin.
+                //
+                // A password change revokes too: that is the action an admin
+                // takes when they believe a credential is compromised, and it
+                // has to actually cut off existing sessions to mean anything.
+                if ((int) $this->user->status !== Status::ACTIVE || $request->password) {
+                    $this->user->tokens()->delete();
+                }
             });
             return $this->user;
         } catch (Exception $exception) {
@@ -117,6 +131,10 @@ class AdministratorService
             if (Auth::user()->id != $administrator->id && $administrator->id != 1) {
                 if ($administrator->hasRole(EnumRole::ADMIN)) {
                     DB::transaction(function () use ($administrator) {
+                        // Kill the credentials before anything else. Removing
+                        // the role and soft-deleting the row left every issued
+                        // token intact and usable.
+                        $administrator->tokens()->delete();
                         $administrator->removeRole($administrator->roles[0]->id);
                         $administrator->addresses()->delete();
                         $administrator->delete();

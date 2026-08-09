@@ -1198,3 +1198,116 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 .animate-slideDown {
     animation: slideDown 0.6s ease-out forwards;
 }
+
+/* Scroll-reveal (v-reveal directive). Only transform and opacity change, so
+   the animation runs on the compositor thread — no layout, no repaint of the
+   section contents. The directive adds .reveal on mount and .reveal-visible
+   once the element scrolls into view. */
+.reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    /* Stagger comes from the directive as a custom property rather than a
+       setTimeout per element — the delay is then handled by the compositor
+       alongside the transition itself, with no JS timers on the page. */
+    transition-delay: var(--reveal-delay, 0ms);
+}
+
+/* will-change ONLY while the reveal is still pending.
+   It was previously on the base .reveal class, which stays on the element
+   forever — so every revealed section and card kept a dedicated compositor
+   layer for the life of the page, growing GPU memory with nothing to show
+   for it. Scoping it to :not(.reveal-visible) releases each layer the moment
+   its animation is done, which is exactly what the hint is for. */
+.reveal:not(.reveal-visible) {
+    will-change: opacity, transform;
+}
+
+.reveal.reveal-fade { transform: none; }
+.reveal.reveal-left { transform: translateX(-32px); }
+.reveal.reveal-right { transform: translateX(32px); }
+.reveal.reveal-zoom { transform: scale(0.94); }
+
+.reveal.reveal-visible {
+    opacity: 1;
+    transform: none;
+}
+
+/* Staggered grids. The container carries .reveal-group and is invisible to the
+   eye — it exists only so one observer entry can release all of its children,
+   each on its own --reveal-delay. One observed element per grid rather than
+   one per card. */
+.reveal-group.reveal-visible > .reveal-child {
+    opacity: 1;
+    transform: none;
+}
+
+.reveal-group.reveal-visible > .reveal-child:not(.reveal-visible) {
+    will-change: auto;
+}
+
+/* Product card image shine sweep. A translucent gradient slides across the
+   image on hover; it is a transform-only transition on a pseudo-element, so
+   it costs one composited layer and zero JS. Applied to the card's image
+   wrapper (overflow-hidden clips the sweep to the rounded corners). */
+/* The whole pseudo-element lives inside the hover query, not just its :hover
+   state. Defined unconditionally it painted a gradient layer on EVERY card on
+   touch devices — 32 of them on a listing page — for an effect those devices
+   can never trigger. Most of this store's traffic is mobile, so that was pure
+   paint cost with no visual benefit. */
+@media (hover: hover) {
+    .card-shine::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.35) 50%, transparent 58%);
+        transform: translateX(-110%);
+        transition: transform 0.7s ease;
+        pointer-events: none;
+    }
+
+    .card-shine:hover::after { transform: translateX(110%); }
+}
+
+/* Skip layout and paint entirely for sections that are still offscreen. This
+   is the one change here that makes the page measurably faster rather than
+   merely cheaper: the browser stops laying out content nobody can see.
+   contain-intrinsic-size supplies a placeholder height so the scrollbar stays
+   honest and the page does not jump as each section is realised. */
+.cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 600px;
+}
+
+.cv-auto-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 340px;
+}
+
+/* Layout containment only — NOT paint. A product card lifts on hover and casts
+   a shadow outside its own box, and `contain: paint` would clip both. `layout`
+   still stops a reflow inside one card (a long title wrapping, an image
+   settling) from being able to touch its siblings' geometry. */
+.contain-layout {
+    contain: layout;
+}
+
+/* Honour the OS setting globally, not just for the handful of components that
+   remembered to. Near-zero duration rather than `none` so transitionend still
+   fires and any JS waiting on it is not left hanging. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .reveal {
+        opacity: 1;
+        transform: none;
+    }
+}

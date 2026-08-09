@@ -3,7 +3,7 @@
 
     <div class="p-0 m-0" v-if="productSections.length > 0 && promotions.length > 0"
         v-for="(productSection, key) in productSections">
-        <section class="mb-10 sm:mb-20" v-if="productSection.products.length > 0">
+        <section v-reveal class="cv-auto mb-10 sm:mb-20" v-if="productSection.products.length > 0">
             <div class="container">
                 <div class="flex items-center justify-between gap-4 mb-5 sm:mb-7">
                     <h2 class="text-2xl sm:text-4xl font-bold capitalize">
@@ -34,7 +34,7 @@
     </div>
 
     <div class="p-0 m-0" v-else-if="productSections.length > 0" v-for="productSection in productSections">
-        <section class="mb-10 sm:mb-20" v-if="productSection.products.length > 0">
+        <section v-reveal class="cv-auto mb-10 sm:mb-20" v-if="productSection.products.length > 0">
             <div class="container">
                 <div class="flex items-center justify-between gap-4 mb-5 sm:mb-7">
                     <h2 class="text-2xl sm:text-4xl font-bold capitalize">

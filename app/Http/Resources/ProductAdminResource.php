@@ -42,6 +42,9 @@ class ProductAdminResource extends JsonResource
             "shipping_and_return"        => $this->shipping_and_return === null ? '' : $this->shipping_and_return,
             "product_tags"               => ProductTagResource::collection($this->tags),
             "category_name"              => $this?->category?->name,
+            // Branch quantity when the caller passed outlet_id (the POS),
+            // otherwise the total across every branch.
+            "stock"                      => (int) $this->stock_items_sum_quantity,
             "order"                      => abs($this?->productOrders->sum('quantity')),
             'currency_price'             => AppLibrary::currencyAmountFormat($price),
             "cover"                      => $this->cover,

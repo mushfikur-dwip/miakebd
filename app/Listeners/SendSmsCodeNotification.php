@@ -24,7 +24,7 @@ class SendSmsCodeNotification
     /**
      * Handle the event.
      *
-     * @param \App\Events\SendResetPassword $event
+     * @param \App\Events\SendSmsCode $event
      * @return void
      */
     public function handle(SendSmsCode $event)

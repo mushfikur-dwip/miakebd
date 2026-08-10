@@ -26,9 +26,9 @@ class User extends Authenticatable implements HasMedia
     use SoftDeletes;
 
     /**
-     * The attributes that are mass assignable.
+     * The table associated with the model.
      *
-     * @var array<int, string>
+     * @var string
      */
     protected $table = "users";
     protected $dates = ["deleted_at"];
@@ -117,7 +117,7 @@ class User extends Authenticatable implements HasMedia
         return asset('images/required/profile.png');
     }
 
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')->fit(Fit::Fill, 338, 338)->keepOriginalImageFormat()->sharpen(10);
     }
@@ -140,10 +140,10 @@ class User extends Authenticatable implements HasMedia
 
     public function getrole(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(Role::class, 'id', 'myrole');
+        return $this->hasOne(\Spatie\Permission\Models\Role::class, 'id', 'myrole');
     }
     public function returnOrders()
     {
-        $this->hasMany(ReturnOrder::class, 'user_id', 'id');
+        return $this->hasMany(ReturnOrder::class, 'user_id', 'id');
     }
 }

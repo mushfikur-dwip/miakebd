@@ -37,7 +37,7 @@ class ReturnAndRefund extends Model implements HasMedia
         return $response;
     }
 
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')->width(168)->height(180)->keepOriginalImageFormat()->sharpen(10);
     }

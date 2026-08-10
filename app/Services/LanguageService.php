@@ -182,7 +182,7 @@ class LanguageService
     {
         if (file_exists($request->path)) {
             $explodeName = explode('.', $request->name);
-            if ($explodeName > 0) {
+            if (count($explodeName) > 1) {
                 if ($explodeName[1] == 'json') {
                     include($request->path);
                 } else {

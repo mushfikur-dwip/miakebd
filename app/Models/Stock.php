@@ -15,6 +15,7 @@ class Stock extends Model
     protected $table = "stocks";
     protected $fillable = [
         'product_id',
+        'outlet_id',
         'model_type',
         'model_id',
         'item_type',
@@ -33,6 +34,7 @@ class Stock extends Model
     protected $casts = [
         'id'            => 'integer',
         'product_id'    => 'integer',
+        'outlet_id'     => 'integer',
         'model_type'    => 'string',
         'model_id'      => 'integer',
         'item_type'     => 'string',
@@ -56,6 +58,11 @@ class Stock extends Model
     public function product(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Product::class)->withTrashed();
+    }
+
+    public function outlet(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Outlet::class);
     }
 
     public function productTax(): \Illuminate\Database\Eloquent\Relations\BelongsTo

@@ -52,6 +52,18 @@ export const stock = {
                 });
             });
         },
+        // Sets one product's stock branch by branch. The caller refreshes the
+        // list itself - the search it is holding is the only thing that knows
+        // which page and filters to come back to.
+        updateItem: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post('admin/stock/update-item', payload).then((res) => {
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         export: function (context, payload) {
             return new Promise((resolve, reject) => {
                 let url = 'admin/stock/export';

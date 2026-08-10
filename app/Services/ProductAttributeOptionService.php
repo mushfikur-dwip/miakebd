@@ -66,7 +66,7 @@ class ProductAttributeOptionService
     /**
      * @throws Exception
      */
-    public function update(ProductAttributeOptionRequest $request, ProductAttribute $productAttribute, ProductAttributeOption $productAttributeOption): ProductAttributeoption
+    public function update(ProductAttributeOptionRequest $request, ProductAttribute $productAttribute, ProductAttributeOption $productAttributeOption): ProductAttributeOption
     {
         try {
             DB::transaction(function () use ($request, $productAttribute, $productAttributeOption) {

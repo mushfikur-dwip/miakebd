@@ -78,7 +78,7 @@
           class="db-field-control w-full text-sm rounded-lg appearance-none cursor-pointer text-heading border-[#D9DBE9]"
           id="branch" v-model="checkoutProps.form.outlet_id" :options="outlets" label-by="name" value-by="id"
           :closeOnSelect="true" :searchable="true" :clearOnClose="true" :placeholder="$t('label.select_branch')"
-          :search-placeholder="$t('label.search_branch')" />
+          :search-placeholder="$t('label.search_branch')" @update:modelValue="setOutlet($event)" />
       </div>
     </div>
 
@@ -118,8 +118,7 @@
                 class="lab-fill-circle-minus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
               <input v-on:keypress="onlyNumber($event)" v-on:keyup="quantityUp(index, cart, $event)" type="number"
                 v-model="cart.quantity" class="text-center w-full h-5 text-sm font-medium">
-              <button :class="cart.quantity >= cart.stock ? 'cursor-not-allowed' : ''"
-                @click.prevent="quantityIncrement(index, cart)" type="button"
+              <button @click.prevent="quantityIncrement(index, cart)" type="button"
                 class="lab-fill-circle-plus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
             </div>
             <button @click.prevent="removeProduct(index)"
@@ -281,6 +280,10 @@ export default {
           name: "",
           product_category_id: "",
           product_brand_id: "",
+          // Drives which branch's stock the tiles show. Kept in step with the
+          // branch selector so the numbers always match the outlet the sale
+          // will be booked against.
+          outlet_id: null,
           status: statusEnum.ACTIVE
         },
       },
@@ -440,7 +443,20 @@ export default {
         order_column: 'id',
         order_type: 'asc',
         status: statusEnum.ACTIVE
-      }).then().catch();
+      }).then((res) => {
+        // Preselect the first branch, the same way the customer selector
+        // does. Without a branch the tiles would show the company-wide
+        // total, which is not what this till can actually sell.
+        if (!this.checkoutProps.form.outlet_id && res.data.data.length > 0) {
+          this.setOutlet(res.data.data[0].id);
+        }
+      }).catch();
+    },
+    setOutlet: function (id) {
+      this.checkoutProps.form.outlet_id = id;
+      this.props.search.outlet_id = id;
+      this.$store.commit("posCart/outlet", id);
+      this.productList();
     },
     productList: function (page = 1) {
       this.loading.isActive = true;
@@ -465,9 +481,6 @@ export default {
       if (quantity === 0 || quantity < 0 || quantity === "0") {
         quantity = 1;
       }
-      if (quantity > product.stock) {
-        quantity = product.stock
-      }
       this.$store.dispatch('posCart/quantity', { id: id, status: quantity }).then().catch();
       this.checkoutProps.form.discount = 0;
       this.$store.dispatch('posCart/discount', this.checkoutProps.form.discount).then().catch();
@@ -477,10 +490,6 @@ export default {
       quantity++;
       if (quantity <= 0) {
         quantity = 1;
-      }
-
-      if (quantity > product.stock) {
-        quantity--;
       }
       this.$store.dispatch('posCart/quantity', { id: id, status: quantity }).then().catch();
       this.checkoutProps.form.discount = 0;
@@ -503,7 +512,8 @@ export default {
       if (this.carts.length === 0) {
         this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
         this.checkoutProps.form.pos_payment_note = "";
-        this.checkoutProps.form.outlet_id = null;
+        // The branch stays put. A till belongs to one branch all day, and
+        // clearing it would drop the grid back to company-wide stock.
         this.discountErrorMessage = "";
 
       }
@@ -539,7 +549,8 @@ export default {
       if (this.carts.length === 0) {
         this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
         this.checkoutProps.form.pos_payment_note = "";
-        this.checkoutProps.form.outlet_id = null;
+        // The branch stays put. A till belongs to one branch all day, and
+        // clearing it would drop the grid back to company-wide stock.
         this.discountErrorMessage = "";
 
       }
@@ -565,10 +576,12 @@ export default {
         this.$store.dispatch('posCart/resetCart').then(res => {
           this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
           this.checkoutProps.form.pos_payment_note = "";
-          this.checkoutProps.form.outlet_id = null;
           this.discount = null;
           this.discountErrorMessage = "";
           this.loading.isActive = false;
+          // The sale just took goods out of this branch, so pull the tiles
+          // again to show what is left.
+          this.productList();
         }).catch();
         alertService.success(this.$t('message.pos_order'));
         this.$store.dispatch('posOrder/show', orderResponse.data.data.id).then(res => {

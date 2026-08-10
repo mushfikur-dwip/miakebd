@@ -108,6 +108,7 @@ import { smsGateway } from "./modules/smsGateway";
 import { socialMedia } from "./modules/socialMedia";
 import { state } from "./modules/state";
 import { stock } from "./modules/stock";
+import { stockAdjustment } from "./modules/stockAdjustment";
 import { storeSalesReport } from "./modules/storeSalesReport";
 import { subscriber } from "./modules/subscriber";
 import { supplier } from "./modules/supplier";
@@ -211,6 +212,7 @@ export default new createStore({
         campaignProduct,
         frontendCoupon,
         stock,
+        stockAdjustment,
         storeSalesReport,
         telegram,
         shippingSetup,

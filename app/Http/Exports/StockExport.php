@@ -26,11 +26,19 @@ class StockExport implements FromCollection, WithHeadings
     public function collection()
     {
         $stockArray = [];
+        // The screen's search params come through with paginate=1, which would
+        // hand back a single page and export ten rows out of the catalogue.
+        // An export is meant to be the whole thing.
+        $this->request->merge(['paginate' => 0]);
         $stocksArray = $this->stockService->list($this->request);
         foreach ($stocksArray as $stock) {
             $stockArray[] = [
-                strlen($stock['variation_names']) > 0 ?  $stock['product_name'] . '(' . $stock['variation_names'] . ')' : $stock['product_name'],
+                strlen((string) $stock['variation_names']) > 0 ?  $stock['product_name'] . '(' . $stock['variation_names'] . ')' : $stock['product_name'],
+                $stock['sku'] ?? '',
                 $stock['stock'],
+                collect($stock['outlet_stocks'] ?? [])
+                    ->map(fn($outlet) => $outlet['outlet_name'] . ': ' . $outlet['quantity'])
+                    ->implode(', '),
                 trans('statuse.' . $stock['status'])
             ];
         }
@@ -40,7 +48,9 @@ class StockExport implements FromCollection, WithHeadings
     {
         return [
             trans('all.label.product_name'),
+            trans('all.label.sku'),
             trans('all.label.stock'),
+            trans('all.label.branch_stock'),
             trans('all.label.status'),
         ];
     }

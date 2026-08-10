@@ -58,7 +58,7 @@ class CookiesService
             $cookiesConsent = $_SERVER['HTTP_USER_AGENT'] . ', ' . $cookiesSetRequest->ip();
         }
         setcookie('user_cookie_consent', $cookiesConsent, time() + (86400 * 7), "/");
-        setcookie('cookies_notification', true, time() + (86400 * 7), "/");
+        setcookie('cookies_notification', '1', time() + (86400 * 7), "/");
         return ['cookies_notification' => true, 'user_cookie_consent' => $cookiesConsent];
     }
 }

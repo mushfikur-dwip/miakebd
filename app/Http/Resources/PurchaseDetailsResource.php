@@ -20,6 +20,8 @@ class PurchaseDetailsResource extends JsonResource
             'id'                      => $this->id,
             'supplier_id'             => $this->supplier_id,
             'supplier_name'           => $this->supplier->name,
+            'outlet_id'               => $this->outlet_id,
+            'outlet_name'             => $this->outlet?->name,
             'date'                    => $this->date,
             'converted_date'          => AppLibrary::datetime($this->date),
             'reference_no'            => $this->reference_no,

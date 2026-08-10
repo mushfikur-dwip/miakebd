@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Status;
+use App\Models\Concerns\HasOutletStock;
 use Illuminate\Database\Eloquent\Model;
 use Staudenmeir\LaravelAdjacencyList\Eloquent\HasRecursiveRelationships;
 use Spatie\MediaLibrary\HasMedia;
@@ -10,7 +11,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class ProductVariation extends  Model implements HasMedia
 {
-    use HasRecursiveRelationships, InteractsWithMedia;
+    use HasRecursiveRelationships, InteractsWithMedia, HasOutletStock;
     protected $table = "product_variations";
     protected $fillable = [
         'product_id',

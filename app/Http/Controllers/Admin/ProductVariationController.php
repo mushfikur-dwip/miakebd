@@ -92,19 +92,19 @@ class ProductVariationController extends AdminController implements HasMiddlewar
         }
     }
 
-    public function initialVariation(Product $product): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function initialVariation(Product $product, Request $request): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         try {
-            return SimpleProductVariationResource::collection($this->productVariationService->initialVariation($product));
+            return SimpleProductVariationResource::collection($this->productVariationService->initialVariation($product, $request->get('outlet_id')));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }
     }
 
-    public function childrenVariation(ProductVariation $productVariation): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    public function childrenVariation(ProductVariation $productVariation, Request $request): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         try {
-            return SimpleProductVariationResource::collection($this->productVariationService->childrenVariation($productVariation));
+            return SimpleProductVariationResource::collection($this->productVariationService->childrenVariation($productVariation, $request->get('outlet_id')));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }
@@ -128,10 +128,10 @@ class ProductVariationController extends AdminController implements HasMiddlewar
         }
     }
 
-    public function barcodeVariationProduct(ProductVariation $productVariation): \Illuminate\Http\Response | SimpleProductVariationResource | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
+    public function barcodeVariationProduct(ProductVariation $productVariation, Request $request): \Illuminate\Http\Response | SimpleProductVariationResource | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
     {
         try {
-            return new SimpleProductVariationResource($this->productVariationService->barcodeVariationProduct($productVariation));
+            return new SimpleProductVariationResource($this->productVariationService->barcodeVariationProduct($productVariation, $request->get('outlet_id')));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

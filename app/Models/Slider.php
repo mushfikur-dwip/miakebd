@@ -32,7 +32,7 @@ class Slider extends Model implements HasMedia
         return asset('images/default/slider.png');
     }
 
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('cover')->fit(Fit::Fill, 1689, 600)->keepOriginalImageFormat()->sharpen(10);
     }

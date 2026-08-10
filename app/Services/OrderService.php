@@ -204,6 +204,10 @@ class OrderService
                     foreach ($products as $product) {
                         $stockId = Stock::create([
                             'product_id'      => $product->product_id,
+                            // The branch picked in the POS. Without it the sale
+                            // would come off the unassigned pool instead of the
+                            // outlet that actually handed over the goods.
+                            'outlet_id'       => $this->order->outlet_id,
                             'model_type'      => Order::class,
                             'model_id'        => $this->order->id,
                             'item_type'       => $product->variation_id > 0 ? ProductVariation::class : Product::class,

@@ -47,7 +47,7 @@ class ProductCategory extends Model implements HasMedia
         return asset('images/default/category/cover.png');
     }
 
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')->width(252)->height(183)->keepOriginalImageFormat()->sharpen(10);
         $this->addMediaConversion('cover')->width(960)->height(1440)->keepOriginalImageFormat()->sharpen(10);

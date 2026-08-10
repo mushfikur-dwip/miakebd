@@ -5,6 +5,22 @@
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">{{ $t('menu.stock') }}</h3>
                 <div class="db-card-filter">
+                    <!-- Kept out in the open rather than behind the Filter
+                         toggle: a scanner fires the code then Enter, so the
+                         field has to already have focus available. -->
+                    <div class="flex items-center h-10 px-3 rounded-md border border-[#EFF0F6] bg-white">
+                        <i class="lab lab-line-qrcode ltr:mr-2 rtl:ml-2"></i>
+                        <input id="scanSku" ref="skuField" v-model="props.search.sku" type="search"
+                            :placeholder="$t('label.scan_or_type_barcode')" class="w-40 sm:w-52 text-sm"
+                            @keyup.enter.prevent="search" />
+                        <button v-if="props.search.sku" @click.prevent="clearSku" type="button"
+                            class="text-sm text-red-500 fa-regular fa-circle-xmark"></button>
+                    </div>
+                    <router-link :to="{ name: 'admin.stock.adjustment.list' }"
+                        class="db-btn py-2 text-white bg-primary">
+                        <i class="lab lab-line-stock"></i>
+                        <span>{{ $t('label.stock_adjustment') }}</span>
+                    </router-link>
                     <TableLimitComponent :method="list" :search="props.search" :page="paginationPage" />
                     <FilterComponent @click.prevent="handleSlide('stock-filter')" />
                     <div class="dropdown-group">
@@ -26,6 +42,18 @@
                             </label>
                             <input id="searchName" v-model="props.search.product_name" type="text"
                                 class="db-field-control" />
+                        </div>
+
+                        <div class="col-12 sm:col-6 md:col-4 xl:col-3">
+                            <label for="searchBranch" class="db-field-title after:hidden">
+                                {{ $t("label.branch") }}
+                            </label>
+                            <!-- 0 is the unassigned pool: everything recorded
+                                 before branch-wise stock, plus delivery orders. -->
+                            <vue-select class="db-field-control f-b-custom-select" id="searchBranch"
+                                v-model="props.search.outlet_id" :options="branchOptions" label-by="name" value-by="id"
+                                :closeOnSelect="true" :searchable="true" :clearOnClose="true"
+                                :placeholder="$t('label.all_branch')" :search-placeholder="$t('label.search_branch')" />
                         </div>
 
                         <div class="col-12 sm:col-6 md:col-4 xl:col-3">
@@ -63,10 +91,19 @@
                                 {{ $t('label.name') }}
                             </th>
                             <th class="db-table-head-th">
+                                {{ $t('label.sku') }}
+                            </th>
+                            <th class="db-table-head-th">
                                 {{ $t('label.quantity') }}
                             </th>
                             <th class="db-table-head-th">
+                                {{ $t('label.branch_stock') }}
+                            </th>
+                            <th class="db-table-head-th">
                                 {{ $t('label.status') }}
+                            </th>
+                            <th class="db-table-head-th">
+                                {{ $t('label.actions') }}
                             </th>
                         </tr>
                     </thead>
@@ -77,17 +114,46 @@
                                 <span v-if="stock.variation_names"> ( {{ $t('label.variation') }} : {{ stock.variation_names
                                 }} )</span>
                             </td>
-                            <td class="db-table-body-td">{{ stock.stock }}</td>
+                            <td class="db-table-body-td">{{ stock.sku || '-' }}</td>
+                            <td class="db-table-body-td">
+                                {{ stock.stock }}
+                                <!-- Can Purchasable = No: the storefront ignores
+                                     this count and treats the product as always
+                                     available. The real figure still shows here
+                                     so it can be corrected. -->
+                                <span v-if="!stock.stock_tracked"
+                                    class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                                    {{ $t('label.not_stock_controlled') }}
+                                </span>
+                            </td>
+                            <td class="db-table-body-td">
+                                <div class="flex flex-wrap gap-1.5">
+                                    <span v-for="outletStock in stock.outlet_stocks" :key="outletStock.outlet_name"
+                                        class="whitespace-nowrap text-xs px-2 py-1 rounded"
+                                        :class="outletStock.quantity > 0 ? 'bg-gray-100' : 'bg-gray-50 text-gray-400'">
+                                        {{ outletStock.outlet_name }}: <b>{{ outletStock.quantity }}</b>
+                                    </span>
+                                </div>
+                            </td>
                             <td class="db-table-body-td">
                                 <span :class="statusClass(stock.status)">
                                     {{ enums.statusEnumArray[stock.status] }}
                                 </span>
                             </td>
+                            <td class="db-table-body-td hidden-print">
+                                <!-- A plain button, not SmIconEditComponent -
+                                     that one is a router-link to an edit page,
+                                     and this edit happens in a dialog. -->
+                                <button class="db-table-action edit" @click.prevent="edit(stock)">
+                                    <i class="lab lab-line-edit"></i>
+                                    <span class="db-tooltip">{{ $t('button.edit') }}</span>
+                                </button>
+                            </td>
                         </tr>
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="3">
+                            <td class="db-table-body-td text-center" colspan="6">
                                 <div class="p-4">
                                     <div class="max-w-[300px] mx-auto mt-2">
                                         <img class="w-full h-full" :src="ENV.API_URL+'/images/default/not-found/not_found.png'" alt="Not Found">
@@ -109,6 +175,11 @@
             </div>
         </div>
     </div>
+
+    <!-- Keyed on the row so reopening on a different product rebuilds the
+         branch lines instead of showing the previous product's numbers. -->
+    <StockEditModalComponent v-if="editModal.isShowModal" :key="editKey" :item="editItem" :modal="editModal"
+        :outlets="outlets" v-on:saved="list(props.search.page)" />
 </template>
 <script>
 import LoadingComponent from "../components/LoadingComponent";
@@ -128,10 +199,12 @@ import PrintComponent from "../components/buttons/export/PrintComponent";
 import ExcelComponent from "../components/buttons/export/ExcelComponent";
 import _ from "lodash";
 import ENV from "../../../config/env";
+import StockEditModalComponent from "./StockEditModalComponent";
 
 export default {
     name: "StockListComponent",
     components: {
+        StockEditModalComponent,
         TableLimitComponent,
         PaginationSMBox,
         PaginationBox,
@@ -170,15 +243,28 @@ export default {
                     order_column: 'id',
                     order_type: 'desc',
                     product_name: "",
+                    sku: "",
+                    outlet_id: null,
                     status: null,
                 }
             },
+            editModal: { isShowModal: false },
+            editItem: {},
+            editKey: 0,
             ENV: ENV
         }
     },
     computed: {
         stocks: function () {
             return this.$store.getters['stock/lists'];
+        },
+        outlets: function () {
+            return this.$store.getters['outlet/lists'];
+        },
+        branchOptions: function () {
+            // Id 0 stands for the unassigned pool, which has no outlet row of
+            // its own but is still a thing you need to be able to filter on.
+            return [{ id: 0, name: this.$t('label.unassigned') }].concat(this.outlets);
         },
         pagination: function () {
             return this.$store.getters['stock/pagination'];
@@ -189,6 +275,12 @@ export default {
     },
     mounted() {
         this.list();
+        this.$store.dispatch('outlet/lists', {
+            paginate: 0,
+            order_column: 'id',
+            order_type: 'asc',
+            status: statusEnum.ACTIVE
+        });
     },
     methods: {
         permissionChecker(e) {
@@ -206,10 +298,23 @@ export default {
         search: function () {
             this.list();
         },
+        edit: function (stock) {
+            this.editItem = stock;
+            this.editKey += 1;
+            this.editModal.isShowModal = true;
+        },
+        clearSku: function () {
+            this.props.search.sku = "";
+            this.list();
+            // Hand focus straight back so the next scan lands in the field.
+            this.$nextTick(() => this.$refs.skuField?.focus());
+        },
         clear: function () {
             this.props.search.paginate = 1;
             this.props.search.page = 1;
             this.props.search.product_name = "";
+            this.props.search.sku = "";
+            this.props.search.outlet_id = null;
             this.props.search.status = null;
             this.list();
         },

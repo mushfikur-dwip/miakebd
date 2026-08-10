@@ -64,7 +64,10 @@ class ProductService
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_type') ?? 'desc';
 
-            return Product::with('media', 'category', 'brand', 'taxes', 'tags', 'reviews')->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])->withReviewRating()->where(function ($query) use ($requests) {
+            // outlet_id is sent by the POS so every tile shows the quantity
+            // held by the branch the cashier picked. Admin screens send
+            // nothing and get the total across all branches.
+            return Product::with('media', 'category', 'brand', 'taxes', 'tags', 'reviews')->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])->withReviewRating()->withStockQuantity($request->get('outlet_id'))->where(function ($query) use ($requests) {
                 foreach ($requests as $key => $request) {
                     if (in_array($key, $this->productFilter)) {
                         if ($key == "except") {
@@ -137,15 +140,18 @@ class ProductService
                 }
 
                 $generator = new BarcodeGeneratorJPG();
+                $barcode   = null;
                 if ($this->product->barcode_id == BarcodeType::EAN_13) {
                     $barcode = $generator->getBarcode($barcode_value, $generator::TYPE_EAN_13);
                 }
                 if ($this->product->barcode_id == BarcodeType::UPC_A) {
                     $barcode = $generator->getBarcode($barcode_value, $generator::TYPE_UPC_A);
                 }
-                $tempFilePath = storage_path('app/public/barcode.jpg');
-                file_put_contents($tempFilePath, $barcode);
-                $this->product->addMedia($tempFilePath)->toMediaCollection('product-barcode');
+                if ($barcode) {
+                    $tempFilePath = storage_path('app/public/barcode.jpg');
+                    file_put_contents($tempFilePath, $barcode);
+                    $this->product->addMedia($tempFilePath)->toMediaCollection('product-barcode');
+                }
             });
             return $this->product;
         } catch (Exception $exception) {
@@ -179,16 +185,19 @@ class ProductService
                     $product->update($request->validated() + ['slug' => $slug]);
 
                     $generator = new BarcodeGeneratorJPG();
+                    $barcode   = null;
                     if ($product->barcode_id == BarcodeType::EAN_13) {
                         $barcode = $generator->getBarcode($barcode_value, $generator::TYPE_EAN_13);
                     }
                     if ($product->barcode_id == BarcodeType::UPC_A) {
                         $barcode = $generator->getBarcode($barcode_value, $generator::TYPE_UPC_A);
                     }
-                    $tempFilePath = storage_path('app/public/barcode.jpg');
-                    file_put_contents($tempFilePath, $barcode);
-                    $product->clearMediaCollection('product-barcode');
-                    $product->addMedia($tempFilePath)->toMediaCollection('product-barcode');
+                    if ($barcode) {
+                        $tempFilePath = storage_path('app/public/barcode.jpg');
+                        file_put_contents($tempFilePath, $barcode);
+                        $product->clearMediaCollection('product-barcode');
+                        $product->addMedia($tempFilePath)->toMediaCollection('product-barcode');
+                    }
                 } else {
                     $baseSlug = Str::slug($request->name);
                     $slug     = $baseSlug;
@@ -789,12 +798,17 @@ class ProductService
     /**
      * @throws Exception
      */
-    public function showWithRelation(Product $product, Request $request)
+    /**
+     * $outletId is passed only by the POS, which needs the quantity sitting in
+     * the branch the cashier selected. The storefront passes nothing and keeps
+     * getting the grand total across every branch.
+     */
+    public function showWithRelation(Product $product, Request $request, $outletId = null)
     {
         try {
             return Product::with('media', 'videos', 'category', 'unit', 'taxes')
                 ->with(['seo' => fn($query) => $query->with('media')])
-                ->withSum('stockItems', 'quantity')
+                ->withStockQuantity($outletId)
                 ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
                 ->with(['reviews' => fn($query) => $query->with('user', 'media')->take($request->get('review_limit', 3))])
                 ->withReviewRating()

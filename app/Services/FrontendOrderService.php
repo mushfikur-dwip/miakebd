@@ -189,6 +189,10 @@ class FrontendOrderService
                     foreach ($products as $product) {
                         $stockId = Stock::create([
                             'product_id'      => $product->product_id,
+                            // Pickup orders carry the outlet the customer chose,
+                            // so the goods leave that branch. Delivery orders
+                            // have no outlet and stay on the unassigned pool.
+                            'outlet_id'       => $this->order->outlet_id,
                             'model_type'      => Order::class,
                             'model_id'        => $this->order->id,
                             'item_type'       => $product->variation_id > 0 ? ProductVariation::class : Product::class,

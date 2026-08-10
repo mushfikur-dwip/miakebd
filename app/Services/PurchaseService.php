@@ -84,6 +84,7 @@ class PurchaseService
             DB::transaction(function () use ($request) {
                 $this->purchase = Purchase::create([
                     'supplier_id'    => $request->supplier_id,
+                    'outlet_id'      => $request->outlet_id ?: null,
                     'date'           => date('Y-m-d H:i:s', strtotime($request->date)),
                     'reference_no'   => $request->reference_no,
                     'subtotal'       => $request->subtotal,
@@ -103,6 +104,10 @@ class PurchaseService
                         $stock = Stock::create([
                             'model_type'      => Purchase::class,
                             'model_id'        => $model_id,
+                            // The branch the goods were received into. Null
+                            // keeps the old behaviour: unassigned stock that
+                            // still counts towards the website total.
+                            'outlet_id'       => $this->purchase->outlet_id,
                             'item_type'       => $product['is_variation'] ? ProductVariation::class : Product::class,
                             'item_id'         => $product['item_id'],
                             'variation_names' => $product['variation_names'],
@@ -183,6 +188,7 @@ class PurchaseService
             DB::transaction(function () use ($request, $purchase) {
                 $purchase->update([
                     'supplier_id'  => $request->supplier_id,
+                    'outlet_id'    => $request->outlet_id ?: null,
                     'date'         => date('Y-m-d H:i:s', strtotime($request->date)),
                     'reference_no' => $request->reference_no,
                     'subtotal'     => $request->subtotal,
@@ -208,6 +214,9 @@ class PurchaseService
                         $stock = Stock::create([
                             'model_type'      => Purchase::class,
                             'model_id'        => $model_id,
+                            // Editing a purchase re-creates its stock rows, so
+                            // changing the branch here moves the whole receipt.
+                            'outlet_id'       => $purchase->outlet_id,
                             'item_type'       => $product['is_variation'] ? ProductVariation::class : Product::class,
                             'item_id'         => $product['item_id'],
                             'variation_names' => $product['variation_names'],

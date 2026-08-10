@@ -45,7 +45,7 @@ class Promotion extends Model implements HasMedia
         return asset('images/default/promotion/preview.png');
     }
 
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('cover')->fit(Fit::Fill, 540, 336)->keepOriginalImageFormat()->sharpen(10);
         $this->addMediaConversion('preview')->width(1689)->height(600)->keepOriginalImageFormat()->sharpen(10);

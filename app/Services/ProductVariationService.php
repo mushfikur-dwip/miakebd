@@ -105,7 +105,7 @@ class ProductVariationService
     /**
      * @throws Exception
      */
-    public function initialVariation(Product $product)
+    public function initialVariation(Product $product, $outletId = null)
     {
         try {
             $variations = $product->variations;
@@ -114,8 +114,11 @@ class ProductVariationService
                     ->with(['productAttribute:id,name', 'productAttributeOption:id,name', 'product:id,offer_start_date,offer_end_date,discount,show_stock_out,can_purchasable,maximum_purchase_quantity'])
                     ->get();
 
-                $variations->each(function ($variation) {
-                    $variation->stock_items_sum_quantity = $variation->stockItems()->selectRaw('SUM(quantity) as stock_items_sum_quantity')->value('stock_items_sum_quantity');
+                $variations->each(function ($variation) use ($outletId) {
+                    $variation->stock_items_sum_quantity = $variation->stockItems()
+                        ->when(!blank($outletId), fn($query) => $query->where('outlet_id', $outletId))
+                        ->selectRaw('SUM(quantity) as stock_items_sum_quantity')
+                        ->value('stock_items_sum_quantity');
                 });
 
                 return $variations->groupBy('product_attribute_id')->first();
@@ -130,10 +133,10 @@ class ProductVariationService
     /**
      * @throws Exception
      */
-    public function childrenVariation(ProductVariation $productVariation): \Illuminate\Database\Eloquent\Collection
+    public function childrenVariation(ProductVariation $productVariation, $outletId = null): \Illuminate\Database\Eloquent\Collection
     {
         try {
-            return $productVariation->children()->with(['productAttribute:id,name', 'productAttributeOption:id,name', 'product:id,offer_start_date,offer_end_date,discount,show_stock_out,can_purchasable,maximum_purchase_quantity'])->withSum('stockItems', 'quantity')->get();
+            return $productVariation->children()->with(['productAttribute:id,name', 'productAttributeOption:id,name', 'product:id,offer_start_date,offer_end_date,discount,show_stock_out,can_purchasable,maximum_purchase_quantity'])->withStockQuantity($outletId)->get();
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
@@ -286,6 +289,7 @@ class ProductVariationService
 
                         if ($key == $variationsCount) {
                             $generator = new BarcodeGeneratorJPG();
+                            $barcode   = null;
 
                             if ($product->barcode_id === BarcodeType::EAN_13) {
                                 $barcode_value = str_pad($variation->sku, 12, '0', STR_PAD_LEFT);
@@ -379,6 +383,7 @@ class ProductVariationService
                                 $productVariationExistCheck->update(['sku' => $variation->sku]);
 
                                 $generator = new BarcodeGeneratorJPG();
+                                $barcode   = null;
                                 if ($product->barcode_id === BarcodeType::EAN_13) {
                                     $barcode_value = str_pad($variation->sku, 12, '0', STR_PAD_LEFT);
                                     $barcode = $generator->getBarcode($barcode_value, $generator::TYPE_EAN_13);
@@ -434,6 +439,7 @@ class ProductVariationService
 
                         if ($key == $variationsCount) {
                             $generator = new BarcodeGeneratorJPG();
+                            $barcode   = null;
 
                             if ($product->barcode_id === BarcodeType::EAN_13) {
                                 $barcode_value = str_pad($sku, 12, '0', STR_PAD_LEFT);
@@ -524,10 +530,10 @@ class ProductVariationService
         }
     }
 
-    public function barcodeVariationProduct(ProductVariation $productVariation)
+    public function barcodeVariationProduct(ProductVariation $productVariation, $outletId = null)
     {
         try {
-            return ProductVariation::where('id', $productVariation->id)->with(['productAttribute:id,name', 'productAttributeOption:id,name', 'product:id,offer_start_date,offer_end_date,discount,show_stock_out,can_purchasable'])->withSum('stockItems', 'quantity')->first();
+            return ProductVariation::where('id', $productVariation->id)->with(['productAttribute:id,name', 'productAttributeOption:id,name', 'product:id,offer_start_date,offer_end_date,discount,show_stock_out,can_purchasable'])->withStockQuantity($outletId)->first();
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

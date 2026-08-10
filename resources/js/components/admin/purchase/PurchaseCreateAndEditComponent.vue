@@ -64,6 +64,22 @@
                                 errors.supplier_id[0]
                             }}</small>
                         </div>
+                        <div class="form-col-12 sm:form-col-6">
+                            <label class="db-field-title">{{ $t("label.branch") }}</label>
+
+                            <!-- Which branch receives the goods. Left empty the
+                                 stock is unassigned, exactly as before branch-wise
+                                 stock existed, and can be moved later from the
+                                 stock adjustment screen. -->
+                            <vue-select v-model="props.form.outlet_id" class="db-field-control f-b-custom-select"
+                                :options="outlets" label-by="name" value-by="id" :closeOnSelect="true" :searchable="true"
+                                :clearOnClose="true" :placeholder="$t('label.unassigned')"
+                                :search-placeholder="$t('label.search_branch')" />
+
+                            <small class="db-field-alert" v-if="errors.outlet_id">{{
+                                errors.outlet_id[0]
+                            }}</small>
+                        </div>
                         <div class="form-col-12">
                             <div class="rounded-lg border border-amber-100">
                                 <h4 class="w-full px-4 py-3 font-medium rounded-t-lg bg-amber-100 text-amber-600">
@@ -207,6 +223,7 @@
 
 <script lang="js">
 import purchaseStatusEnum from "../../../enums/modules/purchaseStatusEnum";
+import statusEnum from "../../../enums/modules/statusEnum";
 import Datepicker from "@vuepic/vue-datepicker";
 import { quillEditor } from 'vue3-quill'
 import alertService from "../../../services/alertService";
@@ -250,6 +267,7 @@ export default {
                 form: {
                     purchase_id: 0,
                     supplier_id: null,
+                    outlet_id: null,
                     date: "",
                     reference_no: '',
                     total: null,
@@ -277,6 +295,12 @@ export default {
     mounted() {
         this.productList();
         this.$store.dispatch('supplier/lists', { vuex: true });
+        this.$store.dispatch('outlet/lists', {
+            paginate: 0,
+            order_column: 'id',
+            order_type: 'asc',
+            status: statusEnum.ACTIVE
+        });
         this.purchaseInfo();
     },
     computed: {
@@ -293,6 +317,9 @@ export default {
         },
         suppliers: function () {
             return this.$store.getters['supplier/lists'];
+        },
+        outlets: function () {
+            return this.$store.getters['outlet/lists'];
         },
         totalPrice: function () {
             return this.datatable.reduce((sum, item) => {
@@ -456,6 +483,7 @@ export default {
             try {
                 const fd = new FormData();
                 fd.append('supplier_id', this.props.form.supplier_id ?? "");
+                fd.append('outlet_id', this.props.form.outlet_id ?? "");
                 fd.append('date', this.props.form.date ? this.props.form.date : '');
                 fd.append('reference_no', this.props.form.reference_no);
                 fd.append('subtotal', this.subtotal);
@@ -527,6 +555,7 @@ export default {
             this.props.form.purchase_id = purchase.id;
             this.props.form.date = purchase.date;
             this.props.form.supplier_id = purchase.supplier_id;
+            this.props.form.outlet_id = purchase.outlet_id;
             this.props.form.reference_no = purchase.reference_no ? purchase.reference_no : '';
             this.props.form.total = purchase.total;
             this.props.form.status = purchase.status;
@@ -568,6 +597,7 @@ export default {
         reset: function () {
             this.props.form.purchase_id = 0;
             this.props.form.supplier_id = null;
+            this.props.form.outlet_id = null;
             this.props.form.date = "";
             this.props.form.reference_no = "";
             this.props.form.total = null;

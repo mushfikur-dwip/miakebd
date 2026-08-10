@@ -9,6 +9,13 @@
                     class="capitalize text-xs font-semibold rounded-xl py-1 px-2 shadow-badge absolute top-3 left-3 z-10 bg-secondary text-white"
                     v-if="product.is_offer && product.flash_sale">{{ $t('label.flash_sale') }}</label>
 
+                <!-- Stock held by the branch selected in the till, so the
+                     cashier sees what is on this shelf, not company-wide. -->
+                <label class="capitalize text-xs font-semibold rounded-xl py-1 px-2 shadow-badge absolute top-3 right-3 z-10"
+                    :class="product.stock > 0 ? 'bg-white text-heading' : 'bg-[#E93C3C] text-white'">
+                    {{ product.stock > 0 ? product.stock : $t('label.stock_out') }}
+                </label>
+
                 <img :src="product.cover" alt="product"
                     class="w-full rounded-xl transition-all duration-300 group-hover:scale-105 group-hover:rotate-3">
             </div>

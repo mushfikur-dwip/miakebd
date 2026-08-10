@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PurchaseRequest extends FormRequest
 {
@@ -23,6 +24,7 @@ class PurchaseRequest extends FormRequest
     {
         return [
             'supplier_id'   => ['required','not_in:0','not_in:null'],
+            'outlet_id'     => ['nullable', 'numeric', Rule::exists('outlets', 'id')],
             'date'          => ['required','string'],
             'status'        => ['required','not_in:0','not_in:null'],
             'total'         => ['required', 'numeric'],

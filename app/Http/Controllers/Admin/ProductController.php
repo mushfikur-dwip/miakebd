@@ -186,7 +186,7 @@ class ProductController extends AdminController implements HasMiddleware
     public function posProduct(Product $product, Request $request): SimpleProductDetailsResource|\Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         try {
-            return new SimpleProductDetailsResource($this->productService->showWithRelation($product, $request));
+            return new SimpleProductDetailsResource($this->productService->showWithRelation($product, $request, $request->get('outlet_id')));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

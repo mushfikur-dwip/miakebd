@@ -31,6 +31,7 @@ export default {
             props: {
                 search: {
                     product_id: null,
+                    outlet_id: null,
                 }
             },
             barcode: null,
@@ -74,6 +75,9 @@ export default {
         images: function () {
             return this.$store.getters["posProduct/showImages"];
         },
+        outlet: function () {
+            return this.$store.getters["posCart/outlet"];
+        },
     },
     mounted() {
         this.$refs.posBarcodeScan.focus();
@@ -89,6 +93,8 @@ export default {
             if (this.barcode) {
                 this.$store.dispatch("product/barcodeProduct", this.barcode).then((barcodeRes) => {
                     this.props.search.product_id = barcodeRes.data.data.product_id;
+                    // Scan the stock of the branch the till is on.
+                    this.props.search.outlet_id = this.outlet;
 
                     this.$store.dispatch("posProduct/show", this.props.search).then((res) => {
                         this.initProduct = {
@@ -120,7 +126,7 @@ export default {
 
                         if (barcodeRes.data.data.variation_id) {
                             this.selectedVariation = barcodeRes.data.data.variation_id;
-                            this.$store.dispatch("posProductVariation/barcodeVariationProduct", barcodeRes.data.data.variation_id).then((variationRes) => {
+                            this.$store.dispatch("posProductVariation/barcodeVariationProduct", { id: barcodeRes.data.data.variation_id, outlet_id: this.outlet }).then((variationRes) => {
 
                                 this.temp.isVariation = true;
                                 this.temp.variationId = variationRes.data.data.id;
@@ -132,22 +138,15 @@ export default {
                                 this.temp.oldPrice = variationRes.data.data.old_price;
                                 this.temp.totalPrice = variationRes.data.data.price;
 
-                                if (this.temp.stock > 0) {
-                                    this.addToCart();
-                                } else {
-                                    alertService.error(this.$t('label.stock_out'));
-                                    this.barcode = null;
-                                }
+                                // Scanned goods go in the cart whatever the
+                                // branch count says - the till never blocks a
+                                // sale on stock.
+                                this.addToCart();
                             }).catch((err) => {
                                 this.loading.isActive = false;
                             });
                         } else {
-                            if (this.temp.stock > 0) {
-                                this.addToCart();
-                            } else {
-                                alertService.error(this.$t('label.stock_out'));
-                                this.barcode = null;
-                            }
+                            this.addToCart();
                         }
                     }).catch((err) => {
                         this.loading.isActive = false;

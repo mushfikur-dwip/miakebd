@@ -42,7 +42,7 @@ class CheckoutController extends Controller
     {
         try {
             $paymentManagerService = new PaymentManagerService();
-            $paymentManagerService->payment($order, $paymentGateway, $request);
+            $paymentManagerService->gateway($paymentGateway)->payment($order, $request);
         } catch (\Exception $e) {
             return response(['status' => false, 'message' => $e->getMessage()], 422);
         }
@@ -52,7 +52,7 @@ class CheckoutController extends Controller
     {
         try {
             $paymentManagerService = new PaymentManagerService();
-            return $paymentManagerService->success($order, $paymentGateway, $request);
+            return $paymentManagerService->gateway($paymentGateway)->success($order, $request);
         } catch (\Exception $e) {
             return response(['status' => false, 'message' => $e->getMessage()], 422);
         }
@@ -62,7 +62,7 @@ class CheckoutController extends Controller
     {
         try {
             $paymentManagerService = new PaymentManagerService();
-            return $paymentManagerService->fail($order, $paymentGateway, $request);
+            return $paymentManagerService->gateway($paymentGateway)->fail($order, $request);
         } catch (\Exception $e) {
             return response(['status' => false, 'message' => $e->getMessage()], 422);
         }
@@ -72,7 +72,7 @@ class CheckoutController extends Controller
     {
         try {
             $paymentManagerService = new PaymentManagerService();
-            return $paymentManagerService->cancel($order, $paymentGateway, $request);
+            return $paymentManagerService->gateway($paymentGateway)->cancel($order, $request);
         } catch (\Exception $e) {
             return response(['status' => false, 'message' => $e->getMessage()], 422);
         }

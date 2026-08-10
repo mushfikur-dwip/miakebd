@@ -1,5 +1,10 @@
 import axios from "axios";
 
+// These actions were called with a bare id long before branch-wise stock
+// existed, so both shapes stay valid: an id, or { id, outlet_id }.
+const variationId = (payload) => (payload !== null && typeof payload === "object" ? payload.id : payload);
+const outletQuery = (payload) => (payload !== null && typeof payload === "object" && payload.outlet_id ? `?outlet_id=${payload.outlet_id}` : "");
+
 export const posProductVariation = {
     namespaced: true,
     state: {
@@ -25,7 +30,7 @@ export const posProductVariation = {
     actions: {
         initialVariation: function (context, payload) {
             return new Promise((resolve, reject) => {
-                let url = `admin/product/initial-variation/${payload}`;
+                let url = `admin/product/initial-variation/${variationId(payload)}${outletQuery(payload)}`;
                 axios.get(url).then((res) => {
                     context.commit("initialVariation", res.data.data);
                     resolve(res);
@@ -36,7 +41,7 @@ export const posProductVariation = {
         },
         childrenVariation: function (context, payload) {
             return new Promise((resolve, reject) => {
-                let url = `admin/product/children-variation/${payload}`;
+                let url = `admin/product/children-variation/${variationId(payload)}${outletQuery(payload)}`;
                 axios.get(url).then((res) => {
                     context.commit("childrenVariation", res.data.data);
                     resolve(res);
@@ -58,7 +63,7 @@ export const posProductVariation = {
         },
         barcodeVariationProduct: function (context, payload) {
             return new Promise((resolve, reject) => {
-                let url = `admin/product/variation/barcode-variation-product/${payload}`;
+                let url = `admin/product/variation/barcode-variation-product/${variationId(payload)}${outletQuery(payload)}`;
                 axios.get(url).then((res) => {
                     context.commit('barcodeVariationProduct', res.data.data);
                     resolve(res);

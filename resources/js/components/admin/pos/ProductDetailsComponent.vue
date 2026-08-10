@@ -69,7 +69,7 @@
                             class="lab-fill-circle-minus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
                         <input type="number" v-model="temp.quantity" v-on:keypress="onlyNumber($event)"
                             v-on:keyup="quantityUp" class="text-center w-full h-5 text-sm font-medium">
-                        <button @click.prevent="quantityIncrement" type="button" :class="temp.stock === temp.quantity ? 'cursor-not-allowed': ''"
+                        <button @click.prevent="quantityIncrement" type="button"
                             class="lab-fill-circle-plus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
                     </div>
                     <div v-if="!initialVariations.length || selectedVariation != null">
@@ -151,6 +151,7 @@ export default {
             props: {
                 search: {
                     product_id: null,
+                    outlet_id: null,
                     review_limit: 3
                 }
             },
@@ -205,6 +206,9 @@ export default {
         reviews: function () {
             return this.$store.getters["posProduct/showReviews"];
         },
+        outlet: function () {
+            return this.$store.getters["posCart/outlet"];
+        },
     },
     mounted() {
         this.modalShow();
@@ -224,6 +228,9 @@ export default {
             if (typeof this.$props.productId !== "undefined") {
                 this.loading.isActive = true;
                 this.props.search.product_id = this.$props.productId;
+                // Ask for the stock held by the branch the till is on, not the
+                // company-wide total.
+                this.props.search.outlet_id = this.outlet;
                 this.$store.dispatch("posProduct/show", this.props.search).then((res) => {
                     this.initProduct = {
                         isVariation: false,
@@ -258,12 +265,14 @@ export default {
                         this.loading.isActive = false;
                     });
 
-                    this.$store.dispatch("posProductVariation/initialVariation", res.data.data.id).then((initVariationRes) => {
+                    this.$store.dispatch("posProductVariation/initialVariation", { id: res.data.data.id, outlet_id: this.outlet }).then((initVariationRes) => {
                         if (initVariationRes.data.data.length > 0) {
                             this.variationComponent = true;
                         }
 
-                        if (!initVariationRes.data.data.length && res.data.data.stock > 0) {
+                        // The till may sell past the branch count, so a zero
+                        // stock still leaves the button live.
+                        if (!initVariationRes.data.data.length) {
                             this.enableAddToCardButton = false;
                         }
                         this.loading.isActive = false;
@@ -302,17 +311,12 @@ export default {
                 this.temp.oldPrice = variation.old_price;
                 this.temp.totalPrice = variation.price;
 
-                if (variation.stock > 0) {
-                    this.enableAddToCardButton = false;
-                }
+                this.enableAddToCardButton = false;
             }
         },
         quantityUp: function () {
             if (this.temp.quantity === 0 || this.temp.quantity < 0) {
                 this.temp.quantity = 1;
-            }
-            if (this.temp.quantity > this.temp.stock) {
-                this.temp.quantity = this.temp.stock
             }
             this.totalPriceSetup();
         },
@@ -320,10 +324,6 @@ export default {
             this.temp.quantity++;
             if (this.temp.quantity <= 0) {
                 this.temp.quantity = 1;
-            }
-
-            if (this.temp.quantity > this.temp.stock) {
-                this.temp.quantity--;
             }
             this.totalPriceSetup();
         },

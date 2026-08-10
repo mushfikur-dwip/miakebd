@@ -14,6 +14,7 @@ class Purchase extends Model implements HasMedia
 
     protected $fillable = [
         'supplier_id',
+        'outlet_id',
         'date',
         'reference_no',
         'subtotal',
@@ -29,6 +30,7 @@ class Purchase extends Model implements HasMedia
     protected $casts = [
         'id'                => 'integer',
         'supplier_id'       => 'integer',
+        'outlet_id'         => 'integer',
         'date'              => 'datetime',
         'reference_no'      => 'string',
         'subtotal'          => 'decimal:6',
@@ -48,6 +50,10 @@ class Purchase extends Model implements HasMedia
     public function supplier(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'supplier_id', 'id');
+    }
+    public function outlet(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Outlet::class, 'outlet_id', 'id');
     }
     public function creator()
     {

@@ -18,6 +18,8 @@ class PurchaseResource extends JsonResource
         return [
             'id'                   => $this->id,
             'supplier_id'          => $this->supplier_id,
+            'outlet_id'            => $this->outlet_id,
+            'outlet_name'          => $this->outlet?->name,
             'date'                 => $this->date,
             'converted_date'       => AppLibrary::datetime($this->date),
             'reference_no'         => $this->reference_no,

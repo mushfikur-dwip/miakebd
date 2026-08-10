@@ -42,7 +42,7 @@ class Benefit extends Model implements HasMedia
         return asset('images/default/benefit/cover.png');
     }
 
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')->fit(Fit::Fill, 36, 36)->keepOriginalImageFormat()->sharpen(10);
         $this->addMediaConversion('cover')->width(600)->keepOriginalImageFormat()->sharpen(10);

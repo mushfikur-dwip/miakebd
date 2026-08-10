@@ -7,11 +7,18 @@ export const posCart = {
         subtotal: 0,
         total: 0,
         discount: 0,
-        totalTax: 0
+        totalTax: 0,
+        // The branch selected in the till. Shared here so the product modal
+        // and the barcode scanner ask for the same branch's stock as the
+        // grid, without threading a prop through every component.
+        outlet: null
     },
     getters: {
         lists: function (state) {
             return state.lists;
+        },
+        outlet: function (state) {
+            return state.outlet;
         },
         subtotal: function (state) {
             return state.subtotal;
@@ -38,14 +45,10 @@ export const posCart = {
                         _.forEach(context.state.lists, (list, listKey) => {
                             if (list.product_id === payload.product_id && list.variation_id === payload.variation_id) {
                                 productMatch = true;
-                                if ((payload.quantity + list.quantity) <= list.stock) {
-                                    context.state.lists[listKey].quantity += payload.quantity;
-                                } else {
-                                    reject({
-                                        message: "stockOut",
-                                        status: false
-                                    });
-                                }
+                                // No stock ceiling in the till: a branch is
+                                // allowed to sell past its recorded count and
+                                // settle the difference with an adjustment.
+                                context.state.lists[listKey].quantity += payload.quantity;
                             }
                         });
 
@@ -170,12 +173,17 @@ export const posCart = {
             });
             state.totalTax = stateTotalTax;
         },
+        outlet: function (state, payload) {
+            state.outlet = payload;
+        },
         resetCart: function (state) {
             state.lists          = [];
             state.subtotal       = 0;
             state.total          = 0;
             state.discount       = 0;
             state.totalTax       = 0;
+            // The branch is deliberately kept - the till stays on the same
+            // branch for the next customer.
         }
     },
 };

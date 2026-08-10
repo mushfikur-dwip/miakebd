@@ -71,6 +71,7 @@ use App\Http\Controllers\Admin\SmsGatewayController;
 use App\Http\Controllers\Admin\SocialMediaController;
 use App\Http\Controllers\Admin\StateController;
 use App\Http\Controllers\Admin\StockController;
+use App\Http\Controllers\Admin\StockAdjustmentController;
 use App\Http\Controllers\Admin\StoreSalesReportController;
 use App\Http\Controllers\Admin\SubscriberController;
 use App\Http\Controllers\Admin\SupplierController;
@@ -760,6 +761,15 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active'])->group(function (
     Route::prefix('stock')->group(function () {
         Route::get('/', [StockController::class, 'index']);
         Route::get('/export', [StockController::class, 'export']);
+        Route::get('/item-quantity', [StockController::class, 'itemQuantity']);
+        Route::post('/update-item', [StockController::class, 'updateItem']);
+
+        Route::prefix('adjustment')->group(function () {
+            Route::get('/', [StockAdjustmentController::class, 'index']);
+            Route::post('/', [StockAdjustmentController::class, 'store']);
+            Route::get('/show/{stockAdjustment}', [StockAdjustmentController::class, 'show']);
+            Route::delete('/{stockAdjustment}', [StockAdjustmentController::class, 'destroy']);
+        });
     });
 
     Route::prefix('reviews')->group(function () {

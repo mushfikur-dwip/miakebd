@@ -161,7 +161,7 @@ class ReturnAndRefundService
     /**
      * @throws Exception
      */
-    public function changeStatus(ReturnAndRefund $returnAndRefund, OrderStatusRequest $request): returnAndRefund
+    public function changeStatus(ReturnAndRefund $returnAndRefund, OrderStatusRequest $request): ReturnAndRefund
     {
         try {
 

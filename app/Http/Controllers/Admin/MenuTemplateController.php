@@ -9,9 +9,11 @@ use App\Services\MenuTemplateService;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Requests\MenuTemplateRequest;
 use App\Http\Resources\MenuTemplateResource;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
 
-class MenuTemplateController extends AdminController
+class MenuTemplateController extends AdminController implements HasMiddleware
 {
 
     private MenuTemplateService $menuTemplateService;
@@ -20,6 +22,19 @@ class MenuTemplateController extends AdminController
     {
         parent::__construct();
         $this->menuTemplateService = $menuTemplate;
+    }
+
+    /**
+     * Menu templates decide the storefront's navigation. Reached from
+     * Settings → Pages, guarded in the router by permissionUrl "settings" -
+     * but nothing enforced that server-side, so any logged-in customer could
+     * create, rewrite or delete them.
+     */
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:settings', only: ['index', 'show', 'store', 'update', 'destroy']),
+        ];
     }
 
     public function index(PaginateRequest $request

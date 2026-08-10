@@ -9,9 +9,11 @@ use App\Models\ThemeSetting;
 use App\Services\MenuService;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
 
-class MobileSectionController extends AdminController
+class MobileSectionController extends AdminController implements HasMiddleware
 {
     private MenuService $menuService;
 
@@ -19,6 +21,23 @@ class MobileSectionController extends AdminController
     {
         parent::__construct();
         $this->menuService = $menuService;
+    }
+
+    /**
+     * The write methods change what every storefront visitor sees, so they need
+     * the same permission as the screen that drives them - Settings → Mobile
+     * Section, permissionUrl "settings". Without this, /api/admin only asking
+     * for auth:sanctum meant any logged-in customer could rewrite the mobile
+     * navigation or replace its background image.
+     *
+     * index is deliberately left open: the storefront calls the same method
+     * through GET /api/frontend/mobile-section to render the bar.
+     */
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:settings', only: ['storeButton', 'updateButton', 'deleteButton', 'updateBackground']),
+        ];
     }
 
     public function index(PaginateRequest $request)
@@ -107,8 +126,13 @@ class MobileSectionController extends AdminController
     public function updateBackground(Request $request)
     {
         try {
+            // svg removed on purpose. An SVG is an XML document that may carry
+            // <script>, and this file is served back to every storefront
+            // visitor from the same origin - uploading one is stored XSS
+            // against the whole site. Laravel's `image` rule accepts svg, so
+            // it has to be excluded here.
             $request->validate([
-                'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]);
             
             DB::transaction(function () use ($request) {

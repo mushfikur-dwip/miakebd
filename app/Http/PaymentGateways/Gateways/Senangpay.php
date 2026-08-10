@@ -108,6 +108,12 @@ class Senangpay extends PaymentAbstract
 
     public function webhook(Request $request): \Illuminate\Http\RedirectResponse
     {
+        // Declared before the try because the catch block reads it. If the
+        // lookup itself threw, $order was never assigned and building the
+        // failure redirect raised a second error inside the error handler -
+        // losing the original reason on the one path where you need it.
+        $order = null;
+
         try {
             $order = Order::where('order_serial_no', $request['order_id'])->first();
             return $this->success($order, $request);

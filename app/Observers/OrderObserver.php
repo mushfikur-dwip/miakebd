@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletSetting;
+use Illuminate\Support\Facades\DB;
 
 class OrderObserver
 {
@@ -35,11 +36,6 @@ class OrderObserver
             return;
         }
 
-        $user = User::find($order->user_id);
-        if (!$user) {
-            return;
-        }
-
         // wallet_settings.cashback_type is either 'percentage' of the order's
         // cashback-eligible total or a 'fixed' amount per order, capped by
         // max_cashback_amount when a cap is set.
@@ -59,23 +55,51 @@ class OrderObserver
             return;
         }
 
-        // Use users.balance instead of wallets table
-        $balanceBefore  = $user->balance;
-        $user->balance += $cashbackAmount;
-        $user->save();
+        // Everything below is one transaction. The balance write and the
+        // ledger row have to land together or not at all - a credit with no
+        // Transaction row is money that appeared from nowhere as far as the
+        // customer's wallet history is concerned.
+        DB::transaction(function () use ($order, $cashbackAmount) {
+            // Nothing stops an order's status being set to delivered, moved
+            // off, and set to delivered again - the observer fires on each
+            // change, and there is no state machine in changeStatus. Without
+            // this check every such round trip paid the cashback afresh.
+            // Scoped to this order, so a customer's other orders are unaffected.
+            $alreadyPaid = Transaction::where('order_id', $order->id)
+                ->where('type', 'cashback')
+                ->lockForUpdate()
+                ->exists();
 
-        Transaction::create([
-            'order_id'       => $order->id,
-            'transaction_no' => 'TXN-' . time() . '-' . $order->id,
-            'amount'         => $cashbackAmount,
-            'payment_method' => 'wallet',
-            'type'           => 'cashback',
-            'sign'           => '+',
-            'user_id'        => $user->id,
-            'note'           => 'Cashback for order ' . $order->order_serial_no,
-            'balance_before' => $balanceBefore,
-            'balance_after'  => $user->balance,
-        ]);
+            if ($alreadyPaid) {
+                return;
+            }
+
+            // Locked and re-read rather than trusting the instance fetched
+            // above: a cashback landing at the same moment as a wallet
+            // redemption would otherwise both compute from the same starting
+            // balance and one of the two would vanish.
+            $user = User::where('id', $order->user_id)->lockForUpdate()->first();
+            if (!$user) {
+                return;
+            }
+
+            $balanceBefore  = $user->balance;
+            $user->balance += $cashbackAmount;
+            $user->save();
+
+            Transaction::create([
+                'order_id'       => $order->id,
+                'transaction_no' => 'TXN-' . time() . '-' . $order->id,
+                'amount'         => $cashbackAmount,
+                'payment_method' => 'wallet',
+                'type'           => 'cashback',
+                'sign'           => '+',
+                'user_id'        => $user->id,
+                'note'           => 'Cashback for order ' . $order->order_serial_no,
+                'balance_before' => $balanceBefore,
+                'balance_after'  => $user->balance,
+            ]);
+        });
     }
 
     /**

@@ -142,6 +142,25 @@ class FrontendOrderService
                 // only case /payment/successful can mark paid.
                 $walletDiscount = (float) ($attributes['wallet_discount'] ?? 0);
                 $walletUser     = null;
+
+                // Derived here, never taken from the browser. This figure is
+                // what OrderObserver multiplies by the cashback rate once the
+                // order is delivered, so a client-supplied value was a cheque
+                // the customer wrote themselves: place a 100 taka order,
+                // declare 10,000,000 as the cashback base, and collect the
+                // percentage of that in spendable wallet balance the moment it
+                // was marked delivered. The price guard above never looked at
+                // this field, and max_cashback_amount is nullable, so nothing
+                // downstream bounded it either.
+                //
+                // Same definition the checkout screen intends - what the
+                // customer actually pays out of pocket. Wallet-funded money is
+                // excluded on purpose: earning cashback on wallet credit is a
+                // loop that mints balance out of itself.
+                $attributes['total_amount_for_cashback'] = max(
+                    0,
+                    (float) ($attributes['total'] ?? 0) - $walletDiscount
+                );
                 if ($walletDiscount > 0) {
                     // Locked for the life of this transaction, not read off the
                     // in-memory Auth::user(). The balance is checked here and

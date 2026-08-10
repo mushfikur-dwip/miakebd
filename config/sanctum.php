@@ -46,7 +46,13 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Left at null so this release changes nothing: setting a lifetime
+    // immediately invalidates every token older than it, which signs out the
+    // whole customer base at once. That is a decision to make deliberately,
+    // not a side effect of a stock deploy. Put SANCTUM_TOKEN_EXPIRATION in
+    // .env when you are ready - 43200 is thirty days - and every token
+    // currently in the wild stops working from that moment.
+    'expiration' => env('SANCTUM_TOKEN_EXPIRATION'),
 
     /*
     |--------------------------------------------------------------------------

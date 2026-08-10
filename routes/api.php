@@ -204,7 +204,12 @@ Route::prefix('profile')->middleware(['installed', 'apiKey', 'auth:sanctum', 'lo
 // 'active' re-checks users.status on every admin request. auth:sanctum alone
 // only proves the bearer token resolves to a user — a deactivated or
 // role-stripped administrator kept full access until their token was deleted.
-Route::prefix('admin')->middleware(['auth:sanctum', 'active'])->group(function () {
+// throttle added because there was none. Every controller in here is guarded
+// by a permission, but a valid token with the wrong permissions could still be
+// used to walk ids at full speed looking for an endpoint that forgot one - and
+// several had. 300/minute per user is far above what the POS or any admin
+// screen generates, and far below what enumeration needs.
+Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:300,1'])->group(function () {
     Route::prefix('timezone')->group(function () {
         Route::get('/', [TimezoneController::class, 'index']);
     });

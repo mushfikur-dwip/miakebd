@@ -163,6 +163,7 @@ return [
         'product_price_invalid'            => 'The unit cost filed is required for all products.',
         'product_price_total_invalid'      => 'The total product unit cost is invalid.',
         'stock_adjustment_same_outlet'     => 'The source and destination branch can not be the same.',
+        'language_file_invalid'            => 'That is not a language file.',
         'supplier_invalid'                 => 'The supplier is invalid.',
         'status_invalid'                   => 'The status is invalid.',
         'return_request_exist'             => 'The Return request already exist.',

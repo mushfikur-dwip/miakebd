@@ -178,16 +178,52 @@ class LanguageService
     }
 
 
+    /**
+     * The only paths this feature ever legitimately touches are the two
+     * directories fileList() builds its list from.
+     *
+     * Both this method and fileTextStore() took an absolute path straight off
+     * the request. fileText() then include()s it, and fileTextStore() writes to
+     * it - between them, read-anything and write-anything on the server, which
+     * is a route from the settings permission to running code. realpath()
+     * resolves any ../ before the comparison, so traversal cannot walk out of
+     * the allowed directories.
+     */
+    private function assertLanguageFilePath(?string $path): string
+    {
+        $resolved = $path ? realpath($path) : false;
+
+        if ($resolved === false) {
+            throw new Exception(trans('all.message.language_file_invalid'), 422);
+        }
+
+        $allowed = [
+            realpath(base_path('lang')),
+            realpath(base_path('resources/js/languages')),
+        ];
+
+        foreach ($allowed as $directory) {
+            if ($directory && str_starts_with($resolved, $directory . DIRECTORY_SEPARATOR)) {
+                return $resolved;
+            }
+        }
+
+        throw new Exception(trans('all.message.language_file_invalid'), 422);
+    }
+
+    /**
+     * @throws Exception
+     */
     public function fileText(LanguageFileTextGetRequest $request)
     {
-        if (file_exists($request->path)) {
-            $explodeName = explode('.', $request->name);
-            if (count($explodeName) > 1) {
-                if ($explodeName[1] == 'json') {
-                    include($request->path);
-                } else {
-                    return include($request->path);
-                }
+        $path = $this->assertLanguageFilePath($request->path);
+
+        $explodeName = explode('.', $request->name);
+        if (count($explodeName) > 1) {
+            if ($explodeName[1] == 'json') {
+                include($path);
+            } else {
+                return include($path);
             }
         }
     }
@@ -198,8 +234,10 @@ class LanguageService
     public function fileTextStore(Request $request): void
     {
         try {
-            $file = fopen($request->x_language_file_path, "rw");
-            $fileContent = file_get_contents($request->x_language_file_path);
+            $path = $this->assertLanguageFilePath($request->x_language_file_path);
+
+            $file = fopen($path, "rw");
+            $fileContent = file_get_contents($path);
             foreach ($request->all() as $key => $value) {
                 if ($key != 'x_language_file_path' && $key != 'x_language_file_name') {
                     $key = str_replace('_', ' ', $key);
@@ -211,7 +249,7 @@ class LanguageService
                 }
             }
 
-            file_put_contents($request->x_language_file_path, $fileContent);
+            file_put_contents($path, $fileContent);
             fclose($file);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());

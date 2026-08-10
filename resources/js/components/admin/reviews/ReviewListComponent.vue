@@ -74,7 +74,11 @@
                                     class="-mt-0.5" :round-start-rating="false" :show-rating="false" :read-only="true"
                                     :max-rating="5" :rating="review.star" />
                             </td>
-                            <td class="db-table-body-td"> <span v-html="textShortener(review.review)"></span></td>
+                            <!-- Interpolation, not v-html. A review is text a
+                                 customer typed, so rendering it as markup let
+                                 anyone store a script that runs in an admin's
+                                 session the moment this list is opened. -->
+                            <td class="db-table-body-td">{{ textShortener(review.review) }}</td>
                             <td class="db-table-body-td">{{ review.product_name }}</td>
                             <td class="db-table-body-td">{{ review.user_name }}</td>
                             <td class="db-table-body-td hidden-print" v-if="permissionChecker('reviews')">

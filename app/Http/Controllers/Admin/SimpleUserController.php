@@ -6,8 +6,10 @@ use Exception;
 use App\Services\SimpleUserService;
 use App\Http\Resources\SimpleUserResource;
 use App\Http\Requests\PaginateRequest;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
-class SimpleUserController extends AdminController
+class SimpleUserController extends AdminController implements HasMiddleware
 {
     /**
      * Display a listing of the resource.
@@ -21,6 +23,17 @@ class SimpleUserController extends AdminController
     {
         parent::__construct();
         $this->simpleUserService = $simpleUserService;
+    }
+
+    /**
+     * Listed every account on the site to anyone holding a sanctum token,
+     * which every logged-in shopper does - a free customer roster.
+     */
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:customers', only: ['index']),
+        ];
     }
 
     public function index(PaginateRequest $request)

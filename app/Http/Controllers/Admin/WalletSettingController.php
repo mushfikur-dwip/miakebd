@@ -2,13 +2,29 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Models\WalletSetting;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Exception;
 
-class WalletSettingController extends Controller
+/**
+ * The /api/admin group only requires auth:sanctum, and every customer holds a
+ * sanctum token. Without a permission check on this controller any logged-in
+ * shopper could PATCH the cashback settings - set cashback_status true,
+ * cashback_type percentage, cashback_amount 100 - and then mint wallet balance
+ * on their own orders. These settings are edited from Settings → Wallet, which
+ * the router guards with permissionUrl "settings".
+ */
+class WalletSettingController extends AdminController implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('permission:settings', only: ['show', 'update']),
+        ];
+    }
+
     public function show()
     {
         try {

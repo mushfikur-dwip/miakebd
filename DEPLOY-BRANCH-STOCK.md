@@ -4,7 +4,15 @@ Every branch now holds its own stock. The POS shows and deducts the stock of
 the branch the cashier selected. The public site keeps showing the **total
 across all branches**, which is the real stock.
 
-Zip is built and verified: **338 entries, 2.55 MB, 0 backslash entries.**
+Zip is built and verified: **345 entries, 2.56 MB, 0 backslash entries.**
+
+> **This release also carries security fixes, one of them critical.** A full
+> code scan found that the `/api/admin` route group only requires a sanctum
+> token — which every logged-in shopper has — and seven controllers had no
+> permission check behind that. The worst let any customer set the cashback
+> rate to 100% and mint their own wallet balance. See
+> [SECURITY-FINDINGS.md](SECURITY-FINDINGS.md) for the full write-up.
+> **Deploy this promptly.**
 
 Includes the three fixes from the second round:
 
@@ -156,6 +164,23 @@ presence blocks the route that actually serves the images.
 - [ ] New **Branch Stock** column shows chips like `Unassigned: 120`
 - [ ] Branch filter dropdown lists your outlets plus **Unassigned**
 - [ ] **Stock Adjustment** button opens the new screen
+
+**Security fixes still let admins work**
+
+Log in as an admin who has the **settings** permission:
+- [ ] Settings → Wallet loads and saves
+- [ ] Settings → Mobile Section loads; adding a button and changing the
+      background still work (SVG is now rejected — use PNG/JPG/WEBP)
+- [ ] Settings → Pages loads (it reads menu sections and menu templates)
+- [ ] Settings → Languages: open a language file, edit a string, save
+
+Then, as an admin with **customers** and **administrators**:
+- [ ] Customers list loads
+- [ ] Administrators → view an administrator → open one of their orders
+
+If any of those 403s, that admin's role is missing the permission named in
+[SECURITY-FINDINGS.md](SECURITY-FINDINGS.md) for that screen — grant it under
+Settings → Roles rather than reverting the fix.
 
 **Admin → Stock — edit a product's branch stock**
 - [ ] Every row has an **Edit** icon

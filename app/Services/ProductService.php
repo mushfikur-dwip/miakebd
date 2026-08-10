@@ -106,6 +106,11 @@ class ProductService
     {
         try {
             DB::transaction(function () use ($request) {
+                // Only set for the two barcode types below, but read further
+                // down without that guard. A product on any other type left it
+                // undefined at the point of use.
+                $barcode_value = null;
+
                 if ($request->barcode_id == BarcodeType::EAN_13) {
                     $barcode_value = str_pad(substr($request->sku, -12), 12, '0', STR_PAD_LEFT);
                 }
@@ -169,6 +174,9 @@ class ProductService
         try {
             DB::transaction(function () use ($request, $product) {
                 if ($request->barcode_id != $product->barcode_id || $request->sku != $product->sku) {
+                    // Same reason as in store(): read below without a guard.
+                    $barcode_value = null;
+
                     if ($request->barcode_id == BarcodeType::EAN_13) {
                         $barcode_value = str_pad(substr($request->sku, -12), 12, '0', STR_PAD_LEFT);
                     }

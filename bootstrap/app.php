@@ -4,6 +4,7 @@ use App\Http\Middleware\ApiKeyMiddleware;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\Installed;
 use App\Http\Middleware\localization;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
 use Illuminate\Auth\Middleware\Authorize;
@@ -37,7 +38,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->append([]);
+        // Applied to every response, web and API alike. See the class for what
+        // each header is for and why there is no CSP yet.
+        $middleware->append([
+            SecurityHeaders::class,
+        ]);
         $middleware->validateCsrfTokens(
             except: [
                 '/payment/sslcommerz/*',

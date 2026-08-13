@@ -124,16 +124,62 @@ class Sslcommerz extends PaymentAbstract
     public function success($order, $request): \Illuminate\Http\RedirectResponse
     {
         try {
-            if (isset($request['bank_tran_id'])) {
-                $paymentService = new PaymentService;
-                $paymentService->payment($order, 'sslcommerz', $request['bank_tran_id']);
-                return redirect()->route('payment.successful', ['order' => $order])->with('success', trans('all.message.payment_successful'));
-            } else {
+            // The callback POST alone is forgeable — anyone can send a
+            // bank_tran_id. val_id must be confirmed against SSLCommerz's
+            // validation API, and the amount and currency must match the order.
+            $valId = $request['val_id'] ?? null;
+            if (blank($valId)) {
                 return redirect()->route('payment.fail', [
                     'order'          => $order,
                     'paymentGateway' => 'sslcommerz'
-                ])->with('error', $this->response['message'] ?? trans('all.message.something_wrong'));
+                ])->with('error', trans('all.message.something_wrong'));
             }
+
+            $isSandbox = $this->paymentGatewayOption['sslcommerz_mode'] == GatewayMode::SANDBOX;
+            $apiUrl    = ($isSandbox ? "https://sandbox.sslcommerz.com" : "https://securepay.sslcommerz.com")
+                . "/validator/api/validationserverAPI.php?" . http_build_query([
+                    'val_id'       => $valId,
+                    'store_id'     => $this->paymentGatewayOption['sslcommerz_store_id'],
+                    'store_passwd' => $this->paymentGatewayOption['sslcommerz_store_password'],
+                    'v'            => 1,
+                    'format'       => 'json',
+                ]);
+
+            $handle = curl_init();
+            curl_setopt($handle, CURLOPT_URL, $apiUrl);
+            curl_setopt($handle, CURLOPT_TIMEOUT, 30);
+            curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 30);
+            curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, !$isSandbox);
+            $content = curl_exec($handle);
+            curl_close($handle);
+
+            $validation = json_decode($content, true);
+
+            $currencyCode = 'USD';
+            $currencyId   = Settings::group('site')->get('site_default_currency');
+            if (!blank($currencyId)) {
+                $currency = Currency::find($currencyId);
+                if ($currency) {
+                    $currencyCode = $currency->code;
+                }
+            }
+
+            $valid = is_array($validation)
+                && in_array($validation['status'] ?? '', ['VALID', 'VALIDATED'], true)
+                && abs((float) ($validation['amount'] ?? 0) - (float) $order->total) < 0.01
+                && strcasecmp((string) ($validation['currency'] ?? ''), $currencyCode) === 0;
+
+            if ($valid) {
+                $paymentService = new PaymentService;
+                $paymentService->payment($order, 'sslcommerz', $validation['bank_tran_id'] ?? $request['bank_tran_id'] ?? $valId);
+                return redirect()->route('payment.successful', ['order' => $order])->with('success', trans('all.message.payment_successful'));
+            }
+
+            return redirect()->route('payment.fail', [
+                'order'          => $order,
+                'paymentGateway' => 'sslcommerz'
+            ])->with('error', $this->response['message'] ?? trans('all.message.something_wrong'));
         } catch (Exception $e) {
             Log::info($e->getMessage());
             DB::rollBack();

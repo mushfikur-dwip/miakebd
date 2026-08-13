@@ -5,6 +5,7 @@ namespace App\Models;
 
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
+use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\Image\Enums\CropPosition;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -15,6 +16,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class Promotion extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use ResolvesMediaUrls;
 
     protected $table = "promotions";
     protected $fillable = ['name', 'slug', 'type', 'status'];
@@ -29,20 +31,20 @@ class Promotion extends Model implements HasMedia
 
     public function getCoverAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('promotion'))) {
-            $promotion = $this->getMedia('promotion')->last();
-            return $promotion->getUrl('cover');
-        }
-        return asset('images/default/promotion/cover.png');
+        return $this->conversionUrl(
+            $this->getMedia('promotion')->last(),
+            'cover',
+            'images/default/promotion/cover.png'
+        );
     }
 
     public function getPreviewAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('promotion'))) {
-            $product = $this->getMedia('promotion')->last();
-            return $product->getUrl('preview');
-        }
-        return asset('images/default/promotion/preview.png');
+        return $this->conversionUrl(
+            $this->getMedia('promotion')->last(),
+            'preview',
+            'images/default/promotion/preview.png'
+        );
     }
 
     public function registerMediaConversions(?Media $media = null): void

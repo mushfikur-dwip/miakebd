@@ -75,6 +75,10 @@
                         <small class="db-field-alert" v-if="errors.note">{{ errors.note[0] }}</small>
                     </div>
 
+                    <div class="form-col-12" v-if="error">
+                        <p class="text-sm rounded px-3 py-2 bg-[#FFF4F4] text-[#E93C3C]">{{ error }}</p>
+                    </div>
+
                     <div class="form-col-12">
                         <label class="db-field-title required">{{ $t('label.add_products') }}</label>
                         <vue-select v-model="productId" class="db-field-control f-b-custom-select" :options="products"
@@ -185,6 +189,7 @@ export default {
             selectedProduct: {},
             modal: { isShowModal: false },
             errors: {},
+            error: "",
         }
     },
     computed: {
@@ -213,21 +218,46 @@ export default {
     },
     mounted() {
         this.loading.isActive = true;
+        // Both lists used to fail silently, so a 401 or a 403 left the product
+        // picker and the branch dropdown simply empty - looking like a store
+        // with no products and no branches rather than a failed request.
         this.$store.dispatch('product/getSimpleProduct').then(() => {
             this.loading.isActive = false;
-        }).catch(() => {
+        }).catch((err) => {
             this.loading.isActive = false;
+            this.error = this.requestFailed(err);
+            alertService.error(this.error);
         });
         this.$store.dispatch('outlet/lists', {
             paginate: 0,
             order_column: 'id',
             order_type: 'asc',
             status: statusEnum.ACTIVE
+        }).catch((err) => {
+            this.error = this.requestFailed(err);
+            alertService.error(this.error);
         });
     },
     methods: {
         onlyNumber: function (e) {
             return appService.onlyNumber(e);
+        },
+        requestFailed: function (err) {
+            const status = err?.response?.status;
+            const message = err?.response?.data?.message;
+
+            // The server's own words come first - a 401 from
+            // EnsureUserIsActive means "account not active", not "log in again".
+            if (message) {
+                return message;
+            }
+            if (status === 401) {
+                return this.$t('message.session_expired');
+            }
+            if (status === 403) {
+                return this.$t('message.permission_denied');
+            }
+            return err?.message || this.$t('message.something_wrong');
         },
         // Both handlers take the new value as an argument rather than reading
         // the model back: v-model and this listener are two handlers on the

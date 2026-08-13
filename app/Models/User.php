@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Ask;
+use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\Image\Enums\Fit;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\MediaLibrary\HasMedia;
@@ -19,6 +20,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 class User extends Authenticatable implements HasMedia
 {
     use InteractsWithMedia;
+    use ResolvesMediaUrls;
     use HasApiTokens;
     use HasFactory;
     use HasRoles;
@@ -110,11 +112,11 @@ class User extends Authenticatable implements HasMedia
 
     public function getThumbAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('profile'))) {
-            $profile = $this->getMedia('profile')->last();
-            return $profile->getUrl('thumb');
-        }
-        return asset('images/required/profile.png');
+        return $this->conversionUrl(
+            $this->getMedia('profile')->last(),
+            'thumb',
+            'images/required/profile.png'
+        );
     }
 
     public function registerMediaConversions(?Media $media = null): void

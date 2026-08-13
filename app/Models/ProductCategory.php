@@ -4,6 +4,7 @@ namespace App\Models;
 
 
 use App\Enums\Status;
+use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\MediaLibrary\HasMedia;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -14,6 +15,7 @@ use Staudenmeir\LaravelAdjacencyList\Eloquent\HasRecursiveRelationships;
 class ProductCategory extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use ResolvesMediaUrls;
     use HasRecursiveRelationships;
 
     protected $table = "product_categories";
@@ -31,20 +33,20 @@ class ProductCategory extends Model implements HasMedia
 
     public function getThumbAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('product-category'))) {
-            $category = $this->getMedia('product-category')->last();
-            return $category->getUrl('thumb');
-        }
-        return asset('images/default/category/thumb.png');
+        return $this->conversionUrl(
+            $this->getMedia('product-category')->last(),
+            'thumb',
+            'images/default/category/thumb.png'
+        );
     }
 
     public function getCoverAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('product-category'))) {
-            $category = $this->getMedia('product-category')->last();
-            return $category->getUrl('cover');
-        }
-        return asset('images/default/category/cover.png');
+        return $this->conversionUrl(
+            $this->getMedia('product-category')->last(),
+            'cover',
+            'images/default/category/cover.png'
+        );
     }
 
     public function registerMediaConversions(?Media $media = null): void

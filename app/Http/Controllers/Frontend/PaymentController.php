@@ -90,6 +90,16 @@ class PaymentController extends Controller
 
     public function success(PaymentGateway $paymentGateway, Order $order, Request $request)
     {
+        // payment() refuses disabled gateways, but this endpoint never did —
+        // so a gateway switched off in admin still had a live URL that could
+        // settle orders. Close it.
+        if ($paymentGateway->status != Activity::ENABLE) {
+            return redirect()->route('payment.fail', ['paymentGateway' => $paymentGateway->slug, 'order' => $order])->with(
+                'error',
+                trans('all.message.payment_gateway_disable')
+            );
+        }
+
         return $this->paymentManagerService->gateway($paymentGateway->slug)->success($order, $request);
     }
 

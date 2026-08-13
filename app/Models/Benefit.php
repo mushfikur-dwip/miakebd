@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
+use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\Image\Enums\CropPosition;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -14,6 +15,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class Benefit extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use ResolvesMediaUrls;
     protected $table = "benefits";
     protected $fillable = ['title', 'description', 'status', 'sort'];
     protected $casts = [
@@ -26,20 +28,20 @@ class Benefit extends Model implements HasMedia
 
     public function getThumbAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('benefit'))) {
-            $benefit = $this->getMedia('benefit')->last();
-            return $benefit->getUrl('thumb');
-        }
-        return asset('images/default/benefit/thumb.png');
+        return $this->conversionUrl(
+            $this->getMedia('benefit')->last(),
+            'thumb',
+            'images/default/benefit/thumb.png'
+        );
     }
 
     public function getCoverAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('benefit'))) {
-            $benefit = $this->getMedia('benefit')->last();
-            return $benefit->getUrl('cover');
-        }
-        return asset('images/default/benefit/cover.png');
+        return $this->conversionUrl(
+            $this->getMedia('benefit')->last(),
+            'cover',
+            'images/default/benefit/cover.png'
+        );
     }
 
     public function registerMediaConversions(?Media $media = null): void

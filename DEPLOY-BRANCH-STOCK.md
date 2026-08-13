@@ -4,7 +4,28 @@ Every branch now holds its own stock. The POS shows and deducts the stock of
 the branch the cashier selected. The public site keeps showing the **total
 across all branches**, which is the real stock.
 
-Zip is built and verified: **345 entries, 2.56 MB, 0 backslash entries.**
+Zip is built and verified: **1276 entries, 3.26 MB, 0 backslash entries.**
+
+> ### This zip now carries the complete server-side codebase, not a file list
+>
+> The earlier zip carried only the files this work changed, next to a frontend
+> built from the whole local tree. The server turned out to be **behind the
+> repo**, so shipped files called classes the server did not have:
+>
+> ```
+> Class "App\Support\OrderPriceGuard" not found        → every order 500'd
+> Target class [Frontend\CampaignController] missing   → /api/frontend/campaign 500'd
+> ```
+>
+> Both are dependencies of files that shipped without them. That is the same
+> failure `DEPLOY-STEPS.md` documents from 5 Aug — a hand-picked list cannot be
+> kept correct. So this zip contains **all** of `app/`, `config/`, `routes/`,
+> `lang/`, `database/migrations`, `database/seeders`, `resources/views`,
+> `bootstrap/app.php` and `public/build`.
+>
+> Verified absent: `storage/`, `public/storage`, `.env`, `bootstrap/cache`, any
+> `.sqlite`. Your product images and configuration are not in this file and
+> cannot be overwritten by it.
 
 > **This release also carries security fixes, one of them critical.** A full
 > code scan found that the `/api/admin` route group only requires a sanctum

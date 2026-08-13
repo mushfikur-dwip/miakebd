@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Status;
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
+use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\Image\Enums\CropPosition;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -13,6 +14,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class ProductBrand extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use ResolvesMediaUrls;
     protected $table = "product_brands";
     protected $fillable = ['name', 'slug', 'description', 'status'];
     protected $casts = [
@@ -25,20 +27,20 @@ class ProductBrand extends Model implements HasMedia
 
     public function getThumbAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('product-brand'))) {
-            $brand = $this->getMedia('product-brand')->last();
-            return $brand->getUrl('thumb');
-        }
-        return asset('images/default/brand/thumb.png');
+        return $this->conversionUrl(
+            $this->getMedia('product-brand')->last(),
+            'thumb',
+            'images/default/brand/thumb.png'
+        );
     }
 
     public function getCoverAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('product-brand'))) {
-            $brand = $this->getMedia('product-brand')->last();
-            return $brand->getUrl('cover');
-        }
-        return asset('images/default/brand/cover.png');
+        return $this->conversionUrl(
+            $this->getMedia('product-brand')->last(),
+            'cover',
+            'images/default/brand/cover.png'
+        );
     }
 
     public function registerMediaConversions(?Media $media = null): void

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Status;
 use App\Models\Concerns\HasOutletStock;
+use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Product extends Model implements HasMedia
 {
-    use HasFactory, InteractsWithMedia, SoftDeletes, HasOutletStock;
+    use HasFactory, InteractsWithMedia, SoftDeletes, HasOutletStock, ResolvesMediaUrls;
 
     protected $table = "products";
     protected $fillable = [
@@ -116,70 +117,6 @@ class Product extends Model implements HasMedia
             }
         }
         return $response;
-    }
-
-    /**
-     * Resolve a conversion URL, falling back to the original upload.
-     *
-     * getUrl('preview') builds a path whether or not that file was ever written,
-     * so a conversion that failed to generate produced a 404 and a broken-image
-     * icon with no fallback — the collection is not empty, so the placeholder
-     * branch below never ran. hasGeneratedConversion() reads the media row's
-     * already-loaded JSON column, so this costs no disk I/O on listing pages.
-     *
-     * A file that is missing from disk despite being marked generated is handled
-     * client-side by the @error placeholder swap, which needs no stat() call.
-     */
-    private function conversionUrl(?Media $media, string $conversion, string $fallback): string
-    {
-        if (!$media) {
-            return asset($fallback);
-        }
-
-        if ($media->hasGeneratedConversion($conversion)) {
-            return self::encodeMediaUrl($media->getUrl($conversion));
-        }
-
-        return self::encodeMediaUrl($media->getUrl());
-    }
-
-    /**
-     * Percent-encode the path of a media URL.
-     *
-     * Spatie builds media URLs by concatenating the stored file name straight
-     * into the path, unencoded. 125 of this catalogue's product images carry
-     * characters that cannot survive that: 86 contain "&" and 59 contain
-     * non-ASCII (em dashes, mostly, from pasted marketing copy). The browser
-     * and the server then disagree about what was requested and the image 404s.
-     *
-     * Second and third images were hit hardest — their names come from longer
-     * descriptive text — which is why a product's main image loaded while the
-     * rest of its gallery did not.
-     *
-     * Only the path is touched; scheme, host and port are preserved, and the
-     * slashes between segments are kept as separators. Safe to apply to clean
-     * names, and there is no double-encoding risk because Spatie does no
-     * encoding of its own here.
-     */
-    private static function encodeMediaUrl(string $url): string
-    {
-        $parts = parse_url($url);
-
-        if ($parts === false || !isset($parts['path'])) {
-            return $url;
-        }
-
-        $path = implode('/', array_map('rawurlencode', explode('/', $parts['path'])));
-
-        $prefix = '';
-        if (isset($parts['scheme'], $parts['host'])) {
-            $prefix = $parts['scheme'] . '://' . $parts['host'];
-            if (isset($parts['port'])) {
-                $prefix .= ':' . $parts['port'];
-            }
-        }
-
-        return $prefix . $path;
     }
 
     public function getThumbAttribute(): string

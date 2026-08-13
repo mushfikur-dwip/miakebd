@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\Status;
 use App\Libraries\AppLibrary;
 use App\Models\Product;
+use App\Support\MediaUrl;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -299,9 +300,10 @@ class ProductMetaResolver
                 // above only catches barcodes stored under a known collection.
                 if ($row !== null && !empty($row->file_name) && !self::looksLikeBarcode($row->file_name)) {
                     // Spatie stores files at storage/{media_id}/{file_name}.
-                    // Only spaces need encoding; parentheses are valid in a URL
-                    // and Spatie itself does not encode them.
-                    return self::absolute('storage/' . $row->id . '/' . str_replace(' ', '%20', $row->file_name));
+                    // The file name goes in raw: absolute() percent-encodes the
+                    // whole path now, and pre-encoding the spaces here would
+                    // turn "%20" into "%2520" on the way through.
+                    return self::absolute('storage/' . $row->id . '/' . $row->file_name);
                 }
             }
         } catch (\Throwable $e) {
@@ -320,19 +322,31 @@ class ProductMetaResolver
         return (bool) preg_match('/(barcode|qr[-_]?code|\bqr\b)/i', $url);
     }
 
+    /**
+     * Absolute and percent-encoded.
+     *
+     * The encoding is what was missing. Spatie hands back a URL with the raw
+     * file name in the path, and this returned it untouched, so a product
+     * whose image is named with a space, an "&" or an em dash - 125 of them in
+     * this catalogue - emitted an og:image that does not resolve. A browser
+     * repairs that quietly; WhatsApp and Facebook do not. They fetch og:image
+     * exactly as written, once, and render the card with no image when it
+     * fails, which is why a shared product link showed its title and
+     * description but no picture.
+     */
     private static function absolute(string $path): string
     {
         $path = trim($path);
 
         if (Str::startsWith($path, ['http://', 'https://'])) {
-            return $path;
+            return MediaUrl::encode($path);
         }
 
         if (Str::startsWith($path, '//')) {
-            return 'https:' . $path;
+            return MediaUrl::encode('https:' . $path);
         }
 
-        return asset(ltrim($path, '/'));
+        return MediaUrl::encode(asset(ltrim($path, '/')));
     }
 
     /**

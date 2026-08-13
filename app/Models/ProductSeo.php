@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Image\Enums\Fit;
+use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -11,6 +12,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class ProductSeo extends Model implements HasMedia
 {
     use InteractsWithMedia;
+    use ResolvesMediaUrls;
 
     protected $table = 'product_seos';
 
@@ -26,24 +28,24 @@ class ProductSeo extends Model implements HasMedia
 
     public function getThumbAttribute(): string
     {
-        if (! empty($this->getFirstMediaUrl('product-seo'))) {
-            $brand = $this->getMedia('product-seo')->last();
-
-            return $brand->getUrl('thumb');
-        }
-
-        return asset('images/default/seo/thumb.png');
+        return $this->conversionUrl(
+            $this->getMedia('product-seo')->last(),
+            'thumb',
+            'images/default/seo/thumb.png'
+        );
     }
 
+    /**
+     * This is what a product page hands to og:image, so a 404 here is the
+     * difference between a link preview with a picture and one without.
+     */
     public function getCoverAttribute(): string
     {
-        if (! empty($this->getFirstMediaUrl('product-seo'))) {
-            $brand = $this->getMedia('product-seo')->last();
-
-            return $brand->getUrl('cover');
-        }
-
-        return asset('images/default/seo/cover.png');
+        return $this->conversionUrl(
+            $this->getMedia('product-seo')->last(),
+            'cover',
+            'images/default/seo/cover.png'
+        );
     }
 
     public function registerMediaConversions(?Media $media = null): void

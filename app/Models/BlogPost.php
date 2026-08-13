@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Status;
+use App\Support\MediaUrl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -75,11 +76,17 @@ class BlogPost extends Model implements HasMedia
             ->where('blog_posts.published_at', '<=', now());
     }
 
+    /**
+     * Percent-encoded, because this URL is handed straight to og:image for a
+     * shared post. A cover named with a space, an "&" or an em dash produced a
+     * link preview with no picture - WhatsApp fetches og:image exactly as
+     * written and does not repair it the way a browser would.
+     */
     public function getCoverAttribute(): string
     {
         $url = $this->getFirstMediaUrl('blog-post-cover');
 
-        return $url !== '' ? asset($url) : '';
+        return $url !== '' ? MediaUrl::encode(asset($url)) : '';
     }
 
     /**

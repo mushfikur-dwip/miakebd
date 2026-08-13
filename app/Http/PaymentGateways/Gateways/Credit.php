@@ -74,8 +74,12 @@ class Credit extends PaymentAbstract
                     ]);
                     $token                      = $capturePaymentNotification->first();
                     if (!blank($token) && $order->id == $token->order_id) {
-                        $user = User::find($order->user_id);
-                        if ($user) {
+                        // Lock and re-check the balance at debit time. The
+                        // check in payment() ran earlier; two orders confirmed
+                        // together could otherwise both pass and drive the
+                        // balance negative.
+                        $user = User::where('id', $order->user_id)->lockForUpdate()->first();
+                        if ($user && $user->balance >= $order->total) {
                             $user->balance = ($user->balance - $order->total);
                             $user->save();
                             $this->paymentService->payment($order, 'credit', $token->token);

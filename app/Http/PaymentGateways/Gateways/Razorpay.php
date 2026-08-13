@@ -73,16 +73,27 @@ class Razorpay extends PaymentAbstract
     public function success($order, $request): \Illuminate\Http\RedirectResponse
     {
         try {
+            // token is the Razorpay payment id. Confirm it server-side: the
+            // payment must exist, be captured, and match the order total —
+            // otherwise anyone could hit this URL with any token and get a
+            // paid order without paying.
             if (isset($request->token)) {
-                $paymentService = new PaymentService;
-                $paymentService->payment($order, 'razorpay', $request->token);
-                return redirect()->route('payment.successful', ['order' => $order])->with('success', trans('all.message.payment_successful'));
-            } else {
-                return redirect()->route('payment.fail', [
-                    'order' => $order,
-                    'paymentGateway' => 'razorpay'
-                ])->with('error', $this->response['message'] ?? trans('all.message.something_wrong'));
+                $payment  = $this->gateway->payment->fetch($request->token);
+                $captured = $payment
+                    && $payment['status'] === 'captured'
+                    && (int) $payment['amount'] === (int) round(((float) $order->total) * 100);
+
+                if ($captured) {
+                    $paymentService = new PaymentService;
+                    $paymentService->payment($order, 'razorpay', $request->token);
+                    return redirect()->route('payment.successful', ['order' => $order])->with('success', trans('all.message.payment_successful'));
+                }
             }
+
+            return redirect()->route('payment.fail', [
+                'order' => $order,
+                'paymentGateway' => 'razorpay'
+            ])->with('error', $this->response['message'] ?? trans('all.message.something_wrong'));
         } catch (Exception $e) {
             Log::info($e->getMessage());
             DB::rollBack();

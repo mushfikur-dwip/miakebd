@@ -151,6 +151,24 @@
                             </td>
                         </tr>
                     </tbody>
+                    <!-- A failed request and an empty catalogue are different
+                         things and now look different. Every 401, 403 and 500
+                         used to render as the same "No Data Found" picture. -->
+                    <tbody class="db-table-body" v-else-if="loadError">
+                        <tr class="db-table-body-tr">
+                            <td class="db-table-body-td text-center" colspan="6">
+                                <div class="p-6">
+                                    <p class="text-lg font-medium text-[#E93C3C]">{{ loadError }}</p>
+                                    <p class="text-sm text-gray-500 mt-1">{{ $t('message.stock_load_failed') }}</p>
+                                    <button @click.prevent="list()" type="button"
+                                        class="db-btn py-2 mt-4 mx-auto text-white bg-primary">
+                                        <i class="lab lab-line-reset"></i>
+                                        <span>{{ $t('button.reset') }}</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
                             <td class="db-table-body-td text-center" colspan="6">
@@ -251,6 +269,7 @@ export default {
             editModal: { isShowModal: false },
             editItem: {},
             editKey: 0,
+            loadError: "",
             ENV: ENV
         }
     },
@@ -280,6 +299,10 @@ export default {
             order_column: 'id',
             order_type: 'asc',
             status: statusEnum.ACTIVE
+        }).catch((err) => {
+            // Branches feed both the filter and the edit dialog. Failing
+            // silently left both empty with nothing said about why.
+            alertService.error(this.requestFailed(err));
         });
     },
     methods: {
@@ -318,13 +341,41 @@ export default {
             this.props.search.status = null;
             this.list();
         },
+        /**
+         * A swallowed error here is why "the stock page is empty" was so hard
+         * to pin down: a 401, a 403 and a 500 all rendered as the same cheerful
+         * "No Data Found!" illustration, so there was nothing to tell apart a
+         * genuinely empty catalogue from a request that never succeeded.
+         */
+        requestFailed: function (err) {
+            const status = err?.response?.status;
+            const message = err?.response?.data?.message;
+
+            // The server's own words come first. A 401 is not always "log in
+            // again" - EnsureUserIsActive answers 401 with "This account is no
+            // longer active", which is a different problem with a different
+            // fix, and showing the generic line would hide it.
+            if (message) {
+                return message;
+            }
+            if (status === 401) {
+                return this.$t('message.session_expired');
+            }
+            if (status === 403) {
+                return this.$t('message.permission_denied');
+            }
+            return err?.message || this.$t('message.something_wrong');
+        },
         list: function (page = 1) {
             this.loading.isActive = true;
             this.props.search.page = page;
             this.$store.dispatch('stock/lists', this.props.search).then(res => {
                 this.loading.isActive = false;
+                this.loadError = "";
             }).catch((err) => {
                 this.loading.isActive = false;
+                this.loadError = this.requestFailed(err);
+                alertService.error(this.loadError);
             });
         },
         xls: function () {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\Image\Enums\CropPosition;
@@ -11,7 +12,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Slider extends Model implements HasMedia
 {
-    use InteractsWithMedia;
+    use InteractsWithMedia, ResolvesMediaUrls;
 
     protected $table = "sliders";
     protected $fillable = ['title', 'link', 'description', 'status'];
@@ -23,13 +24,20 @@ class Slider extends Model implements HasMedia
         'link'        => 'string',
     ];
 
+    /**
+     * The hero banner. This returned getUrl('cover') unconditionally, so a
+     * slide whose 1689x600 cover conversion never generated - the largest
+     * conversion in the app, and the first to die on a memory limit - served a
+     * URL that 404s. The placeholder below could not save it either, because
+     * the media row exists and the collection is not empty.
+     */
     public function getImageAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('slider'))) {
-            $slider = $this->getMedia('slider')->last();
-            return $slider->getUrl('cover');
-        }
-        return asset('images/default/slider.png');
+        return $this->conversionUrl(
+            $this->getMedia('slider')->last(),
+            'cover',
+            'images/default/slider.png'
+        );
     }
 
     public function registerMediaConversions(?Media $media = null): void

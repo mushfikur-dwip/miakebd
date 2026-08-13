@@ -22,6 +22,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('stock_adjustments')) {
+            return;
+        }
+
         Schema::create('stock_adjustments', function (Blueprint $table) {
             $table->id();
             $table->unsignedTinyInteger('type')->default(StockAdjustmentType::TRANSFER);

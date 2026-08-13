@@ -184,9 +184,7 @@ class CouponService
     {
         try {
             return Coupon::all()->filter(function ($item) {
-                if (Carbon::now()->isBetween($item->start_date, $item->end_date)) {
-                    return $item;
-                }
+                return Carbon::now()->isBetween($item->start_date, $item->end_date);
             });
         } catch (Exception $exception) {
             Log::info($exception->getMessage());

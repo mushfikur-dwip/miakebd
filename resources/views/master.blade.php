@@ -168,6 +168,13 @@
     <meta name="geo.placename" content="Bangladesh">
     <meta name="theme-color" content="#ffffff">
 
+    @php
+        // Only the controller path measures its image. Every other branch falls
+        // back to the brand card, whose size is the constant above.
+        $seoImageW = ($controllerSeo && $seoImage !== $brandImage) ? ($controllerSeo['image_width'] ?? null) : null;
+        $seoImageH = ($controllerSeo && $seoImage !== $brandImage) ? ($controllerSeo['image_height'] ?? null) : null;
+    @endphp
+
     {{-- ============ OPEN GRAPH — WhatsApp & Facebook link previews ============
          og:image MUST be an absolute https URL that returns the image directly.
          WhatsApp will not follow redirects and ignores relative paths.
@@ -178,10 +185,18 @@
     <meta property="og:description" content="{{ $seoDescription }}">
     <meta property="og:image" content="{{ $seoImage }}">
     <meta property="og:image:secure_url" content="{{ $seoImage }}">
+    {{-- WhatsApp will not download an image to find out how big it is before
+         laying out the card, so a preview with no declared size renders as
+         title and description with no picture. The brand card's size is a
+         constant here; a product photo's is measured off the generated file by
+         MediaUrl::dimensions(), so what is declared is always the real size. --}}
     @if ($seoImageIsBrand)
         <meta property="og:image:type" content="image/jpeg">
         <meta property="og:image:width" content="{{ $brandImageW }}">
         <meta property="og:image:height" content="{{ $brandImageH }}">
+    @elseif (!empty($seoImageW) && !empty($seoImageH))
+        <meta property="og:image:width" content="{{ $seoImageW }}">
+        <meta property="og:image:height" content="{{ $seoImageH }}">
     @endif
     <meta property="og:image:alt" content="{{ $product['name'] ?? ($controllerSeo['title'] ?? 'Suglow — authentic cosmetics and skincare in Bangladesh') }}">
     <meta property="og:url" content="{{ $seoCanonical }}">

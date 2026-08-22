@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ThemeSetting;
 use App\Support\BlogMetaResolver;
 use App\Support\CategoryMetaResolver;
+use App\Support\MediaUrl;
 use App\Support\SeoSchema;
 
 class RootController extends Controller
@@ -43,7 +44,26 @@ class RootController extends Controller
         // https, or on www would emit a canonical pointing at that variant —
         // which is precisely how a page ends up splitting its own ranking.
         $canonical = rtrim((string) config('app.url'), '/') . '/product/' . rawurlencode($product->slug);
-        $image = $product->seo?->cover ?: $product->cover;
+        // Decided on the media rows, not on the accessors.
+        //
+        // This used to read `$product->seo?->cover ?: $product->cover`, and the
+        // `?:` never once fell through: ProductSeo::cover returns the generic
+        // placeholder when no SEO image was uploaded, and a placeholder path is
+        // a non-empty string. So every product that had a product_seos row
+        // without its own image - which is nearly all of them - advertised
+        // /images/default/seo/cover.png to WhatsApp and Facebook instead of its
+        // own photo. The one product anyone had uploaded an SEO image for was
+        // also the one product whose link preview worked.
+        //
+        // Picking the media first means the URL and the dimensions below are
+        // taken from the same decision, so the size can never describe a
+        // different picture than the one og:image points at.
+        $seoMedia     = $product->seo?->getMedia('product-seo')->last();
+        $productMedia = $product->getMedia('product')->first();
+
+        $imageMedia = $seoMedia ?: $productMedia;
+        $image      = $seoMedia ? $product->seo->cover : $product->cover;
+        $imageSize  = MediaUrl::dimensions($imageMedia, 'cover');
 
         $structuredData = SeoSchema::product($product);
 
@@ -61,6 +81,7 @@ class RootController extends Controller
 
         return $this->shell([
             'seo' => compact('title', 'description', 'keywords', 'canonical', 'image')
+                + ['image_width' => $imageSize[0] ?? null, 'image_height' => $imageSize[1] ?? null]
                 + ['type' => 'product', 'robots' => 'index, follow, max-image-preview:large']
                 + ['commerce' => $commerce],
             // productPage() = the Product schema above plus a BreadcrumbList

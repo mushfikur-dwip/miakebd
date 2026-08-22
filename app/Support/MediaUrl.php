@@ -2,8 +2,59 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Cache;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+
 class MediaUrl
 {
+    /**
+     * Pixel dimensions of a media file, as [width, height], or null if they
+     * cannot be read.
+     *
+     * og:image:width and og:image:height were only ever emitted for the brand
+     * card, whose size is a constant in the layout. A product photo is
+     * whatever the admin uploaded, so the size was left off - but leaving it
+     * off is what WhatsApp reacts worst to: it will not download an image to
+     * find out how big it is before laying out the card, so a product link
+     * rendered as title and description with no picture, while the same page
+     * previewed fine on platforms that do fetch first.
+     *
+     * Read from the generated file rather than guessed, so the declared size
+     * is the real one - a wrong size is worse than none.
+     *
+     * Cached forever against the media id: replacing an image creates a new
+     * media row and therefore a new key, so this can never go stale.
+     */
+    public static function dimensions(?Media $media, string $conversion): ?array
+    {
+        if (!$media) {
+            return null;
+        }
+
+        $useConversion = $media->hasGeneratedConversion($conversion);
+
+        return Cache::rememberForever(
+            'media-dimensions:' . $media->id . ':' . ($useConversion ? $conversion : 'original'),
+            function () use ($media, $conversion, $useConversion) {
+                try {
+                    $path = $useConversion ? $media->getPath($conversion) : $media->getPath();
+                } catch (\Throwable) {
+                    // Disk not configured, or the media row points at a file
+                    // that is gone. Not worth failing a page render over.
+                    return null;
+                }
+
+                if (!is_file($path)) {
+                    return null;
+                }
+
+                $size = @getimagesize($path);
+
+                return ($size && $size[0] > 0 && $size[1] > 0) ? [$size[0], $size[1]] : null;
+            }
+        );
+    }
+
     /**
      * Percent-encode the path of a media URL.
      *

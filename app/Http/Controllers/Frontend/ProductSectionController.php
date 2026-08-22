@@ -24,7 +24,7 @@ class ProductSectionController extends AdminController
     public function index(PaginateRequest $request): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         try {
-            return ProductSectionDetailsResource::collection($this->productSectionService->productSectionWithProduct($request));
+            return ProductSectionDetailsResource::collection($this->productSectionService->productSectionWithProduct());
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

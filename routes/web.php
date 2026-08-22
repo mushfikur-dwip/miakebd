@@ -145,5 +145,5 @@ Route::fallback(function (\Illuminate\Http\Request $request) {
         abort(404);
     }
 
-    return app(RootController::class)->index($request->path());
+    return app(RootController::class)->index();
 })->middleware(['installed']);

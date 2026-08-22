@@ -2,9 +2,18 @@
 #
 # Served from the web root so it bypasses Laravel's catch-all route.
 #
-# robots.txt groups are EXCLUSIVE: a bot that finds its own User-agent block
-# ignores the "*" block entirely. The disallow rules are therefore repeated
-# inside every named group rather than being inherited.
+# robots.txt groups are EXCLUSIVE: a bot that matches its own User-agent block
+# ignores the "*" block entirely. So every named block below must repeat the
+# full private-path list — a named block that omits one is a hole, not an
+# inheritance. (The old Bingbot block did exactly that, leaving /login,
+# /register, /password/ and /account/ crawlable by Bing alone.)
+#
+# The named AI blocks are deliberate opt-ins. Answer engines — ChatGPT Search,
+# Perplexity, Claude, Gemini, Apple Intelligence, Google AI Overviews — cite the
+# pages they are allowed to read, so welcoming their crawlers is how a product
+# page becomes the source an AI answer links to. Training-only agents
+# (Google-Extended, Applebot-Extended, GPTBot) are allowed too: for a retailer,
+# being in the model's memory of "authentic cosmetics in Bangladesh" is upside.
 
 User-agent: *
 Disallow: /admin/
@@ -19,6 +28,8 @@ Disallow: /*?sort=
 Disallow: /*?filter=
 Allow: /
 
+# ---- Search engines ----
+
 User-agent: Googlebot
 Disallow: /admin/
 Disallow: /api/
@@ -30,7 +41,7 @@ Disallow: /checkout
 Disallow: /account/
 Allow: /
 
-User-agent: GPTBot
+User-agent: Bingbot
 Disallow: /admin/
 Disallow: /api/
 Disallow: /login
@@ -41,7 +52,31 @@ Disallow: /checkout
 Disallow: /account/
 Allow: /
 
-User-agent: ClaudeBot
+User-agent: Applebot
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+# ---- AI answer engines (live citation) ----
+
+User-agent: OAI-SearchBot
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: ChatGPT-User
 Disallow: /admin/
 Disallow: /api/
 Disallow: /login
@@ -63,14 +98,105 @@ Disallow: /checkout
 Disallow: /account/
 Allow: /
 
-User-agent: Google-Extended
-Allow: /
-
-User-agent: Bingbot
+User-agent: Perplexity-User
 Disallow: /admin/
 Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
 Disallow: /cart
 Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: ClaudeBot
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: Claude-User
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: DuckAssistBot
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: Amazonbot
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+# ---- AI training crawlers (opt-in) ----
+
+User-agent: GPTBot
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: Google-Extended
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Allow: /
+
+User-agent: Applebot-Extended
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
 Allow: /
 
 Sitemap: https://suglow.com/sitemap.xml

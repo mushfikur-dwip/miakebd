@@ -796,7 +796,8 @@
         "hours": "ساعة",
         "minutes": "دقيقة",
         "seconds": "ثانية",
-        "shop_now": "تسوق الآن"
+        "shop_now": "تسوق الآن",
+        "order_help_title": "هل تواجه مشكلة في الطلب؟"
     },
     "button": {
         "add": "إضافة",
@@ -913,7 +914,9 @@
         "edit_post": "Edit Post",
         "add_category": "Add Category",
         "add_tag": "Add Concern",
-        "add_campaign": "إضافة حملة"
+        "add_campaign": "إضافة حملة",
+        "whatsapp": "واتساب",
+        "phone_call": "اتصال هاتفي"
     },
     "number": {
         "10": "10",
@@ -1048,6 +1051,9 @@
         "meta_keywords_chip_hint": "Press Enter or comma to add. 5-15 works best.",
         "campaign_window_hint": "تسري أسعار الحملة بين وقت البدء ووقت الانتهاء فقط. خارج هذه الفترة تختفي الصفحة ويعود كل منتج إلى سعره العادي.",
         "special_price_hint": "السعر الذي يدفعه العميل في صفحة هذه الحملة فقط. لا يُؤخذ من السعر العادي للمنتج ولا يغيّره.",
-        "campaign_ended": "لم تعد هذه الأسعار متاحة. تصفح المتجر للاطلاع على العروض الحالية."
+        "campaign_ended": "لم تعد هذه الأسعار متاحة. تصفح المتجر للاطلاع على العروض الحالية.",
+        "order_help_text": ".راسلنا على واتساب أو اتصل بنا وسنقوم بإتمام الطلب نيابة عنك",
+        "whatsapp_order_greeting": ".مرحباً! أرغب في تقديم هذا الطلب",
+        "order_help_product": "هل تواجه مشكلة في الطلب؟ اطلب عبر واتساب"
     }
 }

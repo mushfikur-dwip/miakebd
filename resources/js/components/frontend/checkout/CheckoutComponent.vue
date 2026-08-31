@@ -59,6 +59,11 @@
             <!-- Default Router -->
             <router-view />
             <!-- Default Router -->
+
+            <!-- Sits in the wrapper, not in a step, so the WhatsApp and call
+                 buttons are there whether the customer stalls on the cart,
+                 the address form or the payment choice. -->
+            <OrderHelpComponent />
         </div>
     </section>
 </template>
@@ -68,10 +73,11 @@ import CartListComponent from "./cartList/CartListComponent.vue";
 import router from "../../../router";
 import appService from "../../../services/appService";
 import LoadingComponent from "../components/LoadingComponent.vue";
+import OrderHelpComponent from "../components/OrderHelpComponent.vue";
 
 export default {
     name: "CheckoutComponent",
-    components: { LoadingComponent, CartListComponent },
+    components: { LoadingComponent, CartListComponent, OrderHelpComponent },
     data() {
         return {
             loading: {

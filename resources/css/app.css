@@ -1119,6 +1119,150 @@
         cursor: not-allowed;
     }
 
+    /* "Trouble ordering?" panel — the WhatsApp / call pair under every
+       checkout step. Sits on the blush ground so it reads as an offer of help
+       rather than another form section. */
+    .co-help {
+        margin-top: 22px;
+        padding: 18px 16px;
+        border: 1px solid #e8e9ee;
+        border-radius: 13px;
+        background: rgb(var(--primary-slate));
+        text-align: center;
+    }
+
+    .co-help-title {
+        margin: 0;
+        font-size: 15.5px;
+        font-weight: 700;
+        line-height: 1.4;
+        color: #1a1a20;
+    }
+
+    .co-help-text {
+        margin: 5px 0 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #6e7191;
+    }
+
+    .co-help-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 11px;
+        margin-top: 14px;
+    }
+
+    /* min-height, not height, and the label never wraps. The Bengali label
+       "হোয়াটসঅ্যাপ" is one long word that measures within a few pixels of the
+       content box — at a fixed height a wrap would have spilled the text out
+       of the button rather than growing it. */
+    .co-help-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-width: 168px;
+        min-height: 46px;
+        padding: 8px 20px;
+        border-radius: 10px;
+        font-size: 14.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        transition: color 0.2s ease, background 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+    }
+
+    .co-help-btn svg {
+        width: 19px;
+        height: 19px;
+        flex-shrink: 0;
+    }
+
+    .co-help-btn:active {
+        transform: scale(0.98);
+    }
+
+    /* Not WhatsApp's #25D366: white on that measures 3.1:1 and fails AA at
+       this weight. #1A7F37 is the closest green that clears it at 5.08:1, and
+       the logo glyph carries the recognition the exact hue would have. */
+    .co-help-wa {
+        color: #ffffff;
+        background: #1a7f37;
+    }
+
+    .co-help-wa:hover {
+        filter: brightness(1.12);
+    }
+
+    .co-help-call {
+        color: rgb(var(--primary));
+        background: #ffffff;
+        border: 1.5px solid rgb(var(--primary));
+    }
+
+    .co-help-call:hover {
+        color: #ffffff;
+        background: rgb(var(--primary));
+    }
+
+    .co-help-number {
+        display: inline-block;
+        margin-top: 11px;
+        font-size: 13px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: #6e7191;
+    }
+
+    .co-help-number:hover {
+        color: rgb(var(--primary));
+        text-decoration: underline;
+    }
+
+    /* Below this the two buttons no longer fit side by side without the
+       labels wrapping mid-word, so they stack full width instead. */
+    @media (max-width: 400px) {
+        .co-help-btn {
+            flex: 1 1 100%;
+            min-width: 0;
+        }
+    }
+
+    /* 1024px is exactly where `.co-bar` stops hiding itself. On checkout this
+       panel is the last thing on the page, so without its own clearance the
+       fixed bar sits on the two buttons — the section's own margin leaves
+       barely 14px once a notched phone's safe-area inset is taken out.
+       Excluded on the product page, which has no such bar and would just get
+       an unexplained gap under the buttons. */
+    @media (max-width: 1024px) {
+        .co-help:not(.is-bare) {
+            margin-bottom: 58px;
+        }
+    }
+
+    /* Product page. The summary column is already dense — title, price, stock,
+       variations, quantity, two cart buttons — so a second bordered card in it
+       reads as a second product. Here the line and the buttons stand on the
+       page with no chrome of their own. */
+    .co-help.is-bare {
+        margin-top: 0;
+        margin-bottom: 40px;
+        padding: 0;
+        background: none;
+        border: 0;
+    }
+
+    .co-help.is-bare .co-help-title {
+        font-size: 17px;
+        line-height: 1.6;
+        margin-bottom: 14px;
+    }
+
+    .co-help.is-bare .co-help-actions {
+        margin-top: 0;
+    }
+
     @media (prefers-reduced-motion: reduce) {
         .co-opt,
         .co-radio,
@@ -1129,14 +1273,16 @@
         .co-cpn input,
         .co-cpn button,
         .co-place,
-        .co-bar button {
+        .co-bar button,
+        .co-help-btn {
             transition: none;
         }
 
         .co-opt:active,
         .co-cpn button:hover:not(:disabled),
         .co-place:active:not(:disabled),
-        .co-bar button:active:not(:disabled) {
+        .co-bar button:active:not(:disabled),
+        .co-help-btn:active {
             transform: none;
         }
     }

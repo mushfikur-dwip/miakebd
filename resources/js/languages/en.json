@@ -852,7 +852,8 @@
         "hours": "hrs",
         "minutes": "min",
         "seconds": "sec",
-        "shop_now": "Shop Now"
+        "shop_now": "Shop Now",
+        "order_help_title": "Having trouble ordering?"
     },
     "button": {
         "add": "Add",
@@ -972,7 +973,9 @@
         "edit_post": "Edit Post",
         "add_category": "Add Category",
         "add_tag": "Add Concern",
-        "add_campaign": "Add Campaign"
+        "add_campaign": "Add Campaign",
+        "whatsapp": "WhatsApp",
+        "phone_call": "Phone Call"
     },
     "number": {
         "10": "10",
@@ -1116,6 +1119,9 @@
         "meta_keywords_chip_hint": "Press Enter or comma to add. 5-15 works best.",
         "campaign_window_hint": "The campaign prices products only between the start and end times. Outside that window the page hides itself and every product goes back to its normal price.",
         "special_price_hint": "The price customers pay on this campaign page only. It is not taken from the product's normal price and does not change it.",
-        "campaign_ended": "These prices are no longer available. Browse the store for current offers."
+        "campaign_ended": "These prices are no longer available. Browse the store for current offers.",
+        "order_help_text": "Message us on WhatsApp or give us a call — we will place the order for you.",
+        "whatsapp_order_greeting": "Hello! I would like to place this order.",
+        "order_help_product": "Having trouble ordering? Order on WhatsApp"
     }
 }

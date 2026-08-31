@@ -121,6 +121,12 @@
                             <span class="whitespace-nowrap font-bold">{{ $t('button.favorite') }}</span>
                         </button>
                     </div>
+
+                    <!-- Order-by-chat, directly under the cart buttons. Sends
+                         the product, its SKU, the chosen quantity and the page
+                         link, so a customer who will not fill a checkout form
+                         still reaches us with everything we need. -->
+                    <OrderHelpComponent bare :product="orderHelpProduct" />
                 </div>
             </div>
         </div>
@@ -280,6 +286,7 @@ import 'vue-inner-image-zoom/lib/vue-inner-image-zoom.css';
 import InnerImageZoom from 'vue-inner-image-zoom';
 import ProductImage from "../components/ProductImage";
 import ProductSeoBlocks from "./ProductSeoBlocks";
+import OrderHelpComponent from "../components/OrderHelpComponent.vue";
 
 export default {
     name: "ProductDetailsComponent",
@@ -291,6 +298,7 @@ export default {
         Swiper,
         SwiperSlide,
         LoadingComponent,
+        OrderHelpComponent,
         ProductImage,
         ProductSeoBlocks,
         'inner-image-zoom': InnerImageZoom
@@ -381,6 +389,17 @@ export default {
         },
         relatedProducts: function () {
             return this.$store.getters["frontendProduct/relatedProducts"];
+        },
+        // Read from `temp`, not from the product, so the WhatsApp message
+        // follows the variation and quantity the customer actually picked —
+        // both of which change the price they are asking about.
+        orderHelpProduct: function () {
+            return {
+                name: this.product.name,
+                sku: this.temp.sku,
+                quantity: this.temp.quantity,
+                price: this.temp.price
+            };
         },
     },
     mounted() {

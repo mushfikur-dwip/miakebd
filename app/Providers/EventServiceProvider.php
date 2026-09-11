@@ -9,6 +9,7 @@ use App\Events\SendOrderGotSms;
 use App\Events\SendOrderMail;
 use App\Events\SendOrderPush;
 use App\Events\SendOrderSms;
+use App\Events\SendPosOrderSms;
 use App\Events\SendPosOrderTelegram;
 use App\Events\SendSmsCode;
 use App\Events\SendVerifyEmailCode;
@@ -19,6 +20,7 @@ use App\Listeners\SendOrderGotSmsNotification;
 use App\Listeners\SendOrderMailNotification;
 use App\Listeners\SendOrderPushNotification;
 use App\Listeners\SendOrderSmsNotification;
+use App\Listeners\SendPosOrderSmsNotification;
 use App\Listeners\SendPosOrderTelegramNotification;
 use App\Listeners\SendSmsCodeNotification;
 use App\Listeners\SendVerifyEmailCodeNotification;
@@ -64,6 +66,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         SendPosOrderTelegram::class => [
             SendPosOrderTelegramNotification::class,
+        ],
+        SendPosOrderSms::class => [
+            SendPosOrderSmsNotification::class,
         ],
     ];
 

@@ -80,6 +80,14 @@
           :closeOnSelect="true" :searchable="true" :clearOnClose="true" :placeholder="$t('label.select_branch')"
           :search-placeholder="$t('label.search_branch')" @update:modelValue="setOutlet($event)" />
       </div>
+      <div class="db-field mb-3" v-if="employees.length > 0">
+        <label for="sales_by" class="db-field-title">{{ $t('label.sale_by') }}</label>
+        <vue-select
+          class="db-field-control w-full text-sm rounded-lg appearance-none cursor-pointer text-heading border-[#D9DBE9]"
+          id="sales_by" v-model="checkoutProps.form.sales_by_id" :options="employees" label-by="name" value-by="id"
+          :closeOnSelect="true" :searchable="true" :clearOnClose="true" :placeholder="$t('label.select_sale_by')"
+          :search-placeholder="$t('label.search_employee')" @update:modelValue="setSalesBy($event)" />
+      </div>
     </div>
 
     <div v-if="carts.length === 0" class="flex items-center justify-center">
@@ -241,6 +249,11 @@ import PaymentComponent from "./PaymentComponent";
 import PoscustomerComponent from './PosCustomerComponent';
 import posPaymentMethodEnum from "../../../enums/modules/posPaymentMethodEnum";
 import BarcodeProductComponent from "./BarcodeProductComponent.vue";
+import axios from "axios";
+
+// "Sale By" is remembered per device: a salesperson picks themselves once at
+// the start of a shift instead of on every sale.
+const SALES_BY_KEY = "pos_sales_by";
 
 export default {
   name: "PosComponent",
@@ -258,11 +271,13 @@ export default {
         isActive: false,
       },
       order: {},
+      employees: [],
       discount: null,
       checkoutProps: {
         form: {
           customer_id: null,
           outlet_id: null,
+          sales_by_id: null,
           category: null,
           brand: null,
           discount: 0,
@@ -350,24 +365,13 @@ export default {
   mounted() {
     this.productCategories();
     this.productBrands();
-    this.productList();
+    // The grid is not loaded here: it depends on the branch, and outletList()
+    // loads it once the branch is known. Loading it here as well fetched the
+    // whole catalogue twice on every visit - the first time with company-wide
+    // stock, which could land after the branch request and overwrite it.
     this.outletList();
-    try {
-      this.customerList();
-
-      this.loading.isActive = true;
-      this.$store.dispatch("company/lists").then((res) => {
-        this.company.name = res.data.data.company_name;
-        this.company.email = res.data.data.company_email;
-        this.company.phone = res.data.data.company_phone;
-        this.company.address = res.data.data.company_address;
-        this.loading.isActive = false;
-      }).catch((err) => {
-        this.loading.isActive = false;
-      });
-    } catch (err) {
-      this.loading.isActive = false;
-    }
+    this.customerList();
+    this.employeeList();
   },
   methods: {
     hideTarget: function (id, cClass) {
@@ -449,8 +453,42 @@ export default {
         // total, which is not what this till can actually sell.
         if (!this.checkoutProps.form.outlet_id && res.data.data.length > 0) {
           this.setOutlet(res.data.data[0].id);
+        } else {
+          this.productList();
         }
-      }).catch();
+      }).catch(() => {
+        // No branch list, but the cashier still needs products to sell.
+        this.productList();
+      });
+    },
+    employeeList: function () {
+      axios.get("admin/pos/employees").then((res) => {
+        this.employees = res.data.data;
+        let remembered = null;
+        try {
+          remembered = Number(localStorage.getItem(SALES_BY_KEY));
+        } catch (err) {
+          remembered = null;
+        }
+        // Only restore someone who is still an active employee.
+        if (!this.checkoutProps.form.sales_by_id && this.employees.some((employee) => employee.id === remembered)) {
+          this.checkoutProps.form.sales_by_id = remembered;
+        }
+      }).catch(() => {
+        this.employees = [];
+      });
+    },
+    setSalesBy: function (id) {
+      this.checkoutProps.form.sales_by_id = id;
+      try {
+        if (id) {
+          localStorage.setItem(SALES_BY_KEY, id);
+        } else {
+          localStorage.removeItem(SALES_BY_KEY);
+        }
+      } catch (err) {
+        // Storage blocked: the choice still applies to this session.
+      }
     },
     setOutlet: function (id) {
       this.checkoutProps.form.outlet_id = id;
@@ -461,7 +499,7 @@ export default {
     productList: function (page = 1) {
       this.loading.isActive = true;
       this.props.search.page = page;
-      this.$store.dispatch("product/lists", this.props.search).then((res) => {
+      this.$store.dispatch("product/posLists", this.props.search).then((res) => {
         this.loading.isActive = false;
       }).catch((err) => {
         this.loading.isActive = false;
@@ -560,6 +598,7 @@ export default {
       this.form = {
         customer_id: this.checkoutProps.form.customer_id,
         outlet_id: this.checkoutProps.form.outlet_id,
+        sales_by_id: this.checkoutProps.form.sales_by_id,
         subtotal: this.subtotal,
         discount: parseFloat(this.posCartDiscount),
         tax: this.totalTax,
@@ -605,6 +644,12 @@ export default {
     orderPayment: function () {
       if (!this.checkoutProps.form.outlet_id) {
         alertService.error(this.$t('label.select_branch'));
+        return;
+      }
+      // Required while the shop has employees, so every sale lands on
+      // someone's figures. A shop with none can still sell.
+      if (this.employees.length > 0 && !this.checkoutProps.form.sales_by_id) {
+        alertService.error(this.$t('label.select_sale_by'));
         return;
       }
       appService.modalShow('#orderPayment');

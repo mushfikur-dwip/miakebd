@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -15,6 +16,7 @@ class Order extends Model
         'order_serial_no',
         'user_id',
         'outlet_id',
+        'sales_by_id',
         'tax',
         'discount',
         'subtotal',
@@ -73,6 +75,23 @@ class Order extends Model
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class)->withTrashed();
+    }
+
+    /** The employee picked as "Sale By" at the till. */
+    public function salesBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sales_by_id', 'id');
+    }
+
+    /**
+     * What an employee's sales figures count: paid orders that were not later
+     * cancelled or rejected. Paid-only matches the dashboard's total sales.
+     * Returns are not subtracted - the figure is what was rung up.
+     */
+    public function scopeCountedAsSale($query)
+    {
+        return $query->where('payment_status', PaymentStatus::PAID)
+            ->whereNotIn('status', [OrderStatus::CANCELED, OrderStatus::REJECTED]);
     }
 
     public function outlet(): \Illuminate\Database\Eloquent\Relations\BelongsTo

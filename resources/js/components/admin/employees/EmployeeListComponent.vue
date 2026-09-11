@@ -89,6 +89,8 @@
                             <th class="db-table-head-th">{{ $t("label.email") }}</th>
                             <th class="db-table-head-th">{{ $t("label.phone") }}</th>
                             <th class="db-table-head-th">{{ $t("label.role") }}</th>
+                            <th class="db-table-head-th">{{ $t("label.sales") }}</th>
+                            <th class="db-table-head-th">{{ $t("label.sales_amount") }}</th>
                             <th class="db-table-head-th">{{ $t("label.status") }}</th>
                             <th class="db-table-head-th hidden-print"
                                 v-if="permissionChecker('employees_show') || permissionChecker('employees_edit') || permissionChecker('employees_delete')">
@@ -102,6 +104,8 @@
                             <td class="db-table-body-td"><span dir="ltr">{{ employee.phone ? employee.country_code + ''
                                 + employee.phone : '' }}</span></td>
                             <td class="db-table-body-td">{{ employee.role }}</td>
+                            <td class="db-table-body-td">{{ employee.sales_count }}</td>
+                            <td class="db-table-body-td">{{ employee.sales_currency_amount }}</td>
                             <td class="db-table-body-td">
                                 <span :class="statusClass(employee.status)">
                                     {{ enums.statusEnumArray[employee.status] }}
@@ -122,7 +126,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="6">
+                            <td class="db-table-body-td text-center" colspan="8">
                                 <div class="p-4">
                                     <div class="max-w-[300px] mx-auto mt-2">
                                         <img class="w-full h-full" :src="ENV.API_URL+'/images/default/not-found/not_found.png'" alt="Not Found">

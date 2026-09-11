@@ -43,6 +43,8 @@ class OrderDetailsResource extends JsonResource
             'user'                           => new UserResource($this->user),
             'branch'                         => new OutletResource($this->outlet),
             'branch_name'                    => $this?->outlet?->name ?? '',
+            'sales_by_id'                    => $this->sales_by_id,
+            'sales_by_name'                  => $this->salesBy?->name ?? '',
             'order_address'                  => AddressResource::collection($this->address),
             'outlet_address'                 => new OutletResource($this?->outletAddress),
             'order_products'                 => OrderProductResource::collection($this->orderProducts),

@@ -26,7 +26,8 @@
             <div class="db-card-body" v-if="notificationAlert.slug === 'mail'">
                 <form class="row" @submit.prevent="save(notificationAlert.slug, index)"
                     :id="'formElem_' + notificationAlert.slug + index">
-                    <div class="col-12 xl:col-6" v-for="notification in notificationAlerts" :key="notification">
+                    <!-- The POS order message is SMS only, so it is left off this tab. -->
+                    <div class="col-12 xl:col-6" v-for="notification in notificationAlerts.filter(alert => alert.language !== 'pos_order_message')" :key="notification">
                         <div class="flex items-center justify-between mb-3">
                             <label class="capitalize text-sm text-heading">{{ notification.name }}</label>
                             <div class="custom-switch">
@@ -82,7 +83,8 @@
             <div class="db-card-body" v-if="notificationAlert.slug === 'push_notification'">
                 <form class="row" @submit.prevent="save(notificationAlert.slug, index)"
                     :id="'formElem_' + notificationAlert.slug + index">
-                    <div class="col-12 xl:col-6" v-for="notification in notificationAlerts" :key="notification">
+                    <!-- The POS order message is SMS only, so it is left off this tab. -->
+                    <div class="col-12 xl:col-6" v-for="notification in notificationAlerts.filter(alert => alert.language !== 'pos_order_message')" :key="notification">
                         <div class="flex items-center justify-between mb-3">
                             <label class="capitalize text-sm text-heading">{{ notification.name }}</label>
                             <div class="custom-switch">

@@ -492,6 +492,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:300,1'])
 
     Route::prefix('product')->group(function () {
         Route::get('/', [ProductController::class, 'index']);
+        Route::get('/pos-products', [ProductController::class, 'posProducts']);
         Route::get('/show/{product}', [ProductController::class, 'show']);
         Route::get('/pos-product/{product}', [ProductController::class, 'posProduct']);
         Route::post('/', [ProductController::class, 'store']);
@@ -833,6 +834,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:300,1'])
     Route::prefix('pos')->group(function () {
         Route::post('/', [PosController::class, 'store']);
         Route::post('/customer', [PosController::class, 'storeCustomer']);
+        Route::get('/employees', [PosController::class, 'employees']);
     });
 
     Route::prefix('return-and-refund')->middleware(['auth:sanctum'])->group(function () {

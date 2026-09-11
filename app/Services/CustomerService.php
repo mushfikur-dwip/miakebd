@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\CustomerRequest;
+use App\Http\Requests\PosCustomerRequest;
+use App\Libraries\AppLibrary;
+use Illuminate\Support\Str;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Requests\ChangeImageRequest;
 use App\Http\Requests\UserChangePasswordRequest;
@@ -79,6 +82,45 @@ class CustomerService
             return $this->user;
         } catch (Exception $exception) {
             DB::rollBack();
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    /**
+     * A customer the till records without making them a site account.
+     *
+     * Stored as a guest - the same kind of row guest checkout writes - so it
+     * carries the Customer role and appears in the POS customer list and on the
+     * admin Customers page, but LoginController refuses it and nobody knows its
+     * password. If the person later signs up on the storefront with the same
+     * phone, SignupController upgrades this row rather than creating a second
+     * one, so their shop purchases stay with them.
+     *
+     * @throws Exception
+     */
+    public function storePosCustomer(PosCustomerRequest $request): User
+    {
+        try {
+            return DB::transaction(function () use ($request) {
+                $user = User::create([
+                    'name'              => $request->name,
+                    'email'             => $request->email ?: null,
+                    'phone'             => $request->phone,
+                    'username'          => AppLibrary::username($request->name),
+                    // Never used: a guest cannot log in, and signing up sets a
+                    // real password.
+                    'password'          => Hash::make(Str::random(40)),
+                    'email_verified_at' => now(),
+                    'status'            => $request->status,
+                    'country_code'      => $request->country_code,
+                    'is_guest'          => Ask::YES,
+                ]);
+                $user->assignRole(EnumRole::CUSTOMER);
+
+                return $user;
+            });
+        } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }

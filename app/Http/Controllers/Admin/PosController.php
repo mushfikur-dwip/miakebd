@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Admin;
 use Exception;
 use App\Services\OrderService;
 use App\Services\CustomerService;
-use App\Http\Requests\CustomerRequest;
+use App\Http\Requests\PosCustomerRequest;
+use App\Enums\Status;
+use App\Models\User;
+use App\Http\Resources\SimpleUserResource;
 use App\Http\Requests\PosOrderRequest;
 use App\Http\Resources\CustomerResource;
 use App\Http\Resources\OrderDetailsResource;
@@ -28,7 +31,7 @@ class PosController extends AdminController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:pos', only: ['store', 'storeCustomer']),
+            new Middleware('permission:pos', only: ['store', 'storeCustomer', 'employees']),
         ];
     }
 
@@ -40,10 +43,22 @@ class PosController extends AdminController implements HasMiddleware
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }
     }
-    public function storeCustomer(CustomerRequest $request
+    /**
+     * The "Sale By" picker: active employees, by name. Its own endpoint because
+     * the Employees page needs the employees permission, which a cashier
+     * usually does not have.
+     */
+    public function employees(): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+    {
+        return SimpleUserResource::collection(
+            User::employees()->where('status', Status::ACTIVE)->orderBy('name')->get(['id', 'name'])
+        );
+    }
+
+    public function storeCustomer(PosCustomerRequest $request
     ): \Illuminate\Http\Response|CustomerResource|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory {
         try {
-            $customer = $this->customerService->store($request);
+            $customer = $this->customerService->storePosCustomer($request);
             return new CustomerResource($customer);
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);

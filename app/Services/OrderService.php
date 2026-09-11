@@ -18,6 +18,7 @@ use App\Events\SendOrderSms;
 use Illuminate\Http\Request;
 use App\Events\SendOrderMail;
 use App\Events\SendOrderPush;
+use App\Events\SendPosOrderSms;
 use App\Events\SendPosOrderTelegram;
 use App\Libraries\AppLibrary;
 use App\Models\ProductVariation;
@@ -248,6 +249,11 @@ class OrderService
                 $this->order->save();
             });
             SendPosOrderTelegram::dispatch(['order_id' => $this->order->id]);
+            // Sent after the response. The queue runs sync, so a listener runs
+            // inside this request, and the SMS gateway can wait up to 30s on a
+            // bad connection - the till would sit on the order for all of it.
+            $orderId = $this->order->id;
+            app()->terminating(fn() => SendPosOrderSms::dispatch(['order_id' => $orderId]));
             return $this->order;
         } catch (Exception $exception) {
             DB::rollBack();

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 
+use App\Libraries\AppLibrary;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class EmployeeResource extends JsonResource
@@ -28,6 +29,11 @@ class EmployeeResource extends JsonResource
             "role"         => optional($this->roles[0])->name,
             "image"        => $this->image,
             "country_code" => $this->country_code,
+            // POS sales this employee was picked as "Sale By" for. Loaded by
+            // the list and show queries; zero wherever they were not loaded.
+            "sales_count"           => (int) ($this->sales_count ?? 0),
+            "sales_amount"          => AppLibrary::flatAmountFormat($this->sales_amount ?? 0),
+            "sales_currency_amount" => AppLibrary::currencyAmountFormat($this->sales_amount ?? 0),
         ];
     }
 }

@@ -41,6 +41,9 @@ class SettingResource extends JsonResource
             'site_offer_banner_text'                => $this->info['site_offer_banner_text'] ?? null,
             'site_checkout_notice'                  => \App\Support\CheckoutNotice::text($this->info),
             'site_checkout_notice_status'           => \App\Support\CheckoutNotice::status($this->info),
+            // Absent on a live site until Settings > Site is next saved, and every
+            // page reads this resource, so a bare index would take them all down.
+            'site_receipt_footer'                   => $this->info['site_receipt_footer'] ?? null,
             'shipping_setup_method'                 => $this->info['shipping_setup_method'],
             'shipping_setup_flat_rate_wise_cost'    => $this->info['shipping_setup_flat_rate_wise_cost'],
             'shipping_setup_area_wise_default_cost' => $this->info['shipping_setup_area_wise_default_cost'],

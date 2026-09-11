@@ -788,6 +788,8 @@
         "checkout_notice": "Checkout notice",
         "checkout_notice_placeholder": "Notice shown above the checkout form",
         "checkout_notice_status": "Show checkout notice",
+        "receipt_footer": "Receipt footer text",
+        "receipt_footer_placeholder": "e.g. Exchange within 7 days with this receipt",
         "show": "Show",
         "hide": "Hide",
         "customer_information": "Customer information",
@@ -853,6 +855,10 @@
         "minutes": "min",
         "seconds": "sec",
         "shop_now": "Shop Now",
+        "sale_by": "Sale By",
+        "select_sale_by": "Select Sale By",
+        "search_employee": "Search Employee",
+        "sales_amount": "Sales Amount",
         "order_help_title": "Having trouble ordering?"
     },
     "button": {
@@ -1090,6 +1096,7 @@
         "coupon_needs_account_title": "Coupon codes need an account",
         "coupon_needs_account_note": "You are checking out as a guest. Sign in — or create your account in one click — to apply a coupon or voucher code.",
         "checkout_notice_hint": "Appears at the top of the checkout page. Leave empty to hide it.",
+        "receipt_footer_hint": "Printed under \"Thank You\" on POS receipts. Line breaks are kept. Leave empty to print nothing extra.",
         "get_some_extra": "Get some extra",
         "get_some_extra_note": "Apply a coupon code to this order",
         "agree_to_policies": "I have read and agree to the",

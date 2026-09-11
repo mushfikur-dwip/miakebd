@@ -64,38 +64,84 @@ class ProductService
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_type') ?? 'desc';
 
-            // outlet_id is sent by the POS so every tile shows the quantity
-            // held by the branch the cashier picked. Admin screens send
+            // outlet_id narrows stock to one branch. Admin screens send
             // nothing and get the total across all branches.
             return Product::with('media', 'category', 'brand', 'taxes', 'tags', 'reviews')->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])->withReviewRating()->withStockQuantity($request->get('outlet_id'))->where(function ($query) use ($requests) {
-                foreach ($requests as $key => $request) {
-                    if (in_array($key, $this->productFilter)) {
-                        if ($key == "except") {
-                            $explodes = explode('|', $request);
-                            if (count($explodes)) {
-                                foreach ($explodes as $explode) {
-                                    $query->where('id', '!=', $explode);
-                                }
-                            }
-                        } else {
-                            if ($key == "product_category_id") {
-                                $query->where($key, $request);
-                            } elseif ($key == "tax_id") {
-                                $query->whereHas('taxes', function ($q) use ($key, $request) {
-                                    $q->where($key, $request);
-                                });
-                            } else {
-                                $query->where($key, 'like', '%' . $request . '%');
-                            }
-                        }
-                    }
-                }
+                $this->applyFilters($query, $requests);
             })->orderBy($orderColumn, $orderType)->$method(
                 $methodValue
             );
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    /**
+     * The POS product grid.
+     *
+     * The till used to share list() with the admin product screens and the
+     * storefront, so it paid for all of them: category, brand, taxes, tags,
+     * every review row and a wishlist lookup, none of which a tile shows. Then
+     * ProductAdminResource lazy-loaded each product's variations (with their
+     * attributes) and every order line it had ever sold, just to count one and
+     * sum the other - two to three extra queries per product, for the whole
+     * catalogue, because the till asks for paginate=0.
+     *
+     * This loads what a tile renders and nothing else. Stock and rating stay
+     * sub-selects and the variation check is a count, so the grid costs the
+     * same two queries - products, then their media - however large the
+     * catalogue grows. Pair it with PosProductResource.
+     *
+     * @throws Exception
+     */
+    public function posList(PaginateRequest $request)
+    {
+        try {
+            $requests    = $request->all();
+            $method      = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
+            $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
+            $orderColumn = $request->get('order_column') ?? 'id';
+            $orderType   = $request->get('order_type') ?? 'desc';
+
+            return Product::with('media')
+                ->withCount('variations')
+                ->withReviewRating()
+                ->withStockQuantity($request->get('outlet_id'))
+                ->where(function ($query) use ($requests) {
+                    $this->applyFilters($query, $requests);
+                })->orderBy($orderColumn, $orderType)->$method(
+                    $methodValue
+                );
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    private function applyFilters($query, array $requests): void
+    {
+        foreach ($requests as $key => $request) {
+            if (in_array($key, $this->productFilter)) {
+                if ($key == "except") {
+                    $explodes = explode('|', $request);
+                    if (count($explodes)) {
+                        foreach ($explodes as $explode) {
+                            $query->where('id', '!=', $explode);
+                        }
+                    }
+                } else {
+                    if ($key == "product_category_id") {
+                        $query->where($key, $request);
+                    } elseif ($key == "tax_id") {
+                        $query->whereHas('taxes', function ($q) use ($key, $request) {
+                            $q->where($key, $request);
+                        });
+                    } else {
+                        $query->where($key, 'like', '%' . $request . '%');
+                    }
+                }
+            }
         }
     }
 

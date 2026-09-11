@@ -66,6 +66,22 @@ export const product = {
                 });
             });
         },
+        // The POS grid. Commits to the same `lists` state the till reads, but
+        // from a lean endpoint - see ProductService::posList.
+        posLists: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                let url = 'admin/product/pos-products';
+                if (payload) {
+                    url = url + appService.requestHandler(payload);
+                }
+                axios.get(url).then((res) => {
+                    context.commit('lists', res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         save: function (context, payload) {
             return new Promise((resolve, reject) => {
                 let method = axios.post;

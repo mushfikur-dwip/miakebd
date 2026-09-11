@@ -430,6 +430,20 @@
                     </div>
 
                     <div class="form-col-12">
+                        <label for="site_receipt_footer" class="db-field-title">
+                            {{ $t("label.receipt_footer") }}
+                        </label>
+                        <textarea v-model="form.site_receipt_footer"
+                            v-bind:class="errors.site_receipt_footer ? 'invalid' : ''"
+                            id="site_receipt_footer" class="db-field-control" rows="3"
+                            :placeholder="$t('label.receipt_footer_placeholder')"></textarea>
+                        <small class="db-field-alert" v-if="errors.site_receipt_footer">
+                            {{ errors.site_receipt_footer[0] }}
+                        </small>
+                        <small class="db-field-hint">{{ $t("message.receipt_footer_hint") }}</small>
+                    </div>
+
+                    <div class="form-col-12">
                         <button type="submit" class="db-btn text-white bg-primary">
                             <i class="lab lab-fill-save"></i>
                             <span>{{ $t("button.save") }}</span>
@@ -486,6 +500,7 @@ export default {
                 site_offer_banner_text: null,
                 site_checkout_notice: null,
                 site_checkout_notice_status: null,
+                site_receipt_footer: null,
             },
             enums: {
                 dateFormatEnum: dateFormatEnum,
@@ -572,6 +587,7 @@ export default {
                     site_offer_banner_text: res.data.data.site_offer_banner_text,
                     site_checkout_notice: res.data.data.site_checkout_notice,
                     site_checkout_notice_status: res.data.data.site_checkout_notice_status,
+                    site_receipt_footer: res.data.data.site_receipt_footer,
                 }
                 console.log('✅ Form after loading:', this.form);
                 console.log('🎯 Offer Banner in form:', this.form.site_offer_banner_text);

@@ -732,6 +732,8 @@
         "checkout_notice": "إشعار الدفع",
         "checkout_notice_placeholder": "الإشعار الظاهر أعلى نموذج الدفع",
         "checkout_notice_status": "إظهار إشعار الدفع",
+        "receipt_footer": "نص أسفل الإيصال",
+        "receipt_footer_placeholder": "مثال: الاستبدال خلال 7 أيام مع هذا الإيصال",
         "show": "إظهار",
         "hide": "إخفاء",
         "customer_information": "معلومات العميل",
@@ -797,6 +799,10 @@
         "minutes": "دقيقة",
         "seconds": "ثانية",
         "shop_now": "تسوق الآن",
+        "sale_by": "البائع",
+        "select_sale_by": "اختر البائع",
+        "search_employee": "ابحث عن موظف",
+        "sales_amount": "مبلغ المبيعات",
         "order_help_title": "هل تواجه مشكلة في الطلب؟"
     },
     "button": {
@@ -1022,6 +1028,7 @@
         "coupon_needs_account_title": "رموز الكوبون تتطلب حسابًا",
         "coupon_needs_account_note": "أنت تتم الطلب كضيف. سجّل الدخول — أو أنشئ حسابك بنقرة واحدة — لتطبيق كوبون أو رمز قسيمة.",
         "checkout_notice_hint": "يظهر أعلى صفحة الدفع. اتركه فارغًا لإخفائه.",
+        "receipt_footer_hint": "يُطبع أسفل \"شكرًا لك\" في إيصالات نقطة البيع مع الحفاظ على الأسطر. اتركه فارغًا لعدم طباعة شيء إضافي.",
         "get_some_extra": "احصل على المزيد",
         "get_some_extra_note": "استخدم رمز كوبون أو رصيد محفظتك",
         "agree_to_policies": "لقد قرأت وأوافق على",

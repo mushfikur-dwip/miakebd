@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
+
 use App\Enums\Activity;
 use App\Enums\OrderType;
 use App\Enums\Status;
@@ -32,6 +34,14 @@ class PosOrderRequest extends FormRequest
     {
         return [
             'customer_id'        => ['required', 'numeric'],
+            // The employee the sale is credited to. Optional, so API clients that
+            // predate it keep working; when sent it must be an active employee -
+            // never a customer or an admin - or the Employees figures would lie.
+            'sales_by_id'        => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if (!User::employees()->where('status', Status::ACTIVE)->whereKey($value)->exists()) {
+                    $fail(trans('validation.exists', ['attribute' => 'sale by']));
+                }
+            }],
             'outlet_id'          => ['required', 'numeric', Rule::exists('outlets', 'id')->where('status', Status::ACTIVE)],
             'subtotal'           => ['required', 'numeric'],
             'discount'           => ['nullable', 'numeric'],

@@ -30,13 +30,11 @@ class NotificationAlertService
     {
         try {
             $type        = $request->type;
-            $numberArray = [];
-            $typeArray   = [];
-            $alertCount  = NotificationAlert::count();
-            foreach (range(1, $alertCount) as $number) {
-                array_push($numberArray, $number);
-                array_push($typeArray, $type . $number);
-            }
+            // Real ids, not range(1, count). A row added later - the POS order
+            // message - or a gap left by a deleted row would fall outside that
+            // range, and its switch and message would silently never save.
+            $numberArray = NotificationAlert::pluck('id')->all();
+            $typeArray   = array_map(fn($id) => $type . $id, $numberArray);
 
             $data         = $request->only($numberArray);
             $option_Value = $request->only($typeArray);

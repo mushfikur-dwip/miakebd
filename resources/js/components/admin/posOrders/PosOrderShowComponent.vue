@@ -51,6 +51,12 @@
                                 {{ order.pos_payment_method_name }}
                             </span>
                         </li>
+                        <li class="text-xs" v-if="order.sales_by_name">
+                            {{ $t('label.sale_by') }}:
+                            <span class="text-heading">
+                                {{ order.sales_by_name }}
+                            </span>
+                        </li>
                         <li v-if="order.pos_payment_method == enums.posPaymentMethodEnum.CARD" class="text-xs">
                             {{ $t('label.card_digit') }}:
                             <span class="text-heading">

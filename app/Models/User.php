@@ -83,6 +83,37 @@ class User extends Authenticatable implements HasMedia
      *
      * Written as "not a guest" so a legacy row holding 0 or NULL still matches.
      */
+    /** POS orders this user was picked as "Sale By" for. */
+    public function salesOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Order::class, 'sales_by_id', 'id');
+    }
+
+    /**
+     * Staff as the Employees page defines them: any role except Admin and
+     * Customer. The POS "Sale By" picker and its validation both use this, so
+     * they can never disagree about who may be credited with a sale.
+     */
+    public function scopeEmployees($query)
+    {
+        return $query->whereHas('roles', fn($roles) => $roles->whereNotIn('id', [\App\Enums\Role::ADMIN, \App\Enums\Role::CUSTOMER]));
+    }
+
+    /** Adds sales_count and sales_amount; see Order::scopeCountedAsSale(). */
+    public function scopeWithSalesTotals($query)
+    {
+        return $query
+            ->withCount(['salesOrders as sales_count' => fn($orders) => $orders->countedAsSale()])
+            ->withSum(['salesOrders as sales_amount' => fn($orders) => $orders->countedAsSale()], 'total');
+    }
+
+    public function loadSalesTotals(): static
+    {
+        return $this
+            ->loadCount(['salesOrders as sales_count' => fn($orders) => $orders->countedAsSale()])
+            ->loadSum(['salesOrders as sales_amount' => fn($orders) => $orders->countedAsSale()], 'total');
+    }
+
     public function scopeNotGuest($query)
     {
         return $query->where(function ($builder) {

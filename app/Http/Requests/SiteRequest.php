@@ -49,6 +49,9 @@ class SiteRequest extends FormRequest
             // in UTF-8, so max is generous enough for a two-sentence notice.
             'site_checkout_notice'                        => ['nullable', 'string', 'max:1000'],
             'site_checkout_notice_status'                 => ['nullable', 'numeric'],
+            // Printed under "Thank You" on POS receipts: a return policy, a
+            // hotline, a Facebook page. Line breaks are kept.
+            'site_receipt_footer'                         => ['nullable', 'string', 'max:500'],
         ];
     }
 }

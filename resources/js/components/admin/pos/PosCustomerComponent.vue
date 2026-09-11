@@ -30,7 +30,7 @@
                         <div class="form-col-12 sm:form-col-6">
                             <label
                                 for="email"
-                                class="db-field-title required"
+                                class="db-field-title"
                                 >{{ $t("label.email") }}</label
                             >
                             <input
@@ -48,7 +48,7 @@
                         <div class="form-col-12 sm:form-col-6">
                             <label
                                 for="phone"
-                                class="text-xs uppercase mb-1 text-heading"
+                                class="db-field-title required"
                                 >{{ $t("label.phone") }}</label
                             >
                             <div
@@ -123,50 +123,6 @@
                                 >{{ errors.status[0] }}</small
                             >
                         </div>
-                        <div class="form-col-12 sm:form-col-6">
-                            <label
-                                for="password"
-                                class="db-field-title required"
-                                >{{ $t("label.password") }}</label
-                            >
-                            <input
-                                v-model="props.form.password"
-                                v-bind:class="errors.password ? 'invalid' : ''"
-                                type="password"
-                                id="password"
-                                class="db-field-control"
-                                autocomplete="off"
-                            />
-                            <small
-                                class="db-field-alert"
-                                v-if="errors.password"
-                                >{{ errors.password[0] }}</small
-                            >
-                        </div>
-                        <div class="form-col-12 sm:form-col-6">
-                            <label
-                                for="password_confirmation"
-                                class="db-field-title required"
-                                >{{ $t("label.confirm_password") }}</label
-                            >
-                            <input
-                                v-model="props.form.password_confirmation"
-                                v-bind:class="
-                                    errors.password_confirmation
-                                        ? 'invalid'
-                                        : ''
-                                "
-                                type="password"
-                                id="password_confirmation"
-                                class="db-field-control"
-                                autocomplete="off"
-                            />
-                            <small
-                                class="db-field-alert"
-                                v-if="errors.password_confirmation"
-                                >{{ errors.password_confirmation[0] }}</small
-                            >
-                        </div>
                         <div class="form-col-12">
                             <div class="flex flex-wrap gap-3 mt-4">
                                 <button
@@ -221,8 +177,6 @@ export default {
                     name: "",
                     email: "",
                     phone: "",
-                    password: "",
-                    password_confirmation: "",
                     country_code: "",
                     status: statusEnum.ACTIVE,
                 },
@@ -249,8 +203,6 @@ export default {
                 name: "",
                 email: "",
                 phone: "",
-                password: "",
-                password_confirmation: "",
                 status: statusEnum.ACTIVE,
                 country_code: "+880",
             };
@@ -269,8 +221,6 @@ export default {
                             name: "",
                             email: "",
                             phone: "",
-                            password: "",
-                            password_confirmation: "",
                             status: statusEnum.ACTIVE,
                             country_code: "+880",
                         };

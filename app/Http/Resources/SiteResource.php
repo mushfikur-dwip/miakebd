@@ -49,6 +49,7 @@ class SiteResource extends JsonResource
             "site_offer_banner_text"                     => $this->info['site_offer_banner_text'] ?? null,
             "site_checkout_notice"                       => \App\Support\CheckoutNotice::text($this->info),
             "site_checkout_notice_status"                => \App\Support\CheckoutNotice::status($this->info),
+            "site_receipt_footer"                        => $this->info['site_receipt_footer'] ?? null,
         ];
     }
 }

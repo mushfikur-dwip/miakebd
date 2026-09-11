@@ -37,7 +37,7 @@ class EmployeeService
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_type') ?? 'desc';
 
-            return User::with('media', 'addresses', 'roles')->where(
+            return User::with('media', 'addresses', 'roles')->withSalesTotals()->where(
                 function ($query) use ($requests) {
                     $query->whereHas('roles', function ($query) {
                         $query->where('id', '!=', EnumRole::ADMIN);
@@ -138,7 +138,7 @@ class EmployeeService
     {
         try {
             if (!in_array(optional($employee->roles[0])->id, $this->blockRoles)) {
-                return $employee;
+                return $employee->loadSalesTotals();
             } else {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }

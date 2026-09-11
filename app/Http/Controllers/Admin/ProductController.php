@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Response;
 use App\Http\Requests\ChangeImageRequest;
 use App\Http\Requests\ProductOfferRequest;
 use App\Http\Resources\ProductAdminResource;
+use App\Http\Resources\PosProductResource;
 use Illuminate\Routing\Controllers\Middleware;
 use App\Http\Requests\ShippingAndReturnRequest;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -37,6 +38,7 @@ class ProductController extends AdminController implements HasMiddleware
     {
         return [
             new Middleware('permission:products|pos|promotions|product-sections', only: ['index']),
+            new Middleware('permission:pos', only: ['posProducts']),
             new Middleware('permission:products', only: ['export']),
             new Middleware('permission:products', only: ['generateSku']),
             new Middleware('permission:products', only: ['downloadAttachment']),
@@ -56,6 +58,15 @@ class ProductController extends AdminController implements HasMiddleware
     {
         try {
             return ProductAdminResource::collection($this->productService->list($request));
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function posProducts(PaginateRequest $request): \Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
+    {
+        try {
+            return PosProductResource::collection($this->productService->posList($request));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

@@ -130,6 +130,10 @@
                     <p class="text-[11px] leading-[14px] capitalize text-heading">
                         {{ $t('message.please_come_again') }}
                     </p>
+                    <!-- Settings > Site > Receipt footer text. Not capitalized:
+                         it prints as typed, and pre-line keeps its line breaks. -->
+                    <p v-if="setting.site_receipt_footer"
+                        class="text-[11px] leading-[14px] text-heading whitespace-pre-line mt-1.5">{{ setting.site_receipt_footer }}</p>
                 </div>
 
             </div>
@@ -157,6 +161,9 @@ export default {
     computed: {
         company: function () {
             return this.$store.getters['company/lists'];
+        },
+        setting: function () {
+            return this.$store.getters['frontendSetting/lists'];
         },
         orderProducts: function () {
             return this.$store.getters['posOrder/orderProducts'];

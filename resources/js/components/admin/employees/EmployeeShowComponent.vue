@@ -13,6 +13,10 @@
                         class="p-0.5 px-2 rounded text-[10px] leading-4 font-medium font-rubik uppercase mb-[22px] text-[#E89806] bg-[#FFF5DE]">
                         {{ employee.role }}
                     </label><br>
+                    <div class="flex flex-wrap gap-x-6 gap-y-1 mb-4 text-sm text-heading">
+                        <span>{{ $t('label.sales') }}: <b>{{ employee.sales_count }}</b></span>
+                        <span>{{ $t('label.sales_amount') }}: <b>{{ employee.sales_currency_amount }}</b></span>
+                    </div>
                     <form @submit.prevent="saveImage">
                         <div class="flex gap-3 md:gap-4">
                             <label for="photo"

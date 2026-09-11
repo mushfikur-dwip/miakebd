@@ -1,7 +1,7 @@
 <template>
     <div
         class="grid gap-3 sm:gap-[18px] grid-cols-[repeat(auto-fill,_minmax(140px,_1fr))] sm:grid-cols-[repeat(auto-fill,_minmax(185px,_1fr))] mb-8 md:mb-0">
-        <div v-if="products.length > 0" v-for="product in products" @click.prevent="handleProductModal(product)"
+        <div v-for="product in visibleProducts" :key="product.id" @click.prevent="handleProductModal(product)"
             data-modal="#modal"
             class="sm:p-2 rounded-2xl sm:shadow-card transition-all duration-300 sm:hover:shadow-hover group bg-white cursor-pointer">
             <div class="relative overflow-hidden rounded-xl isolate">
@@ -16,7 +16,12 @@
                     {{ product.stock > 0 ? product.stock : $t('label.stock_out') }}
                 </label>
 
-                <img :src="product.cover" alt="product"
+                <!-- Lazy, because the grid holds the whole catalogue and every
+                     cover was otherwise requested the moment the page opened.
+                     width/height give the tile its box before the image
+                     arrives: a zero-height image counts as in view, so without
+                     them lazy loading would defer nothing. -->
+                <img :src="product.cover" alt="product" loading="lazy" decoding="async" width="372" height="372"
                     class="w-full rounded-xl transition-all duration-300 group-hover:scale-105 group-hover:rotate-3">
             </div>
 
@@ -56,6 +61,8 @@
             </div>
         </div>
     </div>
+    <!-- Coming into view adds the next batch of tiles. See BATCH below. -->
+    <div v-if="visibleCount < products.length" ref="loadMore" class="h-px"></div>
 
 
     <div id="variation-modal"
@@ -75,6 +82,13 @@
 import starRating from "vue-star-rating";
 import ProductDetailsComponent from "./ProductDetailsComponent";
 import targetService from "../../../services/targetService";
+
+// The till loads the whole catalogue so search and the category and brand
+// filters answer instantly. Mounting a tile and a star-rating widget for every
+// product in one go is a lot of DOM for one frame, so tiles are rendered a
+// batch at a time as the cashier scrolls.
+const BATCH = 60;
+
 export default {
     name: "ProductListComponent",
     components: {
@@ -87,10 +101,58 @@ export default {
     data() {
         return {
             rating: [],
-            productId: ""
+            productId: "",
+            visibleCount: BATCH,
+            observer: null
+        }
+    },
+    computed: {
+        visibleProducts: function () {
+            return this.products.slice(0, this.visibleCount);
+        }
+    },
+    watch: {
+        // A new search, filter or branch is a new list, so start from the top.
+        // The same products coming back is not: the till reloads the grid
+        // after every sale to refresh stock, and resetting then would unmount
+        // the tiles the cashier had scrolled to and throw them back to the top.
+        products: function (next, previous) {
+            const sameProducts = previous && next.length === previous.length
+                && next.every((product, index) => product.id === previous[index].id);
+            if (!sameProducts) {
+                this.visibleCount = BATCH;
+            }
+            this.$nextTick(this.observe);
+        }
+    },
+    mounted() {
+        this.observe();
+    },
+    beforeUnmount() {
+        if (this.observer) {
+            this.observer.disconnect();
         }
     },
     methods: {
+        // Re-observed after every batch because an observer only reports
+        // changes: a sentinel still in view once a batch lands (a tall screen)
+        // would never fire again. A fresh observe() reports the current state
+        // at once, so batches keep coming until the view is full.
+        observe: function () {
+            if (this.observer) {
+                this.observer.disconnect();
+            }
+            if (!this.$refs.loadMore) {
+                return;
+            }
+            this.observer = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting) {
+                    this.visibleCount += BATCH;
+                    this.$nextTick(this.observe);
+                }
+            }, { rootMargin: "400px" });
+            this.observer.observe(this.$refs.loadMore);
+        },
         handleProductModal: function (product) {
             this.productId = product.id;
         },

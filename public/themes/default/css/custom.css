@@ -376,13 +376,31 @@ header.bg-white {
     background-color: #f6f6f6;
 }
 
-/* 3. SAFETY NET for any remaining image without dimensions. height:auto alone
-   prevents distortion; images that do carry width/height keep their values. */
-img:not([width]):not([height]) {
-    height: auto;
-}
+ b  /* 3. SAFETY NET for any remaining image without dimensions.
+   There is no rule here any more, and that is the fix. Tailwind's preflight
+   already ships `img, video { max-width: 100%; height: auto }`, so the
+   safety net added no behaviour - what it added was specificity.
+   `img:not([width]):not([height])` scores (0,2,1) and beat every `h-*`
+   utility in the markup (0,1,0), so an image that had been given an explicit
+   height was silently reset to auto. Preflight declares the same fallback at
+   (0,0,1), where a utility can still win, which is where it belongs. */
 
-.swiper-slide img,
+/* PRODUCT-CARD IMAGES IN CAROUSELS. Square-and-contain is a product-photo
+   assumption, and `.swiper-slide img` handed it to every carousel on the
+   site. Being one class more specific than the `h-full` / `object-cover`
+   utilities in the markup, it won wherever a slide had already declared its
+   own box.
+   The hero banner was the visible casualty. Its wrapper is `aspect-[3/1]`
+   and 373px tall with overflow clipped, but the image inside was forced to
+   1120x1120 with `contain`, so the banner pixels were letterboxed into a
+   ~397px band starting 361px down - below the clip. What was left on screen
+   was empty letterbox with the caption gradient painted over it: a white box
+   fading to grey, no banner. The category strip lost its
+   `h-[120px] object-cover` crop the same way.
+   A slide image that names its own fit is now left alone. Promotion ads and
+   brand logos - the two that carry a width and no height - still get the
+   reservation, so their CLS protection is unchanged. */
+.swiper-slide img:not(.object-cover):not(.object-contain),
 [class*="product-card"] img,
 [class*="product_card"] img {
     aspect-ratio: 1 / 1;

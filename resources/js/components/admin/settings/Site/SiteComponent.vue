@@ -398,6 +398,19 @@
                     </div>
 
                     <div class="form-col-12">
+                        <label for="site_community_link" class="db-field-title">
+                            {{ $t("label.community_link") }}
+                        </label>
+                        <input v-model="form.site_community_link"
+                            v-bind:class="errors.site_community_link ? 'invalid' : ''" type="text"
+                            id="site_community_link" class="db-field-control"
+                            :placeholder="$t('label.community_link_placeholder')" />
+                        <small class="db-field-alert" v-if="errors.site_community_link">
+                            {{ errors.site_community_link[0] }}
+                        </small>
+                    </div>
+
+                    <div class="form-col-12">
                         <label for="site_checkout_notice" class="db-field-title">
                             {{ $t("label.checkout_notice") }}
                         </label>
@@ -498,6 +511,7 @@ export default {
                 site_non_purchase_product_maximum_quantity: null,
                 site_is_return_product_price_add_to_credit: null,
                 site_offer_banner_text: null,
+                site_community_link: null,
                 site_checkout_notice: null,
                 site_checkout_notice_status: null,
                 site_receipt_footer: null,
@@ -585,6 +599,7 @@ export default {
                     site_non_purchase_product_maximum_quantity: res.data.data.site_non_purchase_product_maximum_quantity,
                     site_is_return_product_price_add_to_credit: res.data.data.site_is_return_product_price_add_to_credit,
                     site_offer_banner_text: res.data.data.site_offer_banner_text,
+                    site_community_link: res.data.data.site_community_link,
                     site_checkout_notice: res.data.data.site_checkout_notice,
                     site_checkout_notice_status: res.data.data.site_checkout_notice_status,
                     site_receipt_footer: res.data.data.site_receipt_footer,

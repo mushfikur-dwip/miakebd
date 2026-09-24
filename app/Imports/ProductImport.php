@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Barcode;
 use App\Models\Product;
+use App\Models\ProductBrand;
 use App\Libraries\AppEnum;
 use Illuminate\Support\Str;
 use App\Libraries\AppLibrary;
@@ -20,6 +21,20 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
 {
     use Importable, SkipsFailures;
 
+    private ?int $defaultBrandId = null;
+    private bool $defaultBrandResolved = false;
+
+    /** Looked up once per import, not once per row. */
+    private function defaultBrandId(): ?int
+    {
+        if (!$this->defaultBrandResolved) {
+            $this->defaultBrandId = ProductBrand::defaultId();
+            $this->defaultBrandResolved = true;
+        }
+
+        return $this->defaultBrandId;
+    }
+
     public function model(array $row)
     {
         // Generate a 20-digit random SKU
@@ -34,6 +49,10 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnF
             'sku'                        => AppLibrary::sku($sku),
             'description'                => $this->sanitizeInput($row['description'] ?? null),
             'product_category_id'        => AppEnum::getCategoryId($row['category']),
+            // The sheet has no brand column and brand is required on the form,
+            // so imported rows land on the placeholder rather than becoming the
+            // only brand-less products in the catalogue.
+            'product_brand_id'           => $this->defaultBrandId(),
             'barcode_id'                 => Barcode::first()->id,
             'buying_price'               => $row['buying_price'] ?? 0,
             'selling_price'              => $row['selling_price'] ?? 0,

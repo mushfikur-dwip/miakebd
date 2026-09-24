@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SliderPosition;
 use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
@@ -15,12 +16,13 @@ class Slider extends Model implements HasMedia
     use InteractsWithMedia, ResolvesMediaUrls;
 
     protected $table = "sliders";
-    protected $fillable = ['title', 'link', 'description', 'status'];
+    protected $fillable = ['title', 'link', 'position', 'description', 'status'];
     protected $casts = [
         'id'          => 'integer',
         'title'       => 'string',
         'description' => 'string',
         'status'      => 'integer',
+        'position'    => 'integer',
         'link'        => 'string',
     ];
 
@@ -40,8 +42,32 @@ class Slider extends Model implements HasMedia
         );
     }
 
+    /**
+     * The small banner used by the GRID row.
+     *
+     * A grid tile is roughly a third the width of the hero, so serving it the
+     * 1689px cover wastes most of the bytes on a phone. Rows uploaded before
+     * this conversion existed have no `tile` file on disk, and conversionUrl
+     * falls back to the original for those rather than 404ing.
+     */
+    public function getTileAttribute(): string
+    {
+        return $this->conversionUrl(
+            $this->getMedia('slider')->last(),
+            'tile',
+            'images/default/slider.png'
+        );
+    }
+
     public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('cover')->fit(Fit::Fill, 1689, 600)->keepOriginalImageFormat()->sharpen(10);
+        $this->addMediaConversion('tile')->fit(Fit::Fill, 540, 336)->keepOriginalImageFormat()->sharpen(10);
+    }
+
+    /** Every position except HERO belongs to the banner block. */
+    public function isBanner(): bool
+    {
+        return $this->position !== SliderPosition::HERO;
     }
 }

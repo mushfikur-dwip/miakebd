@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 
+use App\Enums\SliderPosition;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class SliderResource extends JsonResource
@@ -23,6 +24,10 @@ class SliderResource extends JsonResource
             'description' => $this->description === null ? '' : $this->description,
             'status'      => $this->status,
             'image'       => $this->image,
+            // Coalesced because this resource is read on every home page load
+            // and the column is absent until the migration runs.
+            'position'    => $this->position ?? SliderPosition::HERO,
+            'tile'        => $this->tile,
             'link'        => $this->link
         ];
     }

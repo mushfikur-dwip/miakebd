@@ -131,7 +131,9 @@ class ProductService
                         }
                     }
                 } else {
-                    if ($key == "product_category_id") {
+                    // Exact, not LIKE: brand 1 would otherwise match 10, 11,
+                    // 21 and every other id containing a 1.
+                    if ($key == "product_category_id" || $key == "product_brand_id") {
                         $query->where($key, $request);
                     } elseif ($key == "tax_id") {
                         $query->whereHas('taxes', function ($q) use ($key, $request) {
@@ -780,10 +782,15 @@ class ProductService
 
             return collect([
                 'products'   => $products,
+                // reject(), not where('is_default', false): before the
+                // migration runs the attribute is null, and null == false is
+                // true in a loose comparison - which would empty the shop's
+                // whole brand filter.
                 'brands'     => $productCategory->map(function ($query) {
                     return $query->brand;
-                })->whereNotNull('id')->unique('id')->values()->all(),
-                'variations' => $variationArray,
+                })->whereNotNull('id')->reject(function ($brand) {
+                    return (bool) ($brand->is_default ?? false);
+                })->unique('id')->values()->all(),
                 'max_price'  => ceil($productCategory->max('variation_price') + 50),
             ]);
         } catch (Exception $exception) {

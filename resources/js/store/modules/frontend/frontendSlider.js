@@ -19,7 +19,14 @@ export const frontendSlider = {
                     url = url + appService.requestHandler(payload);
                 }
                 axios.get(url).then((res) => {
-                    context.commit("lists", res.data.data);
+                    // The hero carousel renders straight out of this state, so
+                    // a caller asking for one position only (the banner block)
+                    // passes vuex: false and keeps its rows locally - without
+                    // it the second fetch would blank the carousel.
+                    if (typeof payload === "undefined" || payload === null
+                        || typeof payload.vuex === "undefined" || payload.vuex === true) {
+                        context.commit("lists", res.data.data);
+                    }
                     resolve(res);
                 }).catch((err) => {
                     reject(err);

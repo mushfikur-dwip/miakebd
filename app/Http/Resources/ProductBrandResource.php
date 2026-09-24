@@ -19,6 +19,9 @@ class ProductBrandResource extends JsonResource
             'id'          => $this->id,
             'name'        => $this->name,
             'slug'        => $this->slug,
+            // Coalesced because the column does not exist until the migration
+            // runs, and the admin product form reads this on every load.
+            'is_default'  => (bool) ($this->is_default ?? false),
             'description' => $this->description === null ? '' : $this->description,
             'status'      => $this->status,
             'thumb'       => $this->thumb,

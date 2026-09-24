@@ -7,6 +7,7 @@ use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\HasMedia;
 use App\Models\Concerns\ResolvesMediaUrls;
 use Spatie\Image\Enums\CropPosition;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -16,11 +17,12 @@ class ProductBrand extends Model implements HasMedia
     use InteractsWithMedia;
     use ResolvesMediaUrls;
     protected $table = "product_brands";
-    protected $fillable = ['name', 'slug', 'description', 'status'];
+    protected $fillable = ['name', 'slug', 'is_default', 'description', 'status'];
     protected $casts = [
         'id'          => 'integer',
         'name'        => 'string',
         'slug'        => 'string',
+        'is_default'  => 'boolean',
         'description' => 'string',
         'status'      => 'integer',
     ];
@@ -52,5 +54,24 @@ class ProductBrand extends Model implements HasMedia
     public function products(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Product::class)->where(['status' => Status::ACTIVE]);
+    }
+
+    /**
+     * The placeholder brand carried by products nobody has branded yet.
+     *
+     * Everything the shopper sees hides it - a "No Brand" tile in the brand
+     * carousel, or a "No Brand" checkbox in the shop filter listing the entire
+     * catalogue, is noise. The admin keeps it so a product can be parked there
+     * on purpose.
+     */
+    public function scopeStorefront(Builder $query): Builder
+    {
+        return $query->where('is_default', false);
+    }
+
+    /** @return int|null The fallback brand's id, or null before the migration runs. */
+    public static function defaultId(): ?int
+    {
+        return static::query()->where('is_default', true)->value('id');
     }
 }

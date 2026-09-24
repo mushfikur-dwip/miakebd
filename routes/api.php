@@ -67,6 +67,7 @@ use App\Http\Controllers\Admin\ShippingSetupController;
 use App\Http\Controllers\Admin\SimpleUserController;
 use App\Http\Controllers\Admin\SiteController;
 use App\Http\Controllers\Admin\SliderController;
+use App\Http\Controllers\Admin\SmsCampaignController;
 use App\Http\Controllers\Admin\SmsGatewayController;
 use App\Http\Controllers\Admin\SocialMediaController;
 use App\Http\Controllers\Admin\StateController;
@@ -349,6 +350,16 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:300,1'])
         Route::prefix('sms-gateway')->group(function () {
             Route::get('/', [SmsGatewayController::class, 'index']);
             Route::match(['put', 'patch'], '/', [SmsGatewayController::class, 'update']);
+        });
+
+        Route::prefix('customer-message')->group(function () {
+            Route::get('/', [SmsCampaignController::class, 'index']);
+            Route::get('/audience', [SmsCampaignController::class, 'audience']);
+            Route::get('/show/{smsCampaign}', [SmsCampaignController::class, 'show']);
+            Route::post('/', [SmsCampaignController::class, 'store']);
+            Route::post('/test', [SmsCampaignController::class, 'test']);
+            Route::post('/{smsCampaign}/batch', [SmsCampaignController::class, 'batch']);
+            Route::post('/{smsCampaign}/pause', [SmsCampaignController::class, 'pause']);
         });
 
         Route::prefix('slider')->group(function () {

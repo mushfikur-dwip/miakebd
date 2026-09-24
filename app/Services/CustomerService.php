@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\CustomerRequest;
+use App\Events\SendPosCustomerSms;
 use App\Http\Requests\PosCustomerRequest;
 use App\Libraries\AppLibrary;
 use Illuminate\Support\Str;
@@ -102,7 +103,7 @@ class CustomerService
     public function storePosCustomer(PosCustomerRequest $request): User
     {
         try {
-            return DB::transaction(function () use ($request) {
+            $user = DB::transaction(function () use ($request) {
                 $user = User::create([
                     'name'              => $request->name,
                     'email'             => $request->email ?: null,
@@ -120,6 +121,15 @@ class CustomerService
 
                 return $user;
             });
+
+            // Sent after the response, like the POS order SMS: the queue runs
+            // sync, so a listener runs inside this request, and the gateway can
+            // wait up to 30s on a bad connection - the cashier would be left
+            // staring at the form for all of it.
+            $userId = $user->id;
+            app()->terminating(fn() => SendPosCustomerSms::dispatch(['user_id' => $userId]));
+
+            return $user;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

@@ -50,6 +50,13 @@
                         {{ $t("label.blog") }}
                     </router-link>
 
+                    <!-- Mirrors the Community item in the desktop header. -->
+                    <a v-if="communityLink" :href="communityLink" target="_blank" rel="noopener noreferrer"
+                        v-on:click="hideTarget('mobile-sidebar-canvas', 'canvas-active')"
+                        class="text-base font-medium capitalize py-3 border-b border-slate-100 text-heading">
+                        {{ $t("label.community") }}
+                    </a>
+
                     <router-link v-on:click="hideTarget('mobile-sidebar-canvas', 'canvas-active')"
                         v-if="pages.length > 0" v-for="page in pages" :key="page"
                         :to="{ name: 'frontend.page', params: { slug: page.slug } }"
@@ -132,6 +139,23 @@ export default {
     computed: {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
+        },
+        // Mirrors communityLink in FrontendNavBarComponent, including the
+        // missing-scheme fix; see the comment there.
+        communityLink: function () {
+            const link = (this.setting?.site_community_link || '').trim();
+
+            if (!link) {
+                return null;
+            }
+
+            const lower = link.toLowerCase();
+
+            if (lower.startsWith('http://') || lower.startsWith('https://')) {
+                return link;
+            }
+
+            return 'https://' + link;
         },
         // Mirrors navSections in FrontendNavBarComponent. Reads the same
         // stores the navbar already populates, so this adds no extra request.

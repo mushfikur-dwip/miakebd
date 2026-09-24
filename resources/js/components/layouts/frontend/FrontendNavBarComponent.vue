@@ -138,6 +138,22 @@
                 </form>
                 <!-- Mobile Search Start -->
 
+                <!-- Community Start -->
+                <!-- Invite link to the store's group, set in Settings > Site.
+                     The whole item is hidden until a link is saved, so the
+                     header never carries a dead menu entry. Opens in a new tab:
+                     the group lives off-site and losing the cart mid-shop to a
+                     Facebook redirect is worse than an extra tab. -->
+                <a v-if="communityLink" :href="communityLink" target="_blank" rel="noopener noreferrer"
+                    class="hidden lg:flex items-center gap-2 flex-shrink-0 group whitespace-nowrap">
+                    <i class="lab-line-users text-2xl text-primary"></i>
+                    <span
+                        class="text-sm font-semibold capitalize text-heading transition-colors group-hover:text-primary">
+                        {{ $t('label.community') }}
+                    </span>
+                </a>
+                <!-- Community End -->
+
                 <!-- Language Start -->
                 <div v-if="setting.site_language_switch === enums.activityEnum.ENABLE"
                     class="relative group hidden lg:block">
@@ -491,6 +507,32 @@ export default {
         },
         helplineNumber: function () {
             return this.setting?.company_phone || '01709786330';
+        },
+        /**
+         * The Community link, normalised for use in href.
+         *
+         * A group link is usually pasted straight out of the browser bar, so it
+         * often arrives without a scheme. "facebook.com/groups/x" in an href is
+         * treated as a relative path and would send the shopper to our own
+         * /groups/x, so the scheme is added here when it is missing.
+         *
+         * Returns null for an empty or whitespace-only setting, which is what
+         * hides the header item.
+         */
+        communityLink: function () {
+            const link = (this.setting?.site_community_link || '').trim();
+
+            if (!link) {
+                return null;
+            }
+
+            const lower = link.toLowerCase();
+
+            if (lower.startsWith('http://') || lower.startsWith('https://')) {
+                return link;
+            }
+
+            return 'https://' + link;
         },
         wishlists: function () {
             return this.$store.getters['frontendWishlist/lists'];

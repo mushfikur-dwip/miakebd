@@ -34,10 +34,46 @@
                                 }}</small>
                         </div>
 
+                        <div class="form-col-12">
+                            <label class="db-field-title required">{{ $t("label.position") }}</label>
+                            <div class="db-field-radio-group">
+                                <div class="db-field-radio">
+                                    <div class="custom-radio">
+                                        <input :value="enums.sliderPositionEnum.HERO" v-model="props.form.position"
+                                            id="position_hero" type="radio" class="custom-radio-field" />
+                                        <span class="custom-radio-span"></span>
+                                    </div>
+                                    <label for="position_hero" class="db-field-label">{{ $t("label.position_hero")
+                                        }}</label>
+                                </div>
+                                <div class="db-field-radio">
+                                    <div class="custom-radio">
+                                        <input :value="enums.sliderPositionEnum.GRID" v-model="props.form.position"
+                                            id="position_grid" type="radio" class="custom-radio-field" />
+                                        <span class="custom-radio-span"></span>
+                                    </div>
+                                    <label for="position_grid" class="db-field-label">{{ $t("label.position_grid")
+                                        }}</label>
+                                </div>
+                                <div class="db-field-radio">
+                                    <div class="custom-radio">
+                                        <input :value="enums.sliderPositionEnum.WIDE" v-model="props.form.position"
+                                            id="position_wide" type="radio" class="custom-radio-field" />
+                                        <span class="custom-radio-span"></span>
+                                    </div>
+                                    <label for="position_wide" class="db-field-label">{{ $t("label.position_wide")
+                                        }}</label>
+                                </div>
+                            </div>
+                            <small class="db-field-alert" v-if="errors.position">{{
+                                errors.position[0]
+                                }}</small>
+                        </div>
+
 
                         <div class="form-col-12  sm:form-col-6">
                             <label for="image" class="db-field-title required">
-                                {{ $t("label.image") }} (1689px,600px)
+                                {{ $t("label.image") }} ({{ imageHint }})
                             </label>
                             <input @change="changeImage" v-bind:class="errors.image ? 'invalid' : ''" id="image"
                                 type="file" class="db-field-control" ref="imageProperty"
@@ -101,6 +137,7 @@
 import SmModalCreateComponent from "../../components/buttons/SmModalCreateComponent";
 import LoadingComponent from "../../components/LoadingComponent";
 import statusEnum from "../../../../enums/modules/statusEnum";
+import sliderPositionEnum from "../../../../enums/modules/sliderPositionEnum";
 import alertService from "../../../../services/alertService";
 import appService from "../../../../services/appService";
 
@@ -115,6 +152,7 @@ export default {
             },
             enums: {
                 statusEnum: statusEnum,
+                sliderPositionEnum: sliderPositionEnum,
                 statusEnumArray: {
                     [statusEnum.ACTIVE]: this.$t("label.active"),
                     [statusEnum.INACTIVE]: this.$t("label.inactive"),
@@ -127,6 +165,11 @@ export default {
     computed: {
         addButton: function () {
             return { title: this.$t("button.add_slider") }
+        },
+        // A grid tile is rendered at 540x336; uploading a 1689x600 hero image
+        // into that slot gets it cropped to a letterbox strip.
+        imageHint: function () {
+            return this.props.form.position === sliderPositionEnum.GRID ? "540px, 336px" : "1689px, 600px";
         }
     },
     methods: {
@@ -140,6 +183,7 @@ export default {
             this.$props.props.form = {
                 title: "",
                 link: "",
+                position: sliderPositionEnum.HERO,
                 description: "",
                 status: statusEnum.ACTIVE,
             };
@@ -154,6 +198,7 @@ export default {
                 const fd = new FormData();
                 fd.append("title", this.props.form.title);
                 fd.append("link", this.props.form.link);
+                fd.append("position", this.props.form.position);
                 fd.append("status", this.props.form.status);
                 fd.append("description", this.props.form.description);
                 if (this.image) {
@@ -177,6 +222,7 @@ export default {
                         this.props.form = {
                             title: "",
                             link: "",
+                            position: sliderPositionEnum.HERO,
                             description: "",
                             status: statusEnum.ACTIVE,
                         };

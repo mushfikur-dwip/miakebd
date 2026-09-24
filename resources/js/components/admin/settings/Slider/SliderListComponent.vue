@@ -18,6 +18,9 @@
                         {{ $t("label.title") }}
                     </th>
                     <th class="db-table-head-th">
+                        {{ $t("label.position") }}
+                    </th>
+                    <th class="db-table-head-th">
                         {{ $t("label.status") }}
                     </th>
                     <th class="db-table-head-th">
@@ -29,6 +32,9 @@
                 <tr class="db-table-body-tr" v-for="slider in sliders" :key="slider">
                     <td class="db-table-body-td">
                         {{ textShortener(slider.title) }}
+                    </td>
+                    <td class="db-table-body-td">
+                        {{ enums.sliderPositionEnumArray[slider.position] }}
                     </td>
                     <td class="db-table-body-td">
                             <span :class="statusClass(slider.status)">
@@ -46,7 +52,7 @@
                 </tbody>
                 <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="3">
+                            <td class="db-table-body-td text-center" colspan="4">
                                 <div class="p-4">
                                     <div class="max-w-[300px] mx-auto mt-2">
                                         <img class="w-full h-full" :src="ENV.API_URL+'/images/default/not-found/not_found.png'" alt="Not Found">
@@ -77,6 +83,7 @@ import PaginationBox from "../../components/pagination/PaginationBox";
 import PaginationSMBox from "../../components/pagination/PaginationSMBox";
 import appService from "../../../../services/appService";
 import statusEnum from "../../../../enums/modules/statusEnum";
+import sliderPositionEnum from "../../../../enums/modules/sliderPositionEnum";
 import TableLimitComponent from "../../components/TableLimitComponent";
 import SmDeleteComponent from "../../components/buttons/SmDeleteComponent";
 import SmModalEditComponent from "../../components/buttons/SmModalEditComponent";
@@ -107,11 +114,17 @@ export default {
                     [statusEnum.ACTIVE]: this.$t("label.active"),
                     [statusEnum.INACTIVE]: this.$t("label.inactive"),
                 },
+                sliderPositionEnumArray: {
+                    [sliderPositionEnum.HERO]: this.$t("label.position_hero"),
+                    [sliderPositionEnum.GRID]: this.$t("label.position_grid"),
+                    [sliderPositionEnum.WIDE]: this.$t("label.position_wide"),
+                },
             },
             props: {
                 form: {
                     title: "",
                     link: "",
+                    position: sliderPositionEnum.HERO,
                     status: statusEnum.ACTIVE,
                     description: "",
                 },
@@ -163,6 +176,9 @@ export default {
             this.props.form       = {
                 title: slider.title,
                 link: slider.link === null ? "" : slider.link,
+                // Rows created before the position column default to HERO in
+                // the resource, so this is never undefined.
+                position: slider.position,
                 status: slider.status,
                 description: slider.description,
             };

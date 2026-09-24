@@ -18,6 +18,17 @@ class SliderService
         'status',
     ];
 
+    /**
+     * Filters compared exactly instead of with LIKE.
+     *
+     * position shares the numeric scale status uses, and LIKE '%5%' matches 15
+     * just as happily as 5 - which would drag every WIDE banner back into the
+     * hero carousel.
+     */
+    protected $exactFilter = [
+        'position'
+    ];
+
     protected $exceptFilter = [
         'excepts'
     ];
@@ -38,6 +49,10 @@ class SliderService
                 foreach ($requests as $key => $request) {
                     if (in_array($key, $this->sliderFilter)) {
                         $query->where($key, 'like', '%' . $request . '%');
+                    }
+
+                    if (in_array($key, $this->exactFilter)) {
+                        $query->where($key, $request);
                     }
 
                     if (in_array($key, $this->exceptFilter)) {

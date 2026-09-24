@@ -37,7 +37,15 @@ class ProductBrandService
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_type') ?? 'desc';
 
-            return ProductBrand::where(function ($query) use ($requests) {
+            // The storefront never shows the placeholder brand. Forced here,
+            // server side, rather than trusting a query string from the page.
+            $query = ProductBrand::query();
+
+            if ($request->boolean('exclude_default')) {
+                $query->storefront();
+            }
+
+            return $query->where(function ($query) use ($requests) {
                 foreach ($requests as $key => $request) {
                     if (in_array($key, $this->productCateFilter)) {
                         $query->where($key, 'like', '%' . $request . '%');

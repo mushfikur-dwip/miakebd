@@ -82,7 +82,15 @@
                     </div>
 
                     <div class="form-col-12 sm:form-col-6">
-                        <label for="product_brand_id" class="db-field-title">{{ $t("label.brand") }}</label>
+                        <div class="flex items-center justify-between gap-2">
+                            <label for="product_brand_id" class="db-field-title required">
+                                {{ $t("label.brand") }}
+                            </label>
+                            <button type="button" @click="toggleBrandQuickAdd"
+                                class="text-xs font-semibold text-primary hover:underline whitespace-nowrap">
+                                {{ brandQuickAdd.open ? $t("button.cancel") : "+ " + $t("button.add_product_brand") }}
+                            </button>
+                        </div>
                         <vue-select class="db-field-control f-b-custom-select" id="product_brand_id"
                             v-bind:class="errors.product_brand_id ? 'invalid' : ''"
                             v-model="props.form.product_brand_id" :options="productBrands" label-by="name" value-by="id"
@@ -91,6 +99,23 @@
                         <small class="db-field-alert" v-if="errors.product_brand_id">
                             {{ errors.product_brand_id[0] }}
                         </small>
+
+                        <!-- Saves straight into Settings > Product Brands and
+                             selects the result, so adding a missing brand does
+                             not cost a half-filled product form. -->
+                        <div v-if="brandQuickAdd.open" class="mt-2 flex items-start gap-2">
+                            <div class="w-full">
+                                <input v-model="brandQuickAdd.name" type="text" class="db-field-control"
+                                    :placeholder="$t('label.name')" @keyup.enter.prevent="saveBrand" />
+                                <small class="db-field-alert" v-if="brandQuickAdd.error">
+                                    {{ brandQuickAdd.error }}
+                                </small>
+                            </div>
+                            <button type="button" @click="saveBrand" :disabled="brandQuickAdd.saving"
+                                class="db-btn-primary py-2 px-4 rounded-lg whitespace-nowrap disabled:opacity-60">
+                                {{ $t("button.save") }}
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-col-12 sm:form-col-6">
@@ -289,6 +314,7 @@ import askEnum from "../../../enums/modules/askEnum";
 import statusEnum from "../../../enums/modules/statusEnum";
 import activityEnum from "../../../enums/modules/activityEnum";
 import alertService from "../../../services/alertService";
+import axios from "axios";
 import appService from "../../../services/appService";
 import VueTagsInput from "@sipec/vue3-tags-input";
 import { quillEditor } from 'vue3-quill';
@@ -326,6 +352,12 @@ export default {
             productCategories: [],
             units: [],
             productBrands: [],
+            brandQuickAdd: {
+                open: false,
+                name: "",
+                saving: false,
+                error: "",
+            },
             taxes: [],
             barcodes: [],
         }
@@ -392,6 +424,49 @@ export default {
         },
     },
     methods: {
+        toggleBrandQuickAdd: function () {
+            this.brandQuickAdd.open = !this.brandQuickAdd.open;
+            this.brandQuickAdd.name = "";
+            this.brandQuickAdd.error = "";
+        },
+        /**
+         * Creates a brand without leaving the product form.
+         *
+         * Brand names are unique, so the common failure here is typing one that
+         * already exists. That comes back as a 422 on `name` and is shown under
+         * the input rather than as a toast, which would float away from the
+         * field that caused it.
+         */
+        saveBrand: function () {
+            const name = this.brandQuickAdd.name.trim();
+
+            if (!name) {
+                return;
+            }
+
+            this.brandQuickAdd.saving = true;
+            this.brandQuickAdd.error = "";
+
+            const fd = new FormData();
+            fd.append("name", name);
+            fd.append("status", statusEnum.ACTIVE);
+
+            axios.post("/admin/setting/product-brand", fd).then((res) => {
+                const brand = res.data.data;
+                this.productBrands.push(brand);
+                this.props.form.product_brand_id = brand.id;
+                this.brandQuickAdd.open = false;
+                this.brandQuickAdd.name = "";
+                this.brandQuickAdd.saving = false;
+                alertService.success(this.$t("menu.product_brands"));
+            }).catch((err) => {
+                this.brandQuickAdd.saving = false;
+                const data = err.response && err.response.data ? err.response.data : {};
+                this.brandQuickAdd.error = (data.errors && data.errors.name && data.errors.name[0])
+                    || data.message
+                    || this.$t("message.something_went_wrong");
+            });
+        },
         floatNumber(e) {
             return appService.floatNumber(e);
         },

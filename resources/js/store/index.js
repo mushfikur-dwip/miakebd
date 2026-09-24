@@ -95,6 +95,7 @@ import { promotion } from "./modules/promotion";
 import { promotionProduct } from "./modules/promotionProduct";
 import { purchase } from "./modules/purchase";
 import { pushNotification } from "./modules/pushNotification";
+import { smsCampaign } from "./modules/smsCampaign";
 import { returnAndRefund } from "./modules/returnAndRefund";
 import { returnOrder } from "./modules/returnOrder";
 import { returnReason } from "./modules/returnReason";
@@ -175,6 +176,7 @@ export default new createStore({
         creditBalanceReport,
         productVariation,
         pushNotification,
+        smsCampaign,
         user,
         productVideo,
         productSeo,

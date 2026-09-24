@@ -52,6 +52,7 @@ import 'swiper/css';
 import {Navigation, Pagination, Autoplay} from 'swiper/modules';
 import {Swiper, SwiperSlide} from 'swiper/vue';
 import statusEnum from "../../../enums/modules/statusEnum";
+import sliderPositionEnum from "../../../enums/modules/sliderPositionEnum";
 import LoadingComponent from "../components/LoadingComponent";
 
 export default {
@@ -76,7 +77,8 @@ export default {
                     paginate: 0,
                     order_column: 'id',
                     order_type: 'desc',
-                    status: statusEnum.ACTIVE
+                    status: statusEnum.ACTIVE,
+                    position: sliderPositionEnum.HERO
                 }
             }
         }

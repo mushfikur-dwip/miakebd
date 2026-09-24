@@ -18,7 +18,11 @@ class MenuService
     public function menu(Role $role): array
     {
         try {
-            $menus           = Menu::get()->toArray();
+            // Ordered explicitly. Every seeded row carries priority 100, so
+            // tie-breaking on id reproduces exactly the order the untidy
+            // `Menu::get()` happened to return - while letting a row opt into a
+            // higher priority to sit above its siblings.
+            $menus           = Menu::orderBy('priority', 'desc')->orderBy('id')->get()->toArray();
             $permissions     = Permission::get();
             $rolePermissions = Permission::join(
                 "role_has_permissions",

@@ -44,7 +44,7 @@ class ProductRequest extends FormRequest
             'buying_price'               => ['required', new IniAmount()],
             'selling_price'              => ['required', new IniAmount()],
             'tax_id[]'                   => ['nullable', 'numeric', 'max_digits:10'],
-            'product_brand_id'           => ['nullable', 'numeric', 'max_digits:10'],
+            'product_brand_id'           => ['required', 'numeric', 'max_digits:10', 'exists:product_brands,id'],
             'status'                     => ['required', 'numeric', 'max:24'],
             'can_purchasable'            => ['required', 'numeric', 'max:24'],
             'show_stock_out'             => ['required', 'numeric', 'max:24'],

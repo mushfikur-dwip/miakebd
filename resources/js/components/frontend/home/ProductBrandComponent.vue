@@ -1,23 +1,37 @@
 <template>
     <LoadingComponent :props="loading" />
 
-    <section v-reveal class="mb-3 sm:mb-10" v-if="brands.length > 1">
+    <section v-reveal class="mb-10 sm:mb-20" v-if="brands.length > 1">
         <div class="container">
-            <h2 class="capitalize text-2xl sm:text-4xl font-bold -mb-10">
-                {{ $t('label.popular_brands') }}
-            </h2>
-            <Swiper dir="ltr" :speed="1000" :loop="true" :navigation="true" :modules="modules" class="navigate-swiper" :breakpoints="breakpoints">
-                <SwiperSlide v-for="brand in brands" class="mobile:!w-[120px]">
-                    <router-link :to="{name: 'frontend.product', query:{ brand: brand.id }}" class="w-full rounded-2xl shadow-xs group border border-gray-100">
-                        <figure class="w-full h-[120px] flex items-center justify-center">
-                            <img :src="brand.cover" alt="brand" class="w-14">
-                        </figure>
-                        <span class="text-sm sm:text-lg font-medium capitalize text-center pb-3 block group-hover:text-primary">
-                                {{ brand.name }}
-                            </span>
-                    </router-link>
-                </SwiperSlide>
-            </Swiper>
+            <div class="flex items-center justify-between gap-4 mb-5 sm:mb-7">
+                <h2 class="capitalize text-2xl sm:text-4xl font-bold">
+                    {{ $t('label.shop_by_brand') }}
+                </h2>
+                <!-- There is no brands-only page; the shop is where brand
+                     filtering actually lives, so "show more" goes there. -->
+                <router-link v-if="brands.length > visibleLimit" :to="{ name: 'frontend.product' }"
+                    class="py-2 px-4 text-sm sm:py-3 sm:px-6 rounded-3xl capitalize sm:text-base font-semibold whitespace-nowrap bg-primary-slate text-primary transition-all duration-300 hover:bg-primary hover:text-white">
+                    {{ $t('label.show_more') }}
+                </router-link>
+            </div>
+
+            <!-- A grid, not a carousel: with a few hundred brands a carousel
+                 hides all but six of them behind an arrow nobody clicks. The
+                 list is capped instead, and the rest live behind Show More. -->
+            <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
+                <router-link v-for="brand in visibleBrands" :key="brand.id"
+                    :to="{ name: 'frontend.product', query: { brand: brand.id } }"
+                    class="group rounded-2xl border border-gray-100 bg-white shadow-xs transition-all duration-300 hover:border-primary hover:shadow-card">
+                    <figure class="w-full h-20 sm:h-24 flex items-center justify-center p-3">
+                        <img :src="brand.cover" :alt="brand.name" loading="lazy" decoding="async"
+                            class="max-h-full max-w-full object-contain">
+                    </figure>
+                    <span
+                        class="block text-xs sm:text-sm font-medium capitalize text-center px-2 pb-3 truncate group-hover:text-primary">
+                        {{ brand.name }}
+                    </span>
+                </router-link>
+            </div>
         </div>
     </section>
 </template>
@@ -25,16 +39,10 @@
 <script>
 import statusEnum from "../../../enums/modules/statusEnum";
 import LoadingComponent from "../components/LoadingComponent";
-import {Swiper, SwiperSlide} from "swiper/vue";
-import {Autoplay, Navigation, Pagination} from "swiper/modules";
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
 
 export default {
     name: "ProductBrandComponent",
     components: {
-        Swiper, SwiperSlide,
         LoadingComponent
     },
     data() {
@@ -42,22 +50,16 @@ export default {
             loading: {
                 isActive: false,
             },
-            breakpoints: {
-                0: {slidesPerView: 'auto', spaceBetween: 16},
-                640: {slidesPerView: 4, spaceBetween: 24},
-                768: {slidesPerView: 5, spaceBetween: 24},
-                1024: {slidesPerView: 6, spaceBetween: 24}
-            },
-        }
-    },
-    setup() {
-        return {
-            modules: [Navigation, Pagination, Autoplay],
+            // Two full rows at the widest breakpoint.
+            visibleLimit: 16,
         }
     },
     computed: {
         brands: function () {
             return this.$store.getters["frontendProductBrand/lists"];
+        },
+        visibleBrands: function () {
+            return this.brands.slice(0, this.visibleLimit);
         },
     },
     mounted() {
@@ -75,4 +77,3 @@ export default {
     }
 }
 </script>
-

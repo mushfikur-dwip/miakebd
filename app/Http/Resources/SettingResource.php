@@ -39,6 +39,9 @@ class SettingResource extends JsonResource
             'site_online_payment_gateway'           => $this->info['site_online_payment_gateway'],
             'site_cash_on_delivery'                 => $this->info['site_cash_on_delivery'],
             'site_offer_banner_text'                => $this->info['site_offer_banner_text'] ?? null,
+            // Same reason as site_receipt_footer above: absent until Settings >
+            // Site is saved once, and every page reads this resource.
+            'site_community_link'                   => $this->info['site_community_link'] ?? null,
             'site_checkout_notice'                  => \App\Support\CheckoutNotice::text($this->info),
             'site_checkout_notice_status'           => \App\Support\CheckoutNotice::status($this->info),
             // Absent on a live site until Settings > Site is next saved, and every

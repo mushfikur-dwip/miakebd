@@ -86,7 +86,6 @@
 <script>
 import appService from "../../../../services/appService";
 import alertService from "../../../../services/alertService";
-import pixelService from "../../../../services/pixelService";
 
 export default {
     name: "GuestGateComponent",
@@ -141,13 +140,6 @@ export default {
                 })
                 .then(() => {
                     this.loading = false;
-
-                    // The shop now knows who this visitor is. Handing the name
-                    // and number to the Pixel here (hashed in the browser
-                    // before they leave it) is what lets Meta match them to a
-                    // real profile, rather than waiting for the next screen.
-                    pixelService.identifyFromStore(this.$store);
-
                     // The parent re-renders the rest of the checkout as soon as
                     // authStatus flips, so there is nothing to route to.
                 })

@@ -261,6 +261,22 @@
     <!-- FAV ICON -->
     <link rel="icon" href="{{ $favicon }}">
 
+    {{-- The header logo is the first thing a visitor sees, and until now the
+         browser only learned its URL after the bundle had parsed and the
+         settings had arrived. Starting it here overlaps the download with the
+         JavaScript. --}}
+    @if (!blank($bootSetting['theme_logo'] ?? null))
+        <link rel="preload" as="image" href="{{ $bootSetting['theme_logo'] }}" fetchpriority="high">
+    @endif
+
+    {{-- The shop's settings, handed to the SPA in the page itself. Without this
+         the app boots, then waits for GET /api/frontend/setting before it can
+         draw the header, logo, currency or menus - an extra round trip on the
+         first visit, when nothing is cached. The store falls back to fetching
+         the endpoint if this is missing or empty. HEX flags for the same reason
+         the structured data above uses them: this sits inside a <script>. --}}
+    <script>window.__BOOT_SETTING__ = {!! json_encode($bootSetting ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};</script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @if (!blank($analytics))

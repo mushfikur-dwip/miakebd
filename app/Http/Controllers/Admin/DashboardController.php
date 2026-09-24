@@ -35,6 +35,7 @@ class DashboardController extends AdminController implements HasMiddleware
             new Middleware('permission:dashboard', only: ['orderSummary']),
             new Middleware('permission:dashboard', only: ['featuredItems']),
             new Middleware('permission:dashboard', only: ['topCustomers']),
+            new Middleware('permission:dashboard', only: ['topProducts']),
             new Middleware('permission:dashboard', only: ['totalSales']),
             new Middleware('permission:dashboard', only: ['salesSummary']),
             new Middleware('permission:dashboard', only: ['customerStates']),

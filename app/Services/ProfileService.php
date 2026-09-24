@@ -53,6 +53,14 @@ class ProfileService
             $user           = User::find(auth()->user()->id);
             $user->password = bcrypt($request->get('new_password'));
             $user->save();
+
+            // Changing a password is how someone locks out whoever else has
+            // the account - but every other token stayed valid. Only the
+            // session making the change survives.
+            $current        = auth()->user()->currentAccessToken();
+            $currentTokenId = $current instanceof \Laravel\Sanctum\PersonalAccessToken ? $current->id : null;
+            $user->tokens()->when($currentTokenId, fn($query) => $query->where('id', '!=', $currentTokenId))->delete();
+
             return $user;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());

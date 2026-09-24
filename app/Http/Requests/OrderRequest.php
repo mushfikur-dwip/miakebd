@@ -31,11 +31,12 @@ class OrderRequest extends FormRequest
     {
         return [
             'subtotal'        => ['required', 'numeric'],
-            'discount'        => ['nullable', 'numeric'],
+            'discount'        => ['nullable', 'numeric', 'min:0'],
             'shipping_charge' => (int) request('order_type') == OrderType::DELIVERY ? ['required', 'numeric'] : ['nullable'],
             'tax'             => ['required', 'numeric'],
             'total'           => ['required', 'numeric'],
-            'order_type'      => ['required', 'numeric'],
+            // Delivery or pickup only - POS is a till order, never a storefront one.
+            'order_type'      => ['required', 'numeric', 'in:' . OrderType::DELIVERY . ',' . OrderType::PICK_UP],
             'shipping_id'     => (int) request('order_type') == OrderType::DELIVERY ? ['required', 'numeric'] : ['nullable'],
             'billing_id'      => (int) request('order_type') == OrderType::DELIVERY ? ['required', 'numeric'] : ['nullable'],
             'outlet_id'       => (int) request('order_type') == OrderType::PICK_UP ? ['required', 'numeric', 'not_in:0'] : ['nullable'],

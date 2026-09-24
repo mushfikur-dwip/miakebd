@@ -8,9 +8,11 @@ use App\Enums\Activity;
 use App\Models\Currency;
 use App\Enums\GatewayMode;
 use App\Models\PaymentGateway;
+use App\Models\Transaction;
 use App\Services\PaymentService;
 use App\Services\PaymentAbstract;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Dipokhalder\Settings\Facades\Settings;
 use Karim007\LaravelBkashTokenize\Facade\BkashPaymentTokenize;
@@ -95,13 +97,64 @@ class Bkash extends PaymentAbstract
                 if (!$response) {
                     $response = BkashPaymentTokenize::queryPayment($request['paymentID']);
                 }
-                if (isset($response['statusCode']) && $response['statusCode'] == "0000" && $response['transactionStatus'] == "Completed") {
+                // "Completed" alone proved only that SOME payment went through.
+                // The paymentID arrives on the callback URL, so a customer could
+                // start a cheap order's bKash payment and send its paymentID to
+                // an expensive order's success URL instead: the execute ran
+                // here and settled the wrong order. The payment must be for
+                // this order's amount, and its trxID must not have settled
+                // any other order. The invoice is compared too, but only when
+                // bKash returns it - execute and query name the field
+                // differently, and a paid order must never be refused over a
+                // missing key.
+                $invoice = $response['merchantInvoiceNumber'] ?? $response['merchantInvoice'] ?? null;
+                $trxId   = (string) ($response['trxID'] ?? '');
 
-                    $this->paymentService->payment($order, 'bkash', $response['trxID']);
-                    return redirect()->route('payment.successful', ['order' => $order])->with(
-                        'success',
-                        trans('all.message.payment_successful')
+                if (
+                    isset($response['statusCode']) && $response['statusCode'] == "0000"
+                    && ($response['transactionStatus'] ?? null) == "Completed"
+                    && ($invoice === null || (string) $invoice === (string) $order->order_serial_no)
+                    && abs((float) ($response['amount'] ?? 0) - (float) $order->total) < 0.01
+                    && $trxId !== ''
+                ) {
+                    // Serialised per trxID so two callbacks racing with the
+                    // same payment cannot both pass the "unused" check.
+                    $settled = Cache::lock('bkash-trx-' . $trxId, 30)->block(10, function () use ($order, $trxId) {
+                        if (Transaction::where('transaction_no', $trxId)->where('order_id', '!=', $order->id)->exists()) {
+                            return false;
+                        }
+
+                        $this->paymentService->payment($order, 'bkash', $trxId);
+
+                        return true;
+                    });
+
+                    if ($settled) {
+                        return redirect()->route('payment.successful', ['order' => $order])->with(
+                            'success',
+                            trans('all.message.payment_successful')
+                        );
+                    }
+
+                    Log::warning('bKash trxID already settled another order.', ['order_id' => $order->id, 'trx_id' => $trxId]);
+
+                    return redirect()->route('payment.fail', ['order' => $order, 'paymentGateway' => 'bkash'])->with(
+                        'error',
+                        trans('all.message.something_wrong')
                     );
+                }
+
+                if (isset($response['statusCode']) && $response['statusCode'] == "0000") {
+                    // bKash says completed but the payment does not match this
+                    // order - log it so a genuine mismatch can be reconciled.
+                    Log::warning('bKash payment does not match order.', [
+                        'order_id'  => $order->id,
+                        'order_no'  => $order->order_serial_no,
+                        'total'     => $order->total,
+                        'amount'    => $response['amount'] ?? null,
+                        'invoice'   => $invoice,
+                        'trx_id'    => $trxId,
+                    ]);
                 }
 
                 return redirect()->route('payment.index', ['order' => $order, 'paymentGateway' => 'bkash'])->with(

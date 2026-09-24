@@ -100,6 +100,7 @@ class CampaignProductService
             $perPage = $paginateRequest->get('per_page', 32);
 
             return $campaign->products()
+                ->storefront()
                 ->select(
                     'products.id',
                     'products.name',

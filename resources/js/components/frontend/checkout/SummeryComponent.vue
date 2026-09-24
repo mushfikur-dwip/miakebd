@@ -98,6 +98,11 @@ export default {
             return this.$store.getters['frontendCart/total'];
         }
     },
+    // Every checkout step shows this summary, so a cart persisted by an older
+    // build is re-totalled before the customer reads - or submits - a figure.
+    mounted() {
+        this.$store.dispatch('frontendCart/recalculate').then().catch();
+    },
     methods: {
         money(amount) {
             const setting = this.setting || {};

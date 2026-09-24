@@ -22,6 +22,7 @@ use App\Models\PaymentGateway;
 use App\Models\Stock;
 use App\Models\ThemeSetting;
 use App\Services\PaymentManagerService;
+use App\Support\PaymentLink;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Dipokhalder\Settings\Facades\Settings;
@@ -38,8 +39,16 @@ class PaymentController extends Controller
         $this->paymentManagerService = $paymentManagerService;
     }
 
-    public function index(PaymentGateway $paymentGateway, Order $order): \Illuminate\Contracts\View\Factory|\Illuminate\Foundation\Application|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\RedirectResponse
+    public function index(PaymentGateway $paymentGateway, Order $order, Request $request): \Illuminate\Contracts\View\Factory|\Illuminate\Foundation\Application|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\RedirectResponse
     {
+        // No user to compare against here (browser navigation, no Bearer
+        // token), so the SPA's per-order token stands in - see PaymentLink.
+        if (PaymentLink::isValid($order->id, $request->query('token'))) {
+            PaymentLink::grant($request, $order->id);
+        } elseif (!PaymentLink::granted($request, $order->id)) {
+            return redirect()->route('home');
+        }
+
         $credit          = false;
         $cashOnDelivery  = false;
         $paymentGateways = PaymentGateway::with('gatewayOptions')->where(['status' => Activity::ENABLE])->get();
@@ -75,6 +84,13 @@ class PaymentController extends Controller
 
     public function payment(Order $order, PaymentRequest $request)
     {
+        // Only the browser that opened this order's payment page may submit
+        // it - otherwise anyone could spend a customer's wallet on their
+        // unpaid order by posting its id.
+        if (!PaymentLink::granted($request, $order->id)) {
+            return redirect()->route('home');
+        }
+
         if ($this->paymentManagerService->gateway($request->paymentMethod)->status()) {
             $className = 'App\\Http\\PaymentGateways\\PaymentRequests\\' . ucfirst($request->paymentMethod);
             $gateway   = new $className;

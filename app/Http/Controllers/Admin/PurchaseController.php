@@ -42,6 +42,10 @@ class PurchaseController extends AdminController implements HasMiddleware
             new Middleware('permission:purchase_edit', only: ['update']),
             new Middleware('permission:purchase_delete', only: ['destroy']),
             new Middleware('permission:purchase_show', only: ['show']),
+            // Supplier payments are accounting records; none of these four had
+            // a permission.
+            new Middleware('permission:purchase', only: ['paymentHistory', 'paymentDownloadAttachment']),
+            new Middleware('permission:purchase_edit', only: ['payment', 'paymentDestroy']),
         ];
     }
 

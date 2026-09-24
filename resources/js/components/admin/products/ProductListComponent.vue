@@ -203,6 +203,10 @@
                         <tr class="db-table-body-tr" v-for="product in products" :key="product">
                             <td class="db-table-body-td">
                                 {{ textShortener(product.name, 40) }}
+                                <span v-if="product.pos_only == enums.askEnum.YES"
+                                    class="ml-1 py-0.5 px-1.5 rounded text-[10px] font-medium uppercase text-[#E89806] bg-[#FFF5DE]">
+                                    {{ $t('label.pos_only') }}
+                                </span>
                             </td>
                             <td class="db-table-body-td">{{ product.category_name }}</td>
                             <td class="db-table-body-td">{{ product.flat_buying_price }}</td>
@@ -270,7 +274,7 @@ import ExportComponent from "../components/buttons/export/ExportComponent";
 import PrintComponent from "../components/buttons/export/PrintComponent";
 import ExcelComponent from "../components/buttons/export/ExcelComponent";
 import activityEnum from "../../../enums/modules/activityEnum";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 import ImportComponent from "../components/buttons/import/ImportComponent";
 import ProductFileUploadComponent from "./ProductFileUploadComponent";
 import SampleFileComponent from "../components/buttons/import/SampleFileComponent";
@@ -334,6 +338,7 @@ export default {
                     product_brand_id: null,
                     status: statusEnum.ACTIVE,
                     can_purchasable: askEnum.NO,
+                    pos_only: askEnum.NO,
                     show_stock_out: activityEnum.DISABLE,
                     refundable: askEnum.NO,
                     maximum_purchase_quantity: "",
@@ -468,6 +473,7 @@ export default {
             this.props.form.product_brand_id = product.product_brand_id;
             this.props.form.status = product.status;
             this.props.form.can_purchasable = product.can_purchasable;
+            this.props.form.pos_only = product.pos_only;
             this.props.form.show_stock_out = product.show_stock_out;
             this.props.form.refundable = product.refundable;
             this.props.form.maximum_purchase_quantity = product.maximum_purchase_quantity;
@@ -481,14 +487,14 @@ export default {
         },
         tagUpdate: function (objects) {
             let tags = [];
-            _.forEach(objects, (object) => {
+            forEach(objects, (object) => {
                 tags.push({ "text": object.name, "tiClasses": ["ti-valid"] });
             });
             return tags;
         },
         taxUpdate: function (objects) {
             let taxes = [];
-            _.forEach(objects, (object, key) => {
+            forEach(objects, (object, key) => {
                 taxes.push(object.tax_id);
             });
             return taxes;

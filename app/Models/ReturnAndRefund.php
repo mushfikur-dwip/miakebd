@@ -37,6 +37,13 @@ class ReturnAndRefund extends Model implements HasMedia
         return $response;
     }
 
+    // Customer uploads - see ProductReview for why this backs up the request rules.
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('return')
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+    }
+
     public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')->width(168)->height(180)->keepOriginalImageFormat()->sharpen(10);

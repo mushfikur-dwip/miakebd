@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 
 use App\Libraries\AppLibrary;
+use App\Support\PaymentLink;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class OrderDetailsResource extends JsonResource
@@ -20,6 +21,8 @@ class OrderDetailsResource extends JsonResource
             'id'                             => $this->id,
             'order_serial_no'                => $this->order_serial_no,
             'user_id'                        => $this->user_id,
+            // Opens /payment/{gateway}/pay/{id} - see PaymentLink.
+            'payment_token'                  => PaymentLink::token((int) $this->id),
             "subtotal_currency_price"        => AppLibrary::currencyAmountFormat($this->subtotal),
             "tax_currency_price"             => AppLibrary::currencyAmountFormat($this->tax),
             "discount_currency_price"        => AppLibrary::currencyAmountFormat($this->discount),

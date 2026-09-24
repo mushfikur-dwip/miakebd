@@ -1,4 +1,4 @@
-import _ from "lodash";
+import forEach from "lodash/forEach";
 import axios from "axios";
 
 // Using local JSON files from public/data directory

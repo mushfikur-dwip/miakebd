@@ -1,4 +1,4 @@
-import _ from "lodash";
+import forEach from "lodash/forEach";
 import axios from "axios";
 import orderTypeEnum from "../../../enums/modules/orderTypeEnum";
 import shippingMethodEnum from "../../../enums/modules/shippingMethodEnum";
@@ -108,7 +108,7 @@ export const frontendCart = {
                     } else {
                         const payloadSource = payload.price_source || CATALOGUE_SOURCE;
 
-                        _.forEach(context.state.lists, (list, listKey) => {
+                        forEach(context.state.lists, (list, listKey) => {
                             // Keyed by price_source as well as product and
                             // variation. The same product added from a campaign
                             // page and from the normal listing is two lines at
@@ -212,6 +212,14 @@ export const frontendCart = {
             context.commit("coupon", payload);
             context.commit("subtotal");
         },
+        // Carts are persisted, so one saved before a pricing change keeps its
+        // old totals until something is edited. Re-derives tax and totals from
+        // the lines. Shipping is left alone: it needs the order-area list,
+        // which the payment step does not load.
+        recalculate: function (context) {
+            context.commit("taxCalculation");
+            context.commit("subtotal");
+        },
         destroyCoupon: function (context) {
             context.commit('coupon', {});
             context.commit("subtotal");
@@ -289,9 +297,13 @@ export const frontendCart = {
             if (state.lists.length > 0) {
                 let subtotal = 0;
                 let total = 0;
-                _.forEach(state.lists, (list, listKey) => {
+                forEach(state.lists, (list, listKey) => {
                     state.lists[listKey].subtotal = state.lists[listKey].price * state.lists[listKey].quantity;
-                    state.lists[listKey].total = ((state.lists[listKey].price * state.lists[listKey].quantity) + state.lists[listKey].total_tax) - state.lists[listKey].discount;
+                    // `discount` is NOT subtracted: `price` is already the offer
+                    // price, so taking it off again discounted offer items twice
+                    // (and by a raw percentage when added from a listing). The
+                    // server computes the same total and refuses any other.
+                    state.lists[listKey].total = (state.lists[listKey].price * state.lists[listKey].quantity) + state.lists[listKey].total_tax;
                     subtotal += state.lists[listKey].subtotal;
                     total += state.lists[listKey].total;
                 });
@@ -373,11 +385,11 @@ export const frontendCart = {
         },
         taxCalculation: function (state) {
             let stateTotalTax = 0;
-            _.forEach(state.lists, (list, listKey) => {
+            forEach(state.lists, (list, listKey) => {
                 if (list.taxes.length > 0) {
                     let taxes = [];
                     let total_tax = 0;
-                    _.forEach(list.taxes, (tax, taxKey) => {
+                    forEach(list.taxes, (tax, taxKey) => {
                         if (tax.tax_rate > 0) {
                             let taxPercentagePrice = ((list.price / 100) * parseFloat(tax.tax_rate));
                             total_tax += taxPercentagePrice;
@@ -403,7 +415,7 @@ export const frontendCart = {
                     state.shippingCharge = parseFloat(payload.setting.shipping_setup_flat_rate_wise_cost);
                 } else if (payload.setting.shipping_setup_method === shippingMethodEnum.PRODUCT_WISE) {
                     let totalShippingCost = 0;
-                    _.forEach(state.lists, (list, listKey) => {
+                    forEach(state.lists, (list, listKey) => {
                         if (list.shipping.shipping_type === ShippingTypeEnum.FLAT_RATE) {
                             if (list.shipping.is_product_quantity_multiply === AskEnum.YES) {
                                 totalShippingCost += (parseFloat(list.shipping.shipping_cost) * list.quantity);
@@ -416,7 +428,7 @@ export const frontendCart = {
                 } else if (payload.setting.shipping_setup_method === shippingMethodEnum.AREA_WISE) {
                     if (Object.keys(state.shippingAddress).length > 0) {
                         let status = false;
-                        _.forEach(payload.area, (list, listKey) => {
+                        forEach(payload.area, (list, listKey) => {
                             if (list.country === state.shippingAddress.country && list.state === state.shippingAddress.state) {
                                 status = true;
                                 state.shippingCharge = parseFloat(list.shipping_cost);

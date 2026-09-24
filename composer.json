@@ -28,7 +28,7 @@
         "karim007/laravel-bkash-tokenize": "^2.2",
         "laravel/sanctum": "^4.2",
         "league/flysystem-aws-s3-v3": "^3.29",
-        "maatwebsite/excel": "*",
+        "maatwebsite/excel": "^3.1.70",
         "mollie/laravel-mollie": "^3.0",
         "myfatoorah/library": "^2.2",
         "picqer/php-barcode-generator": "^2.4",

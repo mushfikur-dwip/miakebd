@@ -83,7 +83,7 @@ import SmModalCreateComponent from "../../components/buttons/SmModalCreateCompon
 import LoadingComponent from "../../components/LoadingComponent";
 import alertService from "../../../../services/alertService";
 import appService from "../../../../services/appService";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 
 export default {
     name: "ProductVariationCreateComponent",
@@ -161,7 +161,7 @@ export default {
             try {
                 const tempId = this.$store.getters["productVariation/temp"].temp_id;
                 this.attributeProps.attribute = [];
-                _.forEach(this.attributeProps.elements, (element, index) => {
+                forEach(this.attributeProps.elements, (element, index) => {
                     if (element > 0) {
                         this.attributeProps.attribute.push({
                             "product_attribute_id": index,

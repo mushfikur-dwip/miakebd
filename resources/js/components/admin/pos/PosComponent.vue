@@ -233,6 +233,9 @@
     :total="currencyFormat((subtotal + totalTax) - posDiscount, setting.site_digit_after_decimal_point, setting.site_default_currency_symbol, setting.site_currency_position)" />
 </template>
 <script>
+// `_` was used below without ever being imported - that branch threw a
+// ReferenceError instead of showing the till's validation errors.
+import forEach from "lodash/forEach";
 import LoadingComponent from "../components/LoadingComponent";
 import ProductListComponent from "./ProductListComponent";
 import sourceEnum from "../../../enums/modules/sourceEnum";
@@ -635,7 +638,7 @@ export default {
       }).catch((err) => {
         this.loading.isActive = false;
         if (typeof err.response.data.errors === 'object') {
-          _.forEach(err.response.data.errors, (error) => {
+          forEach(err.response.data.errors, (error) => {
             alertService.error(error[0]);
           });
         }

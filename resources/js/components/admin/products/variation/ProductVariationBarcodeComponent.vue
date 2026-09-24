@@ -36,7 +36,7 @@ import LoadingComponent from "../../components/LoadingComponent.vue";
 import PrintButtonComponent from "../../components/buttons/PrintButtonComponent.vue";
 import alertService from "../../../../services/alertService";
 import appService from "../../../../services/appService";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 
 export default {
     name: "ProductVariationBarcodeComponent",

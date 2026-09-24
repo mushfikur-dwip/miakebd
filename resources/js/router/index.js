@@ -9,7 +9,7 @@ import ExceptionComponent from "../components/exception/ExceptionComponent.vue";
 import NotFoundComponent from "../components/exception/NotFoundComponent.vue";
 import ENV from "../config/env";
 import appService from "../services/appService";
-import store from "../store";
+import store, { registerAdminModules } from "../store";
 import administratorRoutes from "./modules/administratorRoutes";
 import authRoutes from "./modules/authRoutes";
 import blogRoutes from "./modules/blogRoutes";
@@ -123,7 +123,19 @@ const router = createRouter({
     },
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+    // The admin store modules are not in the storefront bundle (see
+    // store/index.js). Registering them here, before the route resolves, means
+    // an admin screen never runs against a module that is not there yet.
+    // Anything that is not explicitly a storefront route renders the admin
+    // chrome (see DefaultComponent's theme watcher), including routes that
+    // declare no meta at all, such as /exception. Loading the modules for all
+    // of them keeps that impossible to get wrong; the storefront, which is what
+    // this split is for, is the only path that skips it.
+    if (to.meta.isFrontend !== true) {
+        await registerAdminModules();
+    }
+
     if (to.meta.auth === true) {
         if (!store.getters.authStatus) {
             next({ name: "auth.login" });

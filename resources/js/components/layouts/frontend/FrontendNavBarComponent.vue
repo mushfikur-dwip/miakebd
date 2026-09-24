@@ -17,7 +17,11 @@
 
                     <router-link :to="{ name: 'frontend.home' }"
                         class="router-link-active router-link-exact-active flex-shrink-0">
-                        <img class="w-28 sm:w-32" :src="setting.theme_logo" alt="logo">
+                        <!-- Matches the preload in master.blade.php: this is the
+                             first image on the page, so it should not queue
+                             behind the product thumbnails. -->
+                        <img class="w-28 sm:w-32" :src="setting.theme_logo" alt="logo"
+                             fetchpriority="high" decoding="async">
                     </router-link>
                 </div>
 
@@ -359,7 +363,10 @@
         <div class="modal-dialog max-w-[360px] p-6 text-center relative">
             <button @click.prevent="closeOrderNotificationModal('order-modal', 'modal-active')"
                 class="modal-close absolute top-4 right-4">
-                <i class="fa-regular fa-circle-xmark"></i>
+                <!-- Iconly, like every other storefront icon: Font Awesome's
+                     stylesheet is admin-only now, so this was the one icon on
+                     the shop that would have rendered as nothing. -->
+                <i class="lab lab-close-circle-line"></i>
             </button>
             <h3 class="text-[18px] font-semibold leading-8 mb-6">
                 {{ orderNotificationMessage }}
@@ -387,7 +394,7 @@ import roleEnum from "../../../enums/modules/roleEnum";
 import MenuChildrenComponent from "../../frontend/components/MenuChildrenComponent";
 import orderTypeEnum from "../../../enums/modules/orderTypeEnum";
 import campaignTypeEnum from "../../../enums/modules/campaignTypeEnum";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 import axios from 'axios';
 import { useCanvas } from "../../../composables/canvas";
 
@@ -735,7 +742,7 @@ export default {
         orderPermissionCheck: function () {
             const permissions = this.$store.getters.authPermission;
             if (permissions.length > 0) {
-                _.forEach(permissions, (permission) => {
+                forEach(permissions, (permission) => {
                     if (permission.name === 'online-orders') {
                         if (permission.access === true) {
                             this.orderNotification.permission = true;

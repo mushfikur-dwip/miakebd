@@ -34,6 +34,15 @@ class ProductReview extends Model implements HasMedia
         return $response;
     }
 
+    // Customer uploads. The request rules are the first check; this one holds
+    // even if a future caller skips them, because anything stored here is
+    // served back from this origin.
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('product-review')
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+    }
+
     public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')->fit(Fit::Fill, 112, 72)->keepOriginalImageFormat()->sharpen(10);

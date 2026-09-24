@@ -32,6 +32,7 @@ class ProductAdminResource extends JsonResource
             "flat_selling_price"         => AppLibrary::flatAmountFormat($this->selling_price),
             "status"                     => $this->status,
             "can_purchasable"            => $this->can_purchasable,
+            "pos_only"                   => (int) $this->pos_only,
             "show_stock_out"             => $this->show_stock_out,
             "maximum_purchase_quantity"  => $this->maximum_purchase_quantity,
             "low_stock_quantity_warning" => $this->low_stock_quantity_warning,

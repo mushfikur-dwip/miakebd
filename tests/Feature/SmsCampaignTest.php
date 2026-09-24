@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\Ask;
+use App\Http\Controllers\Admin\SmsCampaignController;
+use App\Enums\MenuType;
+use App\Services\MenuService;
 use App\Enums\Role as EnumRole;
 use App\Enums\SmsCampaignStatus;
 use App\Enums\SmsRecipientStatus;
@@ -13,6 +16,9 @@ use App\Services\SmsCampaignService;
 use App\Services\SmsManagerService;
 use App\Services\SmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route as RouteFacade;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Illuminate\Support\Facades\DB;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
@@ -237,59 +243,155 @@ class SmsCampaignTest extends TestCase
     }
 
     /**
-     * Rebuilds the menus table in the order a live site actually has it.
+     * A small menus table with explicit ids.
      *
-     * RefreshDatabase runs migrations before seeders, so the mobile-section row
-     * (added by a 2026 migration, and the only row not on priority 100) ends up
-     * with the lowest id here - the reverse of production, where it was added
-     * long after the seeded rows. Comparing orderings against that would be
-     * testing the fixture, not the code.
+     * The real seeder is not usable here: it stores each child's `parent` as
+     * the row's position in its own array and relies on auto-increment ids
+     * landing on the same numbers, which stops being true the moment anything
+     * else has already written to the table - as a migration does under
+     * RefreshDatabase. Writing the ids out keeps the fixture honest.
      */
-    private function seedMenusLikeProduction(): int
+    private function seedMenus(): void
     {
         Menu::query()->delete();
 
-        $this->seed(\Database\Seeders\MenuTableSeeder::class);
+        $rows = [
+            ['id' => 1, 'name' => 'Users', 'language' => 'users', 'url' => '#', 'parent' => 0, 'priority' => 100],
+            ['id' => 2, 'name' => 'Administrators', 'language' => 'administrators', 'url' => 'administrators', 'parent' => 1, 'priority' => 100],
+            ['id' => 3, 'name' => 'Customers', 'language' => 'customers', 'url' => 'customers', 'parent' => 1, 'priority' => 100],
+            ['id' => 4, 'name' => 'Employees', 'language' => 'employees', 'url' => 'employees', 'parent' => 1, 'priority' => 100],
+            ['id' => 5, 'name' => 'Setup', 'language' => 'setup', 'url' => '#', 'parent' => 0, 'priority' => 100],
+            ['id' => 6, 'name' => 'Settings', 'language' => 'settings', 'url' => 'settings', 'parent' => 5, 'priority' => 100],
+            // Added by a later migration, and the only row not on priority 100.
+            ['id' => 7, 'name' => 'Mobile Section', 'language' => 'mobile_section', 'url' => 'mobile-section', 'parent' => 0, 'priority' => 25],
+        ];
 
-        // DB::table, not Menu::create: the model's $fillable lists `parent_id`,
-        // a column that does not exist, so mass assignment silently drops the
-        // real `parent` and every row lands at top level. The migration inserts
-        // the same way, so this exercises the production path.
-        DB::table('menus')->insert([
-            'name' => 'Mobile Section', 'language' => 'mobile_section', 'url' => 'mobile-section',
-            'icon' => 'lab lab-line-mobile', 'parent' => 0, 'type' => 1, 'priority' => 25,
-            'status' => 1, 'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        return (int) Menu::where('url', 'customers')->value('parent');
+        foreach ($rows as $row) {
+            DB::table('menus')->insert($row + [
+                'icon' => 'lab lab-line-mail', 'type' => MenuType::BACKEND, 'status' => 1,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
     }
 
-    public function test_the_menu_entry_sits_directly_above_customers(): void
+    private function addCustomerMessageMenu(): void
     {
-        $parent = $this->seedMenusLikeProduction();
-
         DB::table('menus')->insert([
-            'name' => 'Customer Message', 'language' => 'customer_message', 'url' => 'customer-message',
-            'icon' => 'lab lab-line-mail', 'parent' => $parent, 'type' => 1, 'priority' => 101,
-            'status' => 1, 'created_at' => now(), 'updated_at' => now(),
+            'id' => 20, 'name' => 'Customer Message', 'language' => 'customer_message',
+            'url' => 'customer-message', 'parent' => 1, 'type' => MenuType::BACKEND,
+            'icon' => 'lab lab-line-mail', 'priority' => 101, 'status' => 1,
+            'created_at' => now(), 'updated_at' => now(),
         ]);
-
-        $section = Menu::orderBy('priority', 'desc')->orderBy('id')->get()
-            ->where('parent', $parent)->pluck('url')->values()->all();
-
-        $this->assertSame('customer-message', $section[0]);
-        $this->assertContains('customers', $section);
     }
 
-    public function test_ordering_menus_does_not_reshuffle_the_existing_ones(): void
+    /** The sidebar exactly as an admin receives it after logging in. */
+    private function sidebar(): array
     {
-        $this->seedMenusLikeProduction();
+        return app(MenuService::class)->menu(Role::findByName('Admin', 'sanctum'));
+    }
 
-        $byId       = Menu::orderBy('id')->pluck('url')->all();
-        $byPriority = Menu::orderBy('priority', 'desc')->orderBy('id')->pluck('url')->all();
+    public function test_the_menu_entry_reaches_the_sidebar_above_customers(): void
+    {
+        $this->seedMenus();
+        $this->addCustomerMessageMenu();
 
-        // Ordering was implicit before; it must reproduce the same sidebar, or
-        // every admin's menu silently rearranges on deploy.
-        $this->assertSame($byId, $byPriority);
+        $section = collect($this->sidebar())
+            ->first(fn($item) => collect($item['children'] ?? [])->contains('url', 'customers'));
+
+        $this->assertNotNull($section, 'the section holding Customers vanished from the sidebar');
+
+        $urls = collect($section['children'])->pluck('url')->all();
+
+        // The bug this locks down: ordering the flat list by priority put this
+        // row ahead of its own parent, and the single-pass tree builder threw
+        // it away - the menu never appeared at all.
+        $this->assertSame('customer-message', $urls[0]);
+        $this->assertSame(['customer-message', 'administrators', 'customers', 'employees'], $urls);
+    }
+
+    public function test_the_other_sections_keep_their_order(): void
+    {
+        $this->seedMenus();
+        $this->addCustomerMessageMenu();
+
+        $sidebar = collect($this->sidebar());
+
+        // Mobile Section carries priority 25 and must still come last, where
+        // its id puts it - sections are not resorted by priority.
+        $this->assertSame(['#', '#', 'mobile-section'], $sidebar->pluck('url')->all());
+        $this->assertSame(['settings'], collect($sidebar[1]['children'])->pluck('url')->all());
+    }
+
+    public function test_mobile_section_buttons_never_reach_the_admin_sidebar(): void
+    {
+        $this->seedMenus();
+
+        // What the Mobile Section page creates: no language, so it rendered in
+        // the sidebar as a stray "Menu.Null".
+        DB::table('menus')->insert([
+            'id' => 30, 'name' => 'Shop Now', 'url' => 'shop-now', 'icon' => '', 'parent' => 0,
+            'type' => MenuType::MOBILE_SECTION, 'priority' => 100, 'status' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->assertNotContains('shop-now', collect($this->sidebar())->pluck('url')->all());
+    }
+
+    /**
+     * The page calls /api/admin/customer-message. Nothing else checked that the
+     * routes were actually published there - they were first written inside the
+     * `setting` group, which silently prefixed them to
+     * /api/admin/setting/customer-message, and every call 404'd.
+     */
+    public function test_the_routes_answer_on_the_paths_the_page_calls(): void
+    {
+        $paths = [
+            ['GET', 'api/admin/customer-message'],
+            ['GET', 'api/admin/customer-message/audience'],
+            ['GET', 'api/admin/customer-message/show/1'],
+            ['POST', 'api/admin/customer-message'],
+            ['POST', 'api/admin/customer-message/test'],
+            ['POST', 'api/admin/customer-message/1/batch'],
+            ['POST', 'api/admin/customer-message/1/pause'],
+        ];
+
+        foreach ($paths as [$method, $uri]) {
+            try {
+                RouteFacade::getRoutes()->match(Request::create($uri, $method));
+            } catch (\Throwable $exception) {
+                $this->fail("{$method} /{$uri} is not routable: " . $exception->getMessage());
+            }
+        }
+
+        $this->assertTrue(true);
+    }
+
+    /**
+     * Not just "something answers here" - the right controller answers.
+     *
+     * A prefix group swallowing these routes was the original fault, and a
+     * wildcard route elsewhere can match a path without being the route meant,
+     * so the action is asserted rather than the absence of a 404.
+     */
+    public function test_the_paths_resolve_to_the_campaign_controller(): void
+    {
+        $expected = [
+            ['GET', 'api/admin/customer-message', 'index'],
+            ['GET', 'api/admin/customer-message/audience', 'audience'],
+            ['POST', 'api/admin/customer-message', 'store'],
+            ['POST', 'api/admin/customer-message/test', 'test'],
+            ['POST', 'api/admin/customer-message/1/batch', 'batch'],
+            ['POST', 'api/admin/customer-message/1/pause', 'pause'],
+        ];
+
+        foreach ($expected as [$method, $uri, $action]) {
+            $route = RouteFacade::getRoutes()->match(Request::create($uri, $method));
+
+            $this->assertSame(
+                SmsCampaignController::class . '@' . $action,
+                $route->getActionName(),
+                "{$method} /{$uri} went somewhere else"
+            );
+        }
     }
 }

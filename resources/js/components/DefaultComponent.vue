@@ -39,8 +39,13 @@
 </template>
 
 <script>
-import BackendNavbarComponent from "./layouts/backend/BackendNavbarComponent";
-import BackendMenuComponent from "./layouts/backend/BackendMenuComponent";
+import { defineAsyncComponent } from "vue";
+
+// Async: the admin chrome is rendered only when theme === 'backend', but a
+// static import put it - and the admin-only stylesheets it pulls in - in the
+// bundle every shopper downloads.
+const BackendNavbarComponent = defineAsyncComponent(() => import("./layouts/backend/BackendNavbarComponent"));
+const BackendMenuComponent = defineAsyncComponent(() => import("./layouts/backend/BackendMenuComponent"));
 import FrontendNavbarComponent from "./layouts/frontend/FrontendNavBarComponent";
 import FrontendFooterComponent from "./layouts/frontend/FrontendFooterComponent";
 import FrontendCartComponent from "./layouts/frontend/FrontendCartComponent";

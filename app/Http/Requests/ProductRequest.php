@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Ask;
 use App\Models\ProductVariation;
 use App\Rules\IniAmount;
 use Illuminate\Foundation\Http\FormRequest;
@@ -47,6 +48,9 @@ class ProductRequest extends FormRequest
             'product_brand_id'           => ['required', 'numeric', 'max_digits:10', 'exists:product_brands,id'],
             'status'                     => ['required', 'numeric', 'max:24'],
             'can_purchasable'            => ['required', 'numeric', 'max:24'],
+            // POS only. Optional: anything that does not send it keeps the
+            // product public, which is what every existing product is.
+            'pos_only'                   => ['nullable', 'numeric', 'in:' . Ask::YES . ',' . Ask::NO],
             'show_stock_out'             => ['required', 'numeric', 'max:24'],
             'refundable'                 => ['required', 'numeric', 'max:24'],
             'maximum_purchase_quantity'  => ['required', 'numeric', 'max_digits:10'],

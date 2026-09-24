@@ -64,6 +64,9 @@
 </template>
 
 <script>
+// Font Awesome + Public Sans. Loaded here rather than in app.js so the shop
+// does not download the admin panel's stylesheets.
+import "../../../adminAssets";
 import appService from "../../../services/appService";
 export default {
     name: "BackendMenuComponent",

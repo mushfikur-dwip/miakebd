@@ -24,6 +24,8 @@ use App\Models\OrderOutletAddress;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Support\OrderPriceGuard;
+use App\Support\OrderTotals;
+use App\Support\StorefrontOrderGuard;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\OrderRequest;
 use Illuminate\Support\Facades\Log;
@@ -129,10 +131,30 @@ class FrontendOrderService
                 // and that the campaign is still running. A cart left sitting
                 // past the end of a sale is refused here instead of quietly
                 // ordering at the old price.
+                // A POS-only product is stocked for the till and hidden from every
+                // storefront listing, so it must never become a paid online order.
+                StorefrontOrderGuard::assertNoPosOnlyProducts(
+                    (array) json_decode($request->products)
+                );
+
+                // Before the price guard: it multiplies price by quantity, so a
+                // negative quantity sailed through it and cut the total.
+                OrderTotals::assertQuantities((array) json_decode($request->products));
+
                 OrderPriceGuard::assertPricesAreGenuine(
                     (array) json_decode($request->products),
                     $attributes['subtotal'] ?? null
                 );
+
+                // Discount, tax, shipping and total, from the server. These were
+                // written exactly as the browser sent them - "total": 1 was a
+                // one-taka order. Every figure below (wallet check, cashback
+                // base, the order row, the coupon row) uses these.
+                $totals = OrderTotals::resolve($attributes, (array) json_decode($request->products), (int) Auth::id());
+                $attributes['discount']        = $totals['discount'];
+                $attributes['tax']             = $totals['tax'];
+                $attributes['shipping_charge'] = $totals['shipping_charge'];
+                $attributes['total']           = $totals['total'];
 
                 // Wallet redemption. Validated up front so a bad amount rolls
                 // back before anything is written. All-or-nothing by design:
@@ -205,7 +227,11 @@ class FrontendOrderService
 
                 $products = json_decode($request->products);
                 if (!blank($products)) {
-                    foreach ($products as $product) {
+                    foreach ($products as $index => $product) {
+                        // Tax, taxes and line total from OrderTotals - the
+                        // browser's copies of these were stored as sent.
+                        $serverLine = $totals['lines'][$index];
+
                         $stockId = Stock::create([
                             'product_id'      => $product->product_id,
                             // Pickup orders carry the outlet the customer chose,
@@ -219,29 +245,29 @@ class FrontendOrderService
                             'variation_names' => $product->variation_names,
                             'sku'             => $product->sku,
                             'price'           => $product->price,
-                            'quantity'        => -$product->quantity,
-                            'discount'        => $product->discount,
-                            'tax'             => number_format($product->total_tax, env('CURRENCY_DECIMAL_POINT'), '.', ''),
-                            'subtotal'        => $product->subtotal,
-                            'total'           => $product->total,
+                            'quantity'        => -$serverLine['quantity'],
+                            // Informational only - nothing charges from it - but
+                            // it is bounded so a crafted value cannot skew reports.
+                            'discount'        => min(max(0, (float) ($product->discount ?? 0)), $serverLine['subtotal']),
+                            'tax'             => number_format($serverLine['tax'], env('CURRENCY_DECIMAL_POINT'), '.', ''),
+                            'subtotal'        => $serverLine['subtotal'],
+                            'total'           => $serverLine['total'],
                             'status'          => Status::INACTIVE,
                         ]);
-                        if ($product->taxes) {
-                            $j               = 0;
+                        if ($serverLine['taxes']) {
                             $productTaxArray = [];
-                            foreach ($product->taxes as $tax) {
-                                $productTaxArray[$j] = [
+                            foreach ($serverLine['taxes'] as $tax) {
+                                $productTaxArray[] = [
                                     'stock_id'   => $stockId->id,
                                     'product_id' => $product->product_id,
-                                    'tax_id'     => $tax->id,
-                                    'name'       => $tax->name,
-                                    'code'       => $tax->code,
-                                    'tax_rate'   => $tax->tax_rate,
-                                    'tax_amount' => $tax->tax_amount,
+                                    'tax_id'     => $tax['id'],
+                                    'name'       => $tax['name'],
+                                    'code'       => $tax['code'],
+                                    'tax_rate'   => $tax['tax_rate'],
+                                    'tax_amount' => $tax['tax_amount'],
                                     'created_at' => now(),
                                     'updated_at' => now()
                                 ];
-                                $j++;
                             }
                             StockTax::insert($productTaxArray);
                         }
@@ -329,7 +355,7 @@ class FrontendOrderService
                         'order_id'  => $this->order->id,
                         'coupon_id' => $request->coupon_id,
                         'user_id'   => Auth::user()->id,
-                        'discount'  => $request->discount
+                        'discount'  => $attributes['discount']
                     ]);
                 }
 

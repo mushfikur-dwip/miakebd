@@ -31,8 +31,19 @@ class AddressController extends Controller
     }
 
 
+    // Route model binding resolves ANY address by id, so without this a
+    // customer could walk the ids and read, rewrite or delete every other
+    // customer's name, phone and home address. 404 rather than 403 so the
+    // response does not confirm the id exists.
+    private function assertOwned(Address $address): void
+    {
+        abort_unless((int) $address->user_id === (int) auth()->id(), 404);
+    }
+
     public function show(Address $address)
     {
+        $this->assertOwned($address);
+
         try {
             return new AddressResource($address);
         } catch (Exception $exception) {
@@ -51,6 +62,8 @@ class AddressController extends Controller
 
     public function update(AddressRequest $request, Address $address)
     {
+        $this->assertOwned($address);
+
         try {
             return new AddressResource($this->addressService->update($request, $address));
         } catch (Exception $exception) {
@@ -60,6 +73,8 @@ class AddressController extends Controller
 
     public function destroy(Address $address)
     {
+        $this->assertOwned($address);
+
         try {
             $this->addressService->destroy($address);
             return response('', 202);

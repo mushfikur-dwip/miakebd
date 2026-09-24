@@ -35,6 +35,14 @@ class SimpleProductResource extends JsonResource
             'discount'          => $this->discount,
             'stock'             => $this->stock ?? 0,
             'taxes'             => ProductTaxResource::collection($this->taxes),
+            // Product-wise shipping reads this from the cart line. Without it a
+            // product added from a listing shipped free in the cart, while the
+            // server (OrderTotals) charges the product's real cost.
+            'shipping'          => [
+                'shipping_type'                => $this->shipping_type,
+                'shipping_cost'                => $this->shipping_cost,
+                'is_product_quantity_multiply' => $this->is_product_quantity_multiply,
+            ],
             'maximum_purchase_quantity' => $this->maximum_purchase_quantity,
             'rating_star'       => $this->rating_star,
             'rating_star_count' => (int) $this->rating_star_count,

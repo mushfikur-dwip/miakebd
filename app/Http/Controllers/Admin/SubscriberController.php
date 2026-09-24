@@ -30,6 +30,9 @@ class SubscriberController extends AdminController implements HasMiddleware
             new Middleware('permission:subscribers', only: ['index']),
             new Middleware('permission:subscribers', only: ['destroy']),
             new Middleware('permission:subscribers', only: ['export']),
+            // Mails every subscriber from the shop's own server - a phishing
+            // cannon while it had no entry here.
+            new Middleware('permission:subscribers', only: ['sendEmail']),
         ];
     }
 

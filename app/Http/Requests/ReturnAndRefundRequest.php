@@ -29,7 +29,11 @@ class ReturnAndRefundRequest extends FormRequest
             'order_id'         => ['required', 'numeric'],
             'order_serial_no'  => ['required', 'string'],
             'products'         => ['required', 'json'],
-            'image[]'          => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            // Was keyed 'image[]', which matches nothing - PHP files image[]
+            // fields under `image` - so any file type was accepted and served
+            // back from /storage on this origin.
+            'image'            => ['nullable', 'array', 'max:5'],
+            'image.*'          => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];
     }
 

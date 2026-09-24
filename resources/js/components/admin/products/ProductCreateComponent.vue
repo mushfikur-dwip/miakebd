@@ -163,6 +163,28 @@
                     </div>
 
                     <div class="form-col-12 sm:form-col-6">
+                        <label class="db-field-title" for="posOnlyYes">{{ $t("label.pos_only") }}</label>
+                        <div class="db-field-radio-group">
+                            <div class="db-field-radio">
+                                <div class="custom-radio">
+                                    <input type="radio" v-model="props.form.pos_only" id="posOnlyYes"
+                                        :value="enums.askEnum.YES" class="custom-radio-field">
+                                    <span class="custom-radio-span"></span>
+                                </div>
+                                <label for="posOnlyYes" class="db-field-label">{{ $t('label.yes') }}</label>
+                            </div>
+                            <div class="db-field-radio">
+                                <div class="custom-radio">
+                                    <input type="radio" class="custom-radio-field" v-model="props.form.pos_only"
+                                        id="posOnlyNo" :value="enums.askEnum.NO">
+                                    <span class="custom-radio-span"></span>
+                                </div>
+                                <label for="posOnlyNo" class="db-field-label">{{ $t('label.no') }}</label>
+                            </div>
+                        </div>
+                        <small class="db-field-hint">{{ $t("message.pos_only_hint") }}</small>
+                    </div>
+                    <div class="form-col-12 sm:form-col-6">
                         <label class="db-field-title required" for="enable">{{ $t("label.show_stock_out") }}</label>
                         <div class="db-field-radio-group">
                             <div class="db-field-radio">
@@ -488,6 +510,7 @@ export default {
                 product_brand_id: null,
                 status: statusEnum.ACTIVE,
                 can_purchasable: askEnum.NO,
+                pos_only: askEnum.NO,
                 show_stock_out: activityEnum.DISABLE,
                 refundable: askEnum.NO,
                 maximum_purchase_quantity: "",
@@ -529,6 +552,7 @@ export default {
                         product_brand_id: null,
                         status: statusEnum.ACTIVE,
                         can_purchasable: askEnum.NO,
+                        pos_only: askEnum.NO,
                         show_stock_out: activityEnum.DISABLE,
                         refundable: askEnum.NO,
                         maximum_purchase_quantity: "",

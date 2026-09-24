@@ -36,6 +36,13 @@ class SecurityHeaders
 
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
 
+        // PHP adds "X-Powered-By: PHP/8.x.y" to every response - a free exact
+        // version for anyone matching it against published PHP CVEs.
+        if (!headers_sent()) {
+            header_remove('X-Powered-By');
+        }
+        $response->headers->remove('X-Powered-By');
+
         // Only on connections that are already HTTPS. Sent over plain HTTP the
         // header is ignored anyway, and asserting it from a non-secure request
         // is how a site locks itself out of its own HTTP fallback.

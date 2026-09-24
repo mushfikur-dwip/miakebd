@@ -53,6 +53,7 @@ class GenerateSitemap extends Command
         Product::query()
             ->select(['id', 'slug', 'updated_at'])
             ->where('status', Status::ACTIVE)
+            ->storefront()
             ->whereNotNull('slug')
             ->where('slug', '<>', '')
             ->orderBy('id')

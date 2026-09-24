@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Frontend;
 
+use App\Enums\Ask;
 use App\Enums\Status;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\SettingResource;
 use App\Models\Analytic;
 use App\Models\Product;
 use App\Models\ThemeSetting;
@@ -11,6 +13,8 @@ use App\Support\BlogMetaResolver;
 use App\Support\CategoryMetaResolver;
 use App\Support\MediaUrl;
 use App\Support\SeoSchema;
+use App\Services\SettingService;
+use Illuminate\Support\Facades\Log;
 
 class RootController extends Controller
 {
@@ -22,6 +26,8 @@ class RootController extends Controller
     public function product(Product $product): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
     {
         abort_unless($product->status === Status::ACTIVE, 404);
+        // Stocked for the till, not for the website.
+        abort_if($product->pos_only == Ask::YES, 404);
 
         $product = Product::query()
             // reviews.user feeds the Review markup in SeoSchema. Eager-loaded
@@ -190,6 +196,31 @@ class RootController extends Controller
         return view('master', $data + [
             'analytics' => $analytics,
             'favicon' => $themeFavicon?->faviconLogo,
+            // Handed to the SPA in the HTML so it can draw the header, logo,
+            // currency and menus immediately. It used to fetch
+            // /api/frontend/setting first and sit on a loading state until that
+            // answered - a whole extra round trip after the bundle, on the
+            // slowest visit of all: the first one. The settings package caches
+            // these groups, so building it here costs almost nothing.
+            'bootSetting' => $this->bootSetting(),
         ]);
+    }
+
+    /**
+     * The same payload GET /api/frontend/setting returns.
+     *
+     * Wrapped so a failure here can never take the page down with it: the SPA
+     * falls back to fetching the endpoint itself when this is empty, which is
+     * exactly what it did before.
+     */
+    private function bootSetting(): array
+    {
+        try {
+            return (new SettingResource(app(SettingService::class)->list()))->toArray(request());
+        } catch (\Throwable $e) {
+            Log::warning('Could not inline the storefront settings: ' . $e->getMessage());
+
+            return [];
+        }
     }
 }

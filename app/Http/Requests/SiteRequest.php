@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Rules\SafeLink;
 
 class SiteRequest extends FormRequest
 {
@@ -45,11 +46,8 @@ class SiteRequest extends FormRequest
             'site_non_purchase_product_maximum_quantity'  => ['required', 'numeric'],
             'site_is_return_product_price_add_to_credit' => ['required', 'numeric'],
             'site_offer_banner_text'                      => ['nullable', 'string', 'max:500'],
-            // Group invite link (Facebook group, WhatsApp, Telegram, Discord)
-            // behind the Community item in the header. Kept as a plain string
-            // rather than `url` so a pasted "facebook.com/groups/x" is not
-            // rejected; the frontend adds the scheme when it is missing.
-            'site_community_link'                         => ['nullable', 'string', 'max:190'],
+            // Rendered into an href in the site header - see SafeLink.
+            'site_community_link'                         => ['nullable', 'string', 'max:190', new SafeLink],
             // Shown above the checkout form. Bangla runs ~3 bytes per character
             // in UTF-8, so max is generous enough for a two-sentence notice.
             'site_checkout_notice'                        => ['nullable', 'string', 'max:1000'],

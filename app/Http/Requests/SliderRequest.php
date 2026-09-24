@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\SliderPosition;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Rules\SafeLink;
 use Illuminate\Validation\Rule;
 
 class SliderRequest extends FormRequest
@@ -47,9 +48,10 @@ class SliderRequest extends FormRequest
             'description' => ['nullable'],
             'status'      => ['required', 'numeric'],
             // Was saved straight off the request without ever being validated.
-            // The column is TEXT, so the cap is only to keep a pasted tracking
-            // URL from turning into an unreadable row in the admin list.
-            'link'        => ['nullable', 'string', 'max:500'],
+            // SafeLink is the important part: this value is rendered into an
+            // href on every storefront page, so a "javascript:" scheme here is
+            // stored XSS against every shopper.
+            'link'        => ['nullable', 'string', 'max:500', new SafeLink],
             'position'    => [
                 'required',
                 'numeric',

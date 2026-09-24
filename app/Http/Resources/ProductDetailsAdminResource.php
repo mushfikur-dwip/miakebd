@@ -34,6 +34,7 @@ class ProductDetailsAdminResource extends JsonResource
             "warranty"                     => $this->warranty,
             "unit"                         => $this->unit?->name,
             "can_purchasable"              => $this->can_purchasable,
+            "pos_only"                     => (int) $this->pos_only,
             "show_stock_out"               => $this->show_stock_out,
             "refundable"                   => $this->refundable,
             "status"                       => $this->status,

@@ -34,6 +34,7 @@ class AdministratorController extends AdminController implements HasMiddleware
     {
         return [
             new Middleware('permission:administrators', only: ['index']),
+            new Middleware('permission:administrators', only: ['export']),
             new Middleware('permission:administrators', only: ['show']),
             new Middleware('permission:administrators_create', only: ['store']),
             new Middleware('permission:administrators_edit', only: ['update']),

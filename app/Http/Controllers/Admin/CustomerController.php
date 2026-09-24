@@ -45,6 +45,11 @@ class CustomerController extends AdminController implements HasMiddleware
             new Middleware('permission:customers_edit', only: ['update']),
             new Middleware('permission:customers_delete', only: ['destroy']),
             new Middleware('permission:customers_show', only: ['show']),
+            // Wallet routes were added without an entry here, which left
+            // wallet-credit open to any logged-in customer: credit yourself,
+            // then pay with the Wallet gateway.
+            new Middleware('permission:customers_show', only: ['walletBalance', 'walletTransactions']),
+            new Middleware('permission:customers_edit', only: ['addCredit', 'deductCredit']),
         ];
     }
 

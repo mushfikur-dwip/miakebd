@@ -28,10 +28,19 @@ class ProductReviewController extends Controller
         }
     }
 
+    // Route model binding resolves any review by id. Without this, one
+    // customer could rewrite another's review and add or delete its photos.
+    private function assertOwned(ProductReview $productReview): void
+    {
+        abort_unless((int) $productReview->user_id === (int) auth()->id(), 404);
+    }
+
     public function update(
         ProductReviewRequest $request,
         ProductReview $productReview
     ): \Illuminate\Http\Response | ProductReviewResource | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory {
+        $this->assertOwned($productReview);
+
         try {
             return new ProductReviewResource($this->productReviewService->update($request, $productReview));
         } catch (Exception $exception) {
@@ -50,6 +59,8 @@ class ProductReviewController extends Controller
 
     public function uploadImage(ChangeImageRequest $request, ProductReview $productReview): \Illuminate\Foundation\Application|\Illuminate\Http\Response|ProductReviewResource|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
+        $this->assertOwned($productReview);
+
         try {
             return new ProductReviewResource($this->productReviewService->uploadImage($request, $productReview));
         } catch (Exception $exception) {
@@ -59,6 +70,8 @@ class ProductReviewController extends Controller
 
     public function deleteImage(ProductReview $productReview, $index): \Illuminate\Foundation\Application|\Illuminate\Http\Response|ProductReviewResource|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
+        $this->assertOwned($productReview);
+
         try {
             return new ProductReviewResource($this->productReviewService->deleteImage($productReview, $index));
         } catch (Exception $exception) {

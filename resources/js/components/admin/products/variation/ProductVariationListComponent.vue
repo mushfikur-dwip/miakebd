@@ -41,7 +41,7 @@ import SmIconModalEditComponent from "../../components/buttons/SmIconModalEditCo
 import SmIconDeleteComponent from "../../components/buttons/SmIconDeleteComponent.vue";
 import ProductVariationCreateComponent from "./ProductVariationCreateComponent";
 import ProductVariationBarcodeComponent from "./ProductVariationBarcodeComponent.vue";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 
 export default {
     name: "ProductVariationListComponent",
@@ -97,7 +97,7 @@ export default {
                 id: productVariation
             }).then((res) => {
                 this.loading.isActive = false;
-                _.forEach(res.data.data, (element) => {
+                forEach(res.data.data, (element) => {
                     this.recursiveVariation(element);
                 });
             }).catch((err) => {
@@ -139,7 +139,7 @@ export default {
                 this.attributeProps.sku = data.sku;
             }
             if (data.children) {
-                _.forEach(data.children, (element) => {
+                forEach(data.children, (element) => {
                     this.recursiveVariation(element);
                 });
             }

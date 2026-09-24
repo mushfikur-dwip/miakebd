@@ -120,7 +120,7 @@ import statusEnum from "../../../../enums/modules/statusEnum";
 import SummeryComponent from "../SummeryComponent.vue";
 import ExtraComponent from "../ExtraComponent.vue";
 import LoadingComponent from "../../components/LoadingComponent.vue";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 import alertService from "../../../../services/alertService";
 import appService from "../../../../services/appService";
 import sourceEnum from "../../../../enums/modules/sourceEnum";
@@ -224,7 +224,7 @@ export default {
         this.loading.isActive = true;
         this.$store.dispatch('frontendPaymentGateway/lists', { status: this.statusEnum.ACTIVE }).then(res => {
             if (res.data.data.length > 0) {
-                _.forEach(res.data.data, (gateway) => {
+                forEach(res.data.data, (gateway) => {
                     if (gateway.slug === "credit") {
                         this.credit = gateway;
                     } else if (gateway.slug === "cashondelivery") {
@@ -276,7 +276,7 @@ export default {
             const data = err && err.response ? err.response.data : null;
 
             if (data && data.errors && typeof data.errors === 'object') {
-                _.forEach(data.errors, (error) => {
+                forEach(data.errors, (error) => {
                     alertService.error(Array.isArray(error) ? error[0] : error);
                 });
                 return;
@@ -298,6 +298,10 @@ export default {
                 alertService.error(this.$t('message.agree_to_store_policies'));
                 return;
             }
+
+            // The server recomputes the total and refuses an order whose figure
+            // differs, so send the one the current lines actually add up to.
+            this.$store.dispatch('frontendCart/recalculate').then().catch();
 
             // Check if full payment is covered by wallet
             const isFullyPaidByWallet = this.appliedWalletAmount > 0 && this.remainingAmount === 0;
@@ -363,7 +367,13 @@ export default {
                 if (isFullyPaidByWallet) {
                     window.location.href = ENV.API_URL + "/payment/successful/" + orderId;
                 } else {
-                    window.location.href = ENV.API_URL + "/payment/" + paymentSlug + "/pay/" + orderId;
+                    // The payment page needs no login (a browser navigation
+                    // carries no Bearer token), so the order id alone used to
+                    // open anyone's order and wallet balance. The token proves
+                    // this browser placed the order.
+                    const paymentToken = orderResponse.data.data.payment_token || '';
+                    window.location.href = ENV.API_URL + "/payment/" + paymentSlug + "/pay/" + orderId
+                        + "?token=" + encodeURIComponent(paymentToken);
                 }
             }).catch((err) => {
                 // Always release the button, whatever came back — leaving it

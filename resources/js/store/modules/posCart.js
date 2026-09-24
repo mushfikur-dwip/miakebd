@@ -1,4 +1,4 @@
-import _ from "lodash";
+import forEach from "lodash/forEach";
 
 export const posCart = {
     namespaced: true,
@@ -42,7 +42,7 @@ export const posCart = {
                     if (context.state.lists.length === 0) {
                         isNew = true;
                     } else {
-                        _.forEach(context.state.lists, (list, listKey) => {
+                        forEach(context.state.lists, (list, listKey) => {
                             if (list.product_id === payload.product_id && list.variation_id === payload.variation_id) {
                                 productMatch = true;
                                 // No stock ceiling in the till: a branch is
@@ -110,7 +110,7 @@ export const posCart = {
             if (state.lists.length > 0) {
                 let subtotal = 0;
                 let total    = 0;
-                _.forEach(state.lists, (list, listKey) => {
+                forEach(state.lists, (list, listKey) => {
                     state.lists[listKey].subtotal = state.lists[listKey].price * state.lists[listKey].quantity;
                     state.lists[listKey].total    = ((state.lists[listKey].price * state.lists[listKey].quantity) + state.lists[listKey].total_tax) - state.lists[listKey].discount;
                     subtotal                      += state.lists[listKey].subtotal;
@@ -149,11 +149,11 @@ export const posCart = {
         },
         taxCalculation: function (state) {
             let stateTotalTax = 0;
-            _.forEach(state.lists, (list, listKey) => {
+            forEach(state.lists, (list, listKey) => {
                 if (list.taxes.length > 0) {
                     let taxes     = [];
                     let total_tax = 0;
-                    _.forEach(list.taxes, (tax, taxKey) => {
+                    forEach(list.taxes, (tax, taxKey) => {
                         if (tax.tax_rate > 0) {
                             let taxPercentagePrice = ((list.price / 100) * parseFloat(tax.tax_rate));
                             total_tax += taxPercentagePrice;

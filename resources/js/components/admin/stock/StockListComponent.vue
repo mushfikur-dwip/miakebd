@@ -215,7 +215,7 @@ import FilterComponent from "../components/buttons/collapse/FilterComponent";
 import ExportComponent from "../components/buttons/export/ExportComponent";
 import PrintComponent from "../components/buttons/export/PrintComponent";
 import ExcelComponent from "../components/buttons/export/ExcelComponent";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 import ENV from "../../../config/env";
 import StockEditModalComponent from "./StockEditModalComponent";
 

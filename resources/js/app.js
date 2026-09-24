@@ -10,10 +10,10 @@ import VueSimpleAlert from "vue3-simple-alert";
 import VueNextSelect from 'vue-next-select';
 import 'vue-next-select/dist/index.css';
 import ENV from './config/env.js';
+// The shop's typeface and icon set. Public Sans and Font Awesome are admin-only
+// and now load with the admin panel - see adminAssets.js.
 import "../../public/themes/default/fonts/urbanist/urbanist.css";
 import "../../public/themes/default/fonts/iconly/iconly.css";
-import "../../public/themes/default/fonts/public/public.css";
-import "../../public/themes/default/fonts/fontawesome/fontawesome.css";
 import 'sweetalert2/dist/sweetalert2.min.css';
 import { createHead } from '@vueuse/head';
 import reveal from './directives/reveal.js';

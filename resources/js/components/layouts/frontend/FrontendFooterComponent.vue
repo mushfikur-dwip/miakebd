@@ -147,7 +147,7 @@ import axios from "axios";
 import alertService from "../../../services/alertService";
 import LoadingComponent from "../../frontend/components/LoadingComponent";
 import menuSectionEnum from "../../../enums/modules/menuSectionEnum";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 
 export default {
     name: "FrontendFooterComponent",
@@ -213,7 +213,7 @@ export default {
             status: this.enums.statusEnum.ACTIVE
         }).then(res => {
             if (res.data.data.length > 0) {
-                _.forEach(res.data.data, (page) => {
+                forEach(res.data.data, (page) => {
                     if (page.menu_section_id === this.enums.menuSectionEnum.LEGAL) {
                         this.legalPages.push(page);
                     } else if (page.menu_section_id === this.enums.menuSectionEnum.HELP) {

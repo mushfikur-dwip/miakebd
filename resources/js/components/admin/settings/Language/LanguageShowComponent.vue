@@ -121,7 +121,7 @@ import statusEnum from "../../../../enums/modules/statusEnum";
 import displayModeEnum from "../../../../enums/modules/displayModeEnum";
 import alertService from "../../../../services/alertService";
 import appService from "../../../../services/appService";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 import MultiInputLanguageComponent from "../../components/MultiInputLanguageComponent.vue";
 
 export default {
@@ -184,7 +184,7 @@ export default {
             return appService.statusClass(status);
         },
         getFileText: function () {
-            _.forEach(this.fileList, (value) => {
+            forEach(this.fileList, (value) => {
                 if (value.name === this.form.name) {
                     this.form.path = value.path;
                 }
@@ -198,7 +198,7 @@ export default {
             this.$store.dispatch("language/fileText", this.form).then((res) => {
                 if (res.data) {
                     this.formPost = {};
-                    _.forEach(res.data, (value) => {
+                    forEach(res.data, (value) => {
                         if (typeof value === 'object') {
                             this.fileTextToPostDataCreate(value);
                         } else {
@@ -214,7 +214,7 @@ export default {
             });
         },
         fileTextToPostDataCreate: function (data) {
-            _.forEach(data, (value) => {
+            forEach(data, (value) => {
                 if (typeof value === 'object') {
                     this.fileTextToPostDataCreate(value);
                 } else {

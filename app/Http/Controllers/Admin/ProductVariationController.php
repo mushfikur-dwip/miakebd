@@ -27,7 +27,9 @@ class ProductVariationController extends AdminController implements HasMiddlewar
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:products_show', only: ['store', 'update', 'destroy', 'show']),
+            new Middleware('permission:products_show', only: ['show']),
+            // Writes needed only the read permission before.
+            new Middleware('permission:products_edit', only: ['store', 'update', 'destroy']),
         ];
     }
 

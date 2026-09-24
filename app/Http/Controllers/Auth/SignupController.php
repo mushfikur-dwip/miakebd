@@ -145,6 +145,14 @@ class SignupController extends Controller
         }
 
 
+        // Stamped only when an email code was actually verified. Every signup
+        // used to be marked verified - with email verification switched off,
+        // that meant any address typed in, including someone else's.
+        $emailVerifiedAt = !blank($request->post('email')) && DB::table('password_reset_tokens')->where([
+            ['email', $request->post('email')],
+            ['is_verified', Ask::YES],
+        ])->exists() ? Carbon::now()->getTimestamp() : null;
+
         // Upgrade an existing guest record rather than creating a second user,
         // so the customer keeps the orders they placed before signing up.
         // SignupRequest scopes its uniqueness checks to is_guest = NO, so a
@@ -158,14 +166,14 @@ class SignupController extends Controller
             if ($guestUsers->isNotEmpty()) {
                 $primary = $guestUsers->first();
 
-                DB::transaction(function () use ($guestUsers, $primary, $request) {
+                DB::transaction(function () use ($guestUsers, $primary, $request, $emailVerifiedAt) {
                     $this->guestMergeService->merge($primary, $guestUsers);
 
                     $primary->name = $request->post('name');
                     $primary->email = $request->post('email');
                     $primary->password = Hash::make($request->post('password'));
                     $primary->is_guest = Ask::NO;
-                    $primary->email_verified_at = Carbon::now()->getTimestamp();
+                    $primary->email_verified_at = $emailVerifiedAt;
                     $primary->save();
                 });
 
@@ -188,7 +196,7 @@ class SignupController extends Controller
             'email' => $request->post('email'),
             'phone' => $request->post('phone'),
             'country_code' => $request->post('country_code'),
-            'email_verified_at' => Carbon::now()->getTimestamp(),
+            'email_verified_at' => $emailVerifiedAt,
             'is_guest' => Ask::NO,
             'password' => Hash::make($request->post('password'))
         ]);

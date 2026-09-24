@@ -41,6 +41,10 @@ return [
 
     'debug' => (bool) env('APP_DEBUG', false),
 
+    // The key the SPA sends as x-api-key (ApiKeyMiddleware). Read through
+    // config so it survives config:cache, where env() returns null.
+    'api_key' => env('VITE_API_KEY'),
+
     /*
     |--------------------------------------------------------------------------
     | Application URL

@@ -1,33 +1,9 @@
 import { createStore } from "vuex";
 
 import createPersistedState from "vuex-persistedstate";
-import { administrator } from "./modules/administrator";
-import { administratorAddress } from "./modules/administratorAddress";
-import { analytic } from "./modules/analytic";
-import { analyticSection } from "./modules/analyticSection";
 import { auth } from "./modules/auth";
-import { barcode } from "./modules/barcode";
-import { benefit } from "./modules/benefit";
-import { blogCategory } from "./modules/blogCategory";
-import { blogPost } from "./modules/blogPost";
-import { blogTag } from "./modules/blogTag";
-import { campaign } from "./modules/campaign";
-import { campaignProduct } from "./modules/campaignProduct";
-import { city } from "./modules/city";
 import { company } from "./modules/company";
 import { cookies } from "./modules/cookies";
-import { country } from "./modules/country";
-import { countryCode } from "./modules/countryCode";
-import { coupon } from "./modules/coupon";
-import { creditBalanceReport } from "./modules/creditBalanceReport";
-import { currency } from "./modules/currency";
-import { customer } from "./modules/customer";
-import { customerAddress } from "./modules/customerAddress";
-import { customerWallet } from "./modules/customerWallet";
-import { damage } from "./modules/damage";
-import { dashboard } from "./modules/dashboard";
-import { employee } from "./modules/employee";
-import { employeeAddress } from "./modules/employeeAddress";
 import { frontendAddress } from "./modules/frontend/frontendAddress";
 import { frontendBenefit } from "./modules/frontend/frontendBenefit";
 import { frontendBlog } from "./modules/frontend/frontendBlog";
@@ -60,191 +36,59 @@ import { frontendSlider } from "./modules/frontend/frontendSlider";
 import frontendWallet from "./modules/frontendWallet";
 import { frontendWishlist } from "./modules/frontend/frontendWishlist";
 import { globalState } from "./modules/frontend/globalState";
-import { language } from "./modules/language";
-import { license } from "./modules/license";
-import { mail } from "./modules/mail";
-import { menuSection } from "./modules/menuSection";
-import { menuTemplate } from "./modules/menuTemplate";
-import { myOrderDetails } from "./modules/myOrderDetails";
-import { notification } from "./modules/notification";
-import { notificationAlert } from "./modules/notificationAlert";
-import { onlineOrder } from "./modules/onlineOrder";
-import { orderArea } from "./modules/orderArea";
-import { otp } from "./modules/otp";
-import { outlet } from "./modules/outlet";
-import { page } from "./modules/page";
-import { paymentGateway } from "./modules/paymentGateway";
-import { permission } from "./modules/permission";
 import { posCart } from "./modules/posCart";
-import { posOrder } from "./modules/posOrder";
-import { posProduct } from "./modules/posProduct";
-import { posProductCategory } from "./modules/posProductCategory";
-import { posProductVariation } from "./modules/posProductVariation";
-import { product } from "./modules/product";
-import { productAttribute } from "./modules/productAttribute";
-import { productAttributeOption } from "./modules/productAttributeOption";
-import { productBrand } from "./modules/productBrand";
-import { productCategory } from "./modules/productCategory";
-import { productSection } from "./modules/productSection";
-import { productSectionProduct } from "./modules/productSectionProduct";
-import { productSeo } from "./modules/productSeo";
-import { productsReport } from "./modules/productsReport";
-import { productVariation } from "./modules/productVariation";
-import { productVideo } from "./modules/productVideo";
-import { promotion } from "./modules/promotion";
-import { promotionProduct } from "./modules/promotionProduct";
-import { purchase } from "./modules/purchase";
-import { pushNotification } from "./modules/pushNotification";
-import { smsCampaign } from "./modules/smsCampaign";
-import { returnAndRefund } from "./modules/returnAndRefund";
-import { returnOrder } from "./modules/returnOrder";
-import { returnReason } from "./modules/returnReason";
-import { review } from "./modules/review";
-import { role } from "./modules/role";
-import { salesReport } from "./modules/salesReport";
-import { shippingSetup } from "./modules/shippingSetup";
-import { site } from "./modules/site";
-import { slider } from "./modules/slider";
-import { smsGateway } from "./modules/smsGateway";
-import { socialMedia } from "./modules/socialMedia";
-import { state } from "./modules/state";
-import { stock } from "./modules/stock";
-import { stockAdjustment } from "./modules/stockAdjustment";
-import { storeSalesReport } from "./modules/storeSalesReport";
-import { subscriber } from "./modules/subscriber";
-import { supplier } from "./modules/supplier";
-import { tax } from "./modules/tax";
-import { telegram } from "./modules/telegram";
-import { theme } from "./modules/theme";
-import { timezone } from "./modules/timezone";
-import { transaction } from "./modules/transaction";
-import { unit } from "./modules/unit";
-import { user } from "./modules/user";
 
-export default new createStore({
+/**
+ * The storefront's store.
+ *
+ * Every one of the ~118 modules used to be imported here, so a first-time
+ * shopper downloaded the state layer for every admin screen - purchases,
+ * reports, stock, POS - before the home page could render. Only the modules a
+ * shopper can actually reach are built in now; the admin ones arrive as a
+ * separate chunk the moment an /admin route is entered (see
+ * registerAdminModules, called from the router guard).
+ */
+const store = new createStore({
     state: {},
     mutations: {},
     actions: {},
     modules: {
         auth,
         company,
-        countryCode,
-        mail,
-        otp,
-        notification,
-        socialMedia,
-        license,
         cookies,
-        page,
-        blogPost,
-        blogCategory,
-        blogTag,
-        frontendBlog,
-        analytic,
-        analyticSection,
-        theme,
-        slider,
-        currency,
-        site,
-        productCategory,
-        tax,
-        returnReason,
-        globalState,
-        menuSection,
-        menuTemplate,
-        language,
-        smsGateway,
-        productAttribute,
-        paymentGateway,
-        timezone,
-        productAttributeOption,
-        role,
-        permission,
-        product,
-        administrator,
-        administratorAddress,
-        customer,
-        customerAddress,
-        customerWallet,
-        employee,
-        employeeAddress,
-        unit,
-        productBrand,
-        barcode,
-        transaction,
-        salesReport,
-        creditBalanceReport,
-        productVariation,
-        pushNotification,
-        smsCampaign,
-        user,
-        productVideo,
-        productSeo,
-        promotion,
-        promotionProduct,
-        productSection,
-        productSectionProduct,
-        benefit,
-        purchase,
-        damage,
-        returnOrder,
-        supplier,
-        outlet,
-        coupon,
-        frontendSetting,
-        frontendLanguage,
-        frontendEditProfile,
-        frontendCountryCode,
-        frontendPage,
-        frontendSlider,
-        frontendProductCategory,
-        frontendProduct,
-        frontendBenefit,
-        frontendPromotion,
-        frontendProductSection,
-        frontendWallet,
-        frontendWishlist,
-        frontendProductVariation,
         frontendAddress,
-        frontendSignup,
-        frontendGuest,
-        frontendCart,
+        frontendBenefit,
+        frontendBlog,
         frontendCampaign,
-        campaign,
-        campaignProduct,
+        frontendCart,
+        frontendCountryCode,
+        frontendCountryStateCity,
         frontendCoupon,
-        stock,
-        stockAdjustment,
-        storeSalesReport,
-        telegram,
-        shippingSetup,
-        orderArea,
-        notificationAlert,
-        frontendPaymentGateway,
+        frontendEditProfile,
+        frontendGuest,
+        frontendLanguage,
         frontendOrder,
         frontendOrderArea,
-        dashboard,
+        frontendOutlet,
+        frontendOverview,
+        frontendPage,
+        frontendPaymentGateway,
+        frontendProduct,
+        frontendProductBrand,
+        frontendProductCategory,
+        frontendProductReview,
+        frontendProductSection,
+        frontendProductVariation,
+        frontendPromotion,
         frontendReturnAndRefund,
         frontendReturnReason,
-        frontendOverview,
-        onlineOrder,
-        productsReport,
-        myOrderDetails,
-        frontendProductReview,
-        posOrder,
-        posProductVariation,
-        posProductCategory,
-        posProduct,
+        frontendSetting,
+        frontendSignup,
+        frontendSlider,
+        frontendWallet,
+        frontendWishlist,
+        globalState,
         posCart,
-        returnAndRefund,
-        frontendProductBrand,
-        frontendOutlet,
-        subscriber,
-        frontendCountryStateCity,
-        country,
-        state,
-        city,
-        review,
     },
     plugins: [
         createPersistedState({
@@ -252,3 +96,28 @@ export default new createStore({
         }),
     ],
 });
+
+let adminRegistration = null;
+
+/**
+ * Loads and registers the admin store modules, once.
+ *
+ * Every admin route awaits this before it resolves, so a component never runs
+ * against a module that is not registered yet. All four persisted paths belong
+ * to core modules, so nothing here takes part in rehydration.
+ */
+export function registerAdminModules() {
+    if (!adminRegistration) {
+        adminRegistration = import("./adminModules").then(({ adminModules }) => {
+            Object.keys(adminModules).forEach((name) => {
+                if (!store.hasModule(name)) {
+                    store.registerModule(name, adminModules[name]);
+                }
+            });
+        });
+    }
+
+    return adminRegistration;
+}
+
+export default store;

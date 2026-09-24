@@ -92,13 +92,15 @@ class LoginController extends Controller
             ])->first();
         }
 
-        $this->token = $user->createToken('auth_token')->plainTextToken;
-
+        // Checked before minting: a token was being written for role-less
+        // accounts too, left behind in personal_access_tokens after the 400.
         if (!isset($user->roles[0])) {
             return new JsonResponse([
                 'errors' => ['validation' => trans('all.message.role_exist')]
             ], 400);
         }
+
+        $this->token = $user->createToken('auth_token')->plainTextToken;
 
         $permission        = PermissionResource::collection($this->permissionService->permission($user->roles[0]));
         $defaultPermission = AppLibrary::defaultPermission($permission);

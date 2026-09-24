@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Resources\ProductRelationResource;
 use App\Http\Resources\SimpleProductDetailsResource;
 use App\Http\Resources\SimpleProductResource;
+use App\Enums\Ask;
 use App\Models\Product;
 use Exception;
 use App\Http\Controllers\Controller;
@@ -26,7 +27,7 @@ class ProductController extends Controller
     public function index(PaginateRequest $request): \Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         try {
-            return SimpleProductResource::collection($this->productService->list($request));
+            return SimpleProductResource::collection($this->productService->list($request, true));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }
@@ -34,6 +35,10 @@ class ProductController extends Controller
 
     public function show(Product $product, Request $request): SimpleProductDetailsResource|\Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
+        // Outside the try: this controller catches Exception, and abort()
+        // throws one - the 404 would otherwise reach the browser as a 422.
+        $this->abortIfPosOnly($product);
+
         try {
             return new SimpleProductDetailsResource($this->productService->showWithRelation($product, $request));
         } catch (Exception $exception) {
@@ -43,6 +48,10 @@ class ProductController extends Controller
 
     public function showWithTrashed(Product $product, Request $request): SimpleProductDetailsResource|\Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
+        // Outside the try: this controller catches Exception, and abort()
+        // throws one - the 404 would otherwise reach the browser as a 422.
+        $this->abortIfPosOnly($product);
+
         try {
             return new SimpleProductDetailsResource($this->productService->showWithTrashed($product, $request));
         } catch (Exception $exception) {
@@ -93,6 +102,16 @@ class ProductController extends Controller
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }
+    }
+
+    /**
+     * A POS-only product is stocked for the till, not the website. Every
+     * listing already hides it, so this is the direct-link case: someone who
+     * kept the URL, or a link shared before the product was switched over.
+     */
+    private function abortIfPosOnly(Product $product): void
+    {
+        abort_if($product->pos_only == Ask::YES, 404);
     }
 
     public function relatedProducts(Product $product, PaginateRequest $request): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

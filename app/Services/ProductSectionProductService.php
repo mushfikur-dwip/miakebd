@@ -90,6 +90,7 @@ class ProductSectionProductService
                 ->withReviewRating()
                 ->with('media', 'variations', 'taxes')
                 ->active('products.status')
+                ->storefront()
                 ->paginate($perPage);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());

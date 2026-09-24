@@ -37,22 +37,10 @@ class AppServiceProvider extends ServiceProvider
         // `storage.local`. When the symlink exists the web server answers
         // first and the route never runs.
         $this->app->booted(function () {
+            // PublicStorageFile does the work - path confinement, a media-only
+            // allow-list and a sandbox header - shared with routes/web.php.
             Route::get('/storage/{path}', function (string $path) {
-                $base = realpath(storage_path('app/public'));
-                $file = $base === false ? false : realpath($base . DIRECTORY_SEPARATOR . $path);
-
-                // realpath resolves any ../ segments; confine the answer to
-                // the public disk root.
-                if ($file === false || !str_starts_with($file, $base . DIRECTORY_SEPARATOR) || !is_file($file)) {
-                    abort(404);
-                }
-
-                // Media URLs are unique per upload (a replaced image gets a
-                // new media id), so a year-long immutable cache is safe and
-                // lets the CDN absorb what should have been a static file.
-                return response()->file($file, [
-                    'Cache-Control' => 'public, max-age=31536000, immutable',
-                ]);
+                return \App\Support\PublicStorageFile::respond($path);
             })->where('path', '.*');
         });
     }

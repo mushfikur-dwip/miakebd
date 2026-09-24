@@ -49,7 +49,14 @@ class ProductController extends AdminController implements HasMiddleware
             new Middleware('permission:products_delete', only: ['destroy']),
             new Middleware('permission:products_delete', only: ['deleteImage']),
             new Middleware('permission:products_show', only: ['show']),
-            new Middleware('permission:products_show', only: ['shippingAndReturn']),
+            // Writes storefront HTML (rendered with v-html), so it needs edit
+            // rights, not the read-only products_show it used to ask for.
+            new Middleware('permission:products_edit', only: ['shippingAndReturn']),
+            // Offer and image order change what the storefront charges and
+            // shows. These had no entry at all: any customer could set a
+            // product to 100% off, and OrderPriceGuard then accepted 0 as the
+            // genuine price.
+            new Middleware('permission:products_edit', only: ['productOffer', 'clearOffer', 'reorderImages']),
             new Middleware('permission:products_show', only: ['downloadBarcode']),
         ];
     }

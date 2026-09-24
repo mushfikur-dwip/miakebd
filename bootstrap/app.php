@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ApiKeyMiddleware;
+use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\Installed;
 use App\Http\Middleware\localization;
@@ -68,6 +69,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'localization' => localization::class,
             'installed' => Installed::class,
             'active' => EnsureUserIsActive::class,
+            'staff' => EnsureStaff::class,
 
         ]);
     })

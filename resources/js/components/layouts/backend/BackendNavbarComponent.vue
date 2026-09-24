@@ -119,7 +119,7 @@
 
 import { loadLocale } from "../../../i18n";
 import activityEnum from "../../../enums/modules/activityEnum";
-import _ from "lodash";
+import forEach from "lodash/forEach";
 import alertService from "../../../services/alertService";
 import targetService from "../../../services/targetService";
 import appService from "../../../services/appService";
@@ -271,7 +271,7 @@ export default {
         posPermissionCheck: function () {
             const permissions = this.$store.getters.authPermission;
             if (permissions.length > 0) {
-                _.forEach(permissions, (permission) => {
+                forEach(permissions, (permission) => {
                     if (permission.name === 'pos') {
                         if (permission.access === true) {
                             this.pos.permission = true;
@@ -284,7 +284,7 @@ export default {
         orderPermissionCheck: function () {
             const permissions = this.$store.getters.authPermission;
             if (permissions.length > 0) {
-                _.forEach(permissions, (permission) => {
+                forEach(permissions, (permission) => {
                     if (permission.name === 'online-orders') {
                         if (permission.access === true) {
                             this.orderNotification.permission = true;

@@ -19,7 +19,25 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // The storefront and admin are served from APP_URL itself (www and http
+    // both 301 there), so no other site needs to read these responses. Extra
+    // origins, if one is ever needed: CORS_ALLOWED_ORIGINS=https://a,https://b
+    'allowed_origins' => array_values(array_unique(array_filter(array_merge(
+        array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))),
+        (static function (): array {
+            $url  = (string) env('APP_URL', '');
+            $host = parse_url($url, PHP_URL_HOST);
+            if (!$host) {
+                return [];
+            }
+            $scheme = parse_url($url, PHP_URL_SCHEME) ?: 'https';
+            $bare   = preg_replace('/^www\./i', '', $host);
+            $port   = parse_url($url, PHP_URL_PORT);
+            $suffix = $port ? ':' . $port : '';
+
+            return [$scheme . '://' . $bare . $suffix, $scheme . '://www.' . $bare . $suffix];
+        })()
+    )))),
 
     'allowed_origins_patterns' => [],
 

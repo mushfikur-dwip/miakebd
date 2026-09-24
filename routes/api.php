@@ -140,7 +140,9 @@ Route::match(['get', 'post'], '/login', function () {
     return response()->json(['errors' => 'unauthenticated'], 401);
 })->name('login');
 
-Route::match(['get', 'post'], '/refresh-token', [RefreshTokenController::class, 'refreshToken'])->middleware(['installed']);
+// Throttled: it takes a token and mints another, so an unthrottled endpoint was
+// a free oracle for guessing them.
+Route::match(['get', 'post'], '/refresh-token', [RefreshTokenController::class, 'refreshToken'])->middleware(['installed', 'throttle:10,1']);
 
 Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->namespace('Auth')->group(function () {
     // Throttled against password spraying — nothing in this group was rate
@@ -210,7 +212,12 @@ Route::prefix('profile')->middleware(['installed', 'apiKey', 'auth:sanctum', 'lo
 // used to walk ids at full speed looking for an endpoint that forgot one - and
 // several had. 300/minute per user is far above what the POS or any admin
 // screen generates, and far below what enumeration needs.
-Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:300,1'])->group(function () {
+//
+// 'staff' because "every controller is guarded by a permission" was not true:
+// methods missing from a controller's `only:` list were open to any token, and
+// guest checkout hands a token to anyone with a phone number. Customers now stop
+// here, whatever a controller forgets. See EnsureStaff.
+Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle:300,1'])->group(function () {
     Route::prefix('timezone')->group(function () {
         Route::get('/', [TimezoneController::class, 'index']);
     });
@@ -350,16 +357,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:300,1'])
         Route::prefix('sms-gateway')->group(function () {
             Route::get('/', [SmsGatewayController::class, 'index']);
             Route::match(['put', 'patch'], '/', [SmsGatewayController::class, 'update']);
-        });
-
-        Route::prefix('customer-message')->group(function () {
-            Route::get('/', [SmsCampaignController::class, 'index']);
-            Route::get('/audience', [SmsCampaignController::class, 'audience']);
-            Route::get('/show/{smsCampaign}', [SmsCampaignController::class, 'show']);
-            Route::post('/', [SmsCampaignController::class, 'store']);
-            Route::post('/test', [SmsCampaignController::class, 'test']);
-            Route::post('/{smsCampaign}/batch', [SmsCampaignController::class, 'batch']);
-            Route::post('/{smsCampaign}/pause', [SmsCampaignController::class, 'pause']);
         });
 
         Route::prefix('slider')->group(function () {
@@ -629,6 +626,20 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:300,1'])
         Route::delete('/address/{customer}/{address}', [CustomerAddressController::class, 'destroy']);
     });
 
+    // Sits beside `customer`, one level under `admin`, NOT inside the `setting`
+    // group further up - that group's prefix would make these
+    // /api/admin/setting/customer-message and the page calls
+    // /api/admin/customer-message.
+    Route::prefix('customer-message')->group(function () {
+        Route::get('/', [SmsCampaignController::class, 'index']);
+        Route::get('/audience', [SmsCampaignController::class, 'audience']);
+        Route::get('/show/{smsCampaign}', [SmsCampaignController::class, 'show']);
+        Route::post('/', [SmsCampaignController::class, 'store']);
+        Route::post('/test', [SmsCampaignController::class, 'test']);
+        Route::post('/{smsCampaign}/batch', [SmsCampaignController::class, 'batch']);
+        Route::post('/{smsCampaign}/pause', [SmsCampaignController::class, 'pause']);
+    });
+
     Route::prefix('employee')->group(function () {
         Route::get('/', [EmployeeController::class, 'index']);
         Route::post('/', [EmployeeController::class, 'store']);
@@ -820,7 +831,8 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:300,1'])
     Route::prefix('online-order')->group(function () {
         Route::get('/', [OnlineOrderController::class, 'index']);
         Route::get('/show/{order}', [OnlineOrderController::class, 'show']);
-        Route::delete('/{order}', [OnlineOrderController::class, 'destroy']);
+        // No DELETE: OnlineOrderController has no destroy(), so the route only
+        // ever produced a 500.
         Route::get('/export', [OnlineOrderController::class, 'export']);
         Route::post('/change-status/{order}', [OnlineOrderController::class, 'changeStatus']);
         Route::post('/change-payment-status/{order}', [OnlineOrderController::class, 'changePaymentStatus']);
@@ -893,7 +905,7 @@ Route::group(['prefix' => 'frontend'], function () {
     Route::prefix('address')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendAddressController::class, 'index']);
         Route::get('/show/{address}', [FrontendAddressController::class, 'show']);
-        Route::post('/', [FrontendAddressController::class, 'store']);
+        Route::post('/', [FrontendAddressController::class, 'store'])->middleware('throttle:20,1');
         Route::match(['put', 'patch'], '/{address}', [FrontendAddressController::class, 'update']);
         Route::delete('/{address}', [FrontendAddressController::class, 'destroy']);
     });
@@ -983,12 +995,13 @@ Route::group(['prefix' => 'frontend'], function () {
 
     Route::prefix('wishlist')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendWishlistController::class, 'index']);
-        Route::post('/toggle', [FrontendWishlistController::class, 'toggle']);
+        Route::post('/toggle', [FrontendWishlistController::class, 'toggle'])->middleware('throttle:60,1');
     });
 
     Route::prefix('coupon')->group(function () {
         Route::get('/', [FrontendCouponController::class, 'index']);
-        Route::post('/coupon-checking', [FrontendCouponController::class, 'couponChecking']);
+        // Throttled: coupon codes are short and guessable.
+        Route::post('/coupon-checking', [FrontendCouponController::class, 'couponChecking'])->middleware('throttle:10,1');
     });
 
     Route::prefix('payment-gateway')->group(function () {
@@ -1002,17 +1015,17 @@ Route::group(['prefix' => 'frontend'], function () {
     Route::prefix('order')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendOrderController::class, 'index']);
         Route::get('/show/{frontendOrder}', [FrontendOrderController::class, 'show']);
-        Route::post('/', [FrontendOrderController::class, 'store']);
-        Route::post('/change-status/{frontendOrder}', [FrontendOrderController::class, 'changeStatus']);
+        Route::post('/', [FrontendOrderController::class, 'store'])->middleware('throttle:10,1');
+        Route::post('/change-status/{frontendOrder}', [FrontendOrderController::class, 'changeStatus'])->middleware('throttle:20,1');
     });
 
     Route::prefix('device-token')->middleware(['auth:sanctum'])->group(function () {
-        Route::post('/web', [TokenStoreController::class, 'webToken']);
-        Route::post('/mobile', [TokenStoreController::class, 'deviceToken']);
+        Route::post('/web', [TokenStoreController::class, 'webToken'])->middleware('throttle:20,1');
+        Route::post('/mobile', [TokenStoreController::class, 'deviceToken'])->middleware('throttle:20,1');
     });
 
     Route::prefix('subscriber')->group(function () {
-        Route::post('/', [FrontendSubscriberController::class, 'store']);
+        Route::post('/', [FrontendSubscriberController::class, 'store'])->middleware('throttle:5,1');
     });
 
     Route::prefix('return-reason')->middleware(['auth:sanctum'])->group(function () {
@@ -1021,7 +1034,7 @@ Route::group(['prefix' => 'frontend'], function () {
 
     Route::prefix('return-order')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/', [FrontendReturnAndRefundController::class, 'index']);
-        Route::post('/request/{order}', [FrontendReturnAndRefundController::class, 'store']);
+        Route::post('/request/{order}', [FrontendReturnAndRefundController::class, 'store'])->middleware('throttle:5,1');
         Route::get('/show/{returnAndRefund}', [FrontendReturnAndRefundController::class, 'show']);
     });
 
@@ -1038,16 +1051,16 @@ Route::group(['prefix' => 'frontend'], function () {
     });
 
     Route::prefix('product-review')->middleware(['auth:sanctum'])->group(function () {
-        Route::post('/', [ProductReviewController::class, 'store']);
+        Route::post('/', [ProductReviewController::class, 'store'])->middleware('throttle:10,1');
         Route::get('/show/{productReview}', [ProductReviewController::class, 'show']);
-        Route::match(['post', 'put', 'patch'], '/{productReview}', [ProductReviewController::class, 'update']);
-        Route::post('/upload-image/{productReview}', [ProductReviewController::class, 'uploadImage']);
+        Route::match(['post', 'put', 'patch'], '/{productReview}', [ProductReviewController::class, 'update'])->middleware('throttle:20,1');
+        Route::post('/upload-image/{productReview}', [ProductReviewController::class, 'uploadImage'])->middleware('throttle:20,1');
         Route::get('/delete-image/{productReview}/{index}', [ProductReviewController::class, 'deleteImage']);
     });
 
     Route::prefix('cookies')->group(function () {
         Route::get('/', [FrontendCookiesController::class, 'get']);
-        Route::post('/', [FrontendCookiesController::class, 'set']);
+        Route::post('/', [FrontendCookiesController::class, 'set'])->middleware('throttle:30,1');
     });
 
     Route::prefix('country-state-city')->group(function () {

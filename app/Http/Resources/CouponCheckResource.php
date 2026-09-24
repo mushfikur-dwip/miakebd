@@ -2,8 +2,8 @@
 
 namespace App\Http\Resources;
 
-use App\Enums\DiscountType;
 use App\Libraries\AppLibrary;
+use App\Support\OrderTotals;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class CouponCheckResource extends JsonResource
@@ -26,22 +26,10 @@ class CouponCheckResource extends JsonResource
         ];
     }
 
+    // One formula for the quote and for the order: OrderTotals checks the
+    // discount an order claims against this same figure.
     public function amount($request)
     {
-        if ($this->discount_type == DiscountType::FIXED) {
-            $amount = $this->discount;
-            if ($amount > $this->maximum_discount) {
-                return $this->maximum_discount;
-            } else {
-                return $amount;
-            }
-        } else {
-            $amount = ($request->total * ($this->discount) / 100);
-            if ($amount > $this->maximum_discount) {
-                return $this->maximum_discount;
-            } else {
-                return $amount;
-            }
-        }
+        return OrderTotals::couponDiscount($this->resource, (float) $request->total);
     }
 }

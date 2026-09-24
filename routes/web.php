@@ -97,11 +97,13 @@ Route::prefix('blog')->middleware(['installed'])->group(function () {
 });
 
 Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(function () {
-    Route::get('/{paymentGateway:slug}/pay/{order}', [PaymentController::class, 'index'])->name('index');
-    Route::post('/{order}/pay', [PaymentController::class, 'payment'])->name('store');
-    Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/success', [PaymentController::class, 'success'])->name('success');
-    Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/fail', [PaymentController::class, 'fail'])->name('fail');
-    Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/cancel', [PaymentController::class, 'cancel'])->name('cancel');
+    // Throttled: each of these takes an order id from the URL, and success
+    // makes an outbound call to the gateway per request.
+    Route::get('/{paymentGateway:slug}/pay/{order}', [PaymentController::class, 'index'])->middleware('throttle:30,1')->name('index');
+    Route::post('/{order}/pay', [PaymentController::class, 'payment'])->middleware('throttle:10,1')->name('store');
+    Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/success', [PaymentController::class, 'success'])->middleware('throttle:30,1')->name('success');
+    Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/fail', [PaymentController::class, 'fail'])->middleware('throttle:30,1')->name('fail');
+    Route::match(['get', 'post'], '/{paymentGateway:slug}/{order}/cancel', [PaymentController::class, 'cancel'])->middleware('throttle:30,1')->name('cancel');
     // Throttled because the route takes an order id and no credential — the
     // per-order idempotency guard in the controller is the real protection, but
     // this keeps anyone from sweeping the id range at speed.
@@ -121,22 +123,11 @@ Route::prefix('payment')->name('payment.')->middleware(['installed'])->group(fun
 // Serving the bytes here sidesteps all of that. Declared before the fallback so
 // it wins over the SPA shell; when a working symlink IS present the web server
 // answers first and this route never runs.
+// App\Support\PublicStorageFile does the work - path confinement, a media-only
+// allow-list and a sandbox header. AppServiceProvider registers the same route
+// again after the framework's storage.local; both call the one implementation.
 Route::get('/storage/{path}', function (string $path) {
-    $base = realpath(storage_path('app/public'));
-    $file = $base === false ? false : realpath($base . DIRECTORY_SEPARATOR . $path);
-
-    // realpath() has already collapsed any ../ segments, so this prefix test is
-    // what keeps a crafted path from escaping the disk root.
-    if ($file === false || !str_starts_with($file, $base . DIRECTORY_SEPARATOR) || !is_file($file)) {
-        abort(404);
-    }
-
-    // A replaced image gets a new media id and therefore a new URL, so these are
-    // immutable. Long caching lets the CDN absorb the load rather than asking
-    // PHP for every thumbnail on every page.
-    return response()->file($file, [
-        'Cache-Control' => 'public, max-age=31536000, immutable',
-    ]);
+    return \App\Support\PublicStorageFile::respond($path);
 })->where('path', '.*');
 
 Route::fallback(function (\Illuminate\Http\Request $request) {

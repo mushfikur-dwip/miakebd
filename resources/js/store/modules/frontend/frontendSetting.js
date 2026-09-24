@@ -8,6 +8,9 @@ import appService from "../../../services/appService";
  */
 let inFlight = null;
 
+/** The server-rendered settings are good for the first dispatch only. */
+let bootUsed = false;
+
 export const frontendSetting = {
     namespaced: true,
     state: {
@@ -31,6 +34,22 @@ export const frontendSetting = {
             // snapshot forever.
             if (inFlight && !payload) {
                 return inFlight;
+            }
+
+            // The page carries the settings (see master.blade.php), so the
+            // first visit does not wait for a round trip before the header,
+            // logo and prices can be drawn. Used once, for the plain dispatch:
+            // an explicit one (language switch, admin save) still refetches.
+            if (!payload && !bootUsed) {
+                bootUsed = true;
+                const boot = typeof window !== "undefined" ? window.__BOOT_SETTING__ : null;
+
+                if (boot && Object.keys(boot).length > 0) {
+                    context.commit("lists", boot);
+
+                    // Same shape the callers read (res.data.data).
+                    return Promise.resolve({ data: { data: boot } });
+                }
             }
 
             let url = "frontend/setting";

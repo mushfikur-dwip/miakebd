@@ -114,6 +114,7 @@
         "campaigns": "الحملات"
     },
     "label": {
+        "pos_only": "نقطة البيع فقط",
         "license_code": "رمز الترخيص",
         "previous": "السابق",
         "next": "التالي",
@@ -938,6 +939,7 @@
         "something_wrong": ".هناك خطأ ما"
     },
     "message": {
+        "pos_only_hint": "يُباع في المتجر فقط. لا يظهر في أي مكان على الموقع، ولا عبر رابطه، لكن يمكن بيعه من نقطة البيع.",
         "pagination_label": ".عرض {from} إلى {to} من إجمالي العناصر {total}",
         "continue_shopping": ".تسجيل الدخول لمتابعة التسوق",
         "dont_have_account": "ليس لديك حساب؟",

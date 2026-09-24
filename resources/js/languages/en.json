@@ -119,6 +119,7 @@
         "campaigns": "Campaigns"
     },
     "label": {
+        "pos_only": "POS Only",
         "license_code": "License Code",
         "previous": "Previous",
         "next": "Next",
@@ -1027,6 +1028,7 @@
         "something_wrong": "Something Wrong."
     },
     "message": {
+        "pos_only_hint": "Sold at the till only. The product is hidden everywhere on the website, including its own link, but can still be billed in POS.",
         "pagination_label": "Showing {from} to {to} of {total} entries",
         "continue_shopping": "Sign in to continue shopping",
         "dont_have_account": "Don’t have an account?",

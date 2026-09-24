@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Ask;
 use App\Enums\Status;
 use App\Models\Concerns\HasOutletStock;
 use App\Models\Concerns\ResolvesMediaUrls;
@@ -35,6 +36,7 @@ class Product extends Model implements HasMedia
         'status',
         'order',
         'can_purchasable',
+        'pos_only',
         'show_stock_out',
         'maximum_purchase_quantity',
         'low_stock_quantity_warning',
@@ -85,6 +87,25 @@ class Product extends Model implements HasMedia
         'is_product_quantity_multiply' => 'integer',
 
     ];
+
+    /**
+     * Products the website may show.
+     *
+     * A product marked "POS only" is stocked in the shop and sellable at the
+     * till, but must not appear anywhere the public can reach: listings,
+     * search, category and brand pages, flash sale, campaigns, promotions,
+     * sections, related products, the sitemap, or its own URL.
+     *
+     * Written as "anything that is not explicitly YES", so a row that predates
+     * the column, or one a bulk import left NULL, stays public. Hiding is
+     * always the deliberate choice.
+     */
+    public function scopeStorefront($query)
+    {
+        return $query->where(function ($query) {
+            $query->where('pos_only', '!=', Ask::YES)->orWhereNull('pos_only');
+        });
+    }
 
     public function scopeActive($query, $col = 'status')
     {

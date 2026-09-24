@@ -127,6 +127,7 @@ import sourceEnum from "../../../../enums/modules/sourceEnum";
 import askEnum from "../../../../enums/modules/askEnum";
 import menuSectionEnum from "../../../../enums/modules/menuSectionEnum";
 import ENV from "../../../../config/env";
+import pixelService from "../../../../services/pixelService";
 import ActivityEnum from "../../../../enums/modules/activityEnum";
 
 export default {
@@ -221,6 +222,10 @@ export default {
         },
     },
     mounted() {
+        // "Reached checkout but did not buy" - the audience worth retargeting
+        // hardest, and the step Meta optimises towards before a purchase exists.
+        pixelService.initiateCheckout(this.products, this.total);
+
         this.loading.isActive = true;
         this.$store.dispatch('frontendPaymentGateway/lists', { status: this.statusEnum.ACTIVE }).then(res => {
             if (res.data.data.length > 0) {

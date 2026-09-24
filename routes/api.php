@@ -120,6 +120,7 @@ use App\Http\Controllers\Frontend\SettingController as FrontendSettingController
 use App\Http\Controllers\Frontend\SliderController as FrontendSliderController;
 use App\Http\Controllers\Frontend\SubscriberController as FrontendSubscriberController;
 use App\Http\Controllers\Frontend\TokenStoreController;
+use App\Http\Controllers\Frontend\TrackingController;
 use App\Http\Controllers\Frontend\FrontendWalletController;
 use App\Http\Controllers\Frontend\WishlistController as FrontendWishlistController;
 use Illuminate\Support\Facades\Auth;
@@ -1062,6 +1063,12 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::get('/', [FrontendCookiesController::class, 'get']);
         Route::post('/', [FrontendCookiesController::class, 'set'])->middleware('throttle:30,1');
     });
+
+    // Mirrors the browser pixel's events to Meta's Conversions API, so an ad
+    // blocker or iOS cannot hide them. Throttled because each call makes an
+    // outbound request; the controller prices everything from the database, so
+    // nothing here can inflate what ads are optimised on.
+    Route::post('/track', [TrackingController::class, 'store'])->middleware('throttle:60,1');
 
     Route::prefix('country-state-city')->group(function () {
         Route::get('/countries', [FrontendCountryStateCityController::class, 'countries']);

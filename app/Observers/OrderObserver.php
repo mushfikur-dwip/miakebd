@@ -2,12 +2,17 @@
 
 namespace App\Observers;
 
+use App\Enums\AddressType;
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
+use App\Enums\Source;
 use App\Models\Order;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletSetting;
+use App\Services\MetaConversionsService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OrderObserver
 {
@@ -16,7 +21,51 @@ class OrderObserver
      */
     public function created(Order $order): void
     {
-        //
+        $this->reportPurchaseToMeta($order);
+    }
+
+    /**
+     * The Purchase event, sent from here rather than only from the browser.
+     *
+     * The browser's copy is lost whenever an ad blocker, iOS or a closed tab
+     * gets in the way, and a missing Purchase is a sale the ad never gets
+     * credit for. Both copies carry the same event_id - "order-{id}" - so Meta
+     * keeps one and discards the duplicate.
+     *
+     * Till orders are excluded: nobody clicked an ad to reach the counter, and
+     * reporting them would flatter every campaign.
+     */
+    private function reportPurchaseToMeta(Order $order): void
+    {
+        try {
+            if ((int) $order->source === Source::POS || (int) $order->order_type === OrderType::POS) {
+                return;
+            }
+
+            $meta = app(MetaConversionsService::class);
+
+            if (!$meta->enabled()) {
+                return;
+            }
+
+            $address = optional($order->address()->where('address_type', AddressType::SHIPPING)->first());
+
+            $meta->queue(
+                'Purchase',
+                'order-' . $order->id,
+                $meta->userData($order->user, request(), [
+                    'city'     => $address->city,
+                    'state'    => $address->state,
+                    'zip_code' => $address->zip_code,
+                    'country'  => $address->country,
+                ]),
+                $meta->orderCustomData($order->fresh('orderProducts')),
+                url('/account/order-details/' . $order->id)
+            );
+        } catch (\Throwable $e) {
+            // An ad platform must never be able to break an order.
+            Log::warning('Could not queue the Meta Purchase event: ' . $e->getMessage());
+        }
     }
 
     /**

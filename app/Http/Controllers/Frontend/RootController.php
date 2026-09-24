@@ -12,6 +12,7 @@ use App\Models\ThemeSetting;
 use App\Support\BlogMetaResolver;
 use App\Support\CategoryMetaResolver;
 use App\Support\MediaUrl;
+use App\Support\MetaPixel;
 use App\Support\SeoSchema;
 use App\Services\SettingService;
 use Illuminate\Support\Facades\Log;
@@ -203,6 +204,10 @@ class RootController extends Controller
             // slowest visit of all: the first one. The settings package caches
             // these groups, so building it here costs almost nothing.
             'bootSetting' => $this->bootSetting(),
+            // Meta Pixel: the id, and whether this page still has to load the
+            // base code (it must not when the shop already pasted the snippet
+            // into Analytics). See App\Support\MetaPixel.
+            'metaPixel' => MetaPixel::resolve($analytics),
         ]);
     }
 

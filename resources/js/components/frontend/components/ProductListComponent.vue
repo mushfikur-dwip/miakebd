@@ -79,6 +79,7 @@
 import starRating from "vue-star-rating";
 import router from "../../../router";
 import alertService from "../../../services/alertService";
+import pixelService from "../../../services/pixelService";
 import ProductImage from "./ProductImage";
 export default {
     name: "ProductListComponent",
@@ -143,6 +144,8 @@ export default {
                 price_source: product.price_source || 'catalogue',
                 campaign_id: product.campaign_id || null
             };
+
+            pixelService.addToCart(product, 1);
 
             this.$store.dispatch("frontendCart/lists", productArray).then((res) => {
                 alertService.success(this.$t('message.add_to_cart'));

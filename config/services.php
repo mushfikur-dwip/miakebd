@@ -35,4 +35,24 @@ return [
         ],
     ],
 
+    // Meta (Facebook) Pixel. Optional: App\Support\MetaPixel also picks the id
+    // up from a `site_meta_pixel_id` setting, or out of the snippet pasted into
+    // Admin -> Analytics.
+    'meta_pixel' => [
+        'id' => env('META_PIXEL_ID'),
+
+        // Conversions API. With no token the server sends nothing and the
+        // browser pixel carries on alone, so this is safe to leave empty.
+        'token'       => env('META_CAPI_TOKEN'),
+        // Set while checking Events Manager -> Test events, then remove.
+        'test_code'   => env('META_CAPI_TEST_CODE'),
+        'api_version' => env('META_API_VERSION', 'v21.0'),
+
+        // Which product field the Facebook catalogue is keyed on: 'id' or
+        // 'sku'. Dynamic product ads only match when this agrees with the
+        // feed's id column. The browser and the server both read it here, so
+        // the two can never disagree.
+        'content_id'  => env('META_CONTENT_ID', 'id'),
+    ],
+
 ];

@@ -277,6 +277,43 @@
          the structured data above uses them: this sits inside a <script>. --}}
     <script>window.__BOOT_SETTING__ = {!! json_encode($bootSetting ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};</script>
 
+    {{-- ==================== META PIXEL ====================
+         The base code loads here, in the document, so a visitor arriving from
+         an ad is counted before the Vue bundle has even parsed. The shop is a
+         single-page app, so the rest of the funnel - PageView on every later
+         screen, ViewContent, AddToCart, InitiateCheckout, Purchase, and the
+         customer's own details for Advanced Matching - is fired from
+         resources/js/services/pixelService.js.
+
+         Nothing is printed when the id is unknown, and `render_base` is false
+         when the snippet is already pasted in Admin -> Analytics, so the pixel
+         is never initialised twice (which would double every number). --}}
+    @if (!blank($metaPixel['id'] ?? null))
+        <script>window.__BOOT_PIXEL__ = {!! json_encode([
+            'id'         => $metaPixel['id'],
+            'currency'   => $metaPixel['currency'] ?? 'BDT',
+            'content_id' => $metaPixel['content_id'] ?? 'id',
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};</script>
+
+        @if ($metaPixel['render_base'])
+            <script>
+                !function(f,b,e,v,n,t,s)
+                {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                n.queue=[];t=b.createElement(e);t.async=!0;
+                t.src=v;s=b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t,s)}(window, document,'script',
+                'https://connect.facebook.net/en_US/fbevents.js');
+                fbq('init', "{{ $metaPixel['id'] }}");
+                fbq('track', 'PageView');
+            </script>
+            <noscript><img height="1" width="1" style="display:none"
+                src="https://www.facebook.com/tr?id={{ $metaPixel['id'] }}&ev=PageView&noscript=1" alt=""/></noscript>
+        @endif
+    @endif
+    {{-- ==================== END META PIXEL ==================== --}}
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @if (!blank($analytics))

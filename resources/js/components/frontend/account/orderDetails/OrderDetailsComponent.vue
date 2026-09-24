@@ -302,6 +302,7 @@ import orderStatusEnum from "../../../../enums/modules/orderStatusEnum";
 import paymentStatusEnum from "../../../../enums/modules/paymentStatusEnum";
 import addressTypeEnum from "../../../../enums/modules/addressTypeEnum";
 import appService from "../../../../services/appService";
+import pixelService from "../../../../services/pixelService";
 import alertService from "../../../../services/alertService";
 import targetService from "../../../../services/targetService";
 import { useRoute } from 'vue-router'
@@ -416,6 +417,14 @@ export default {
             this.loading.isActive = true;
             this.$store.dispatch("frontendOrder/show", this.$route.params.id).then(res => {
                 this.loading.isActive = false;
+
+                // The conversion, reported once per order - this page can be
+                // reloaded or reopened from the order list, and every reload
+                // would otherwise be counted as another sale (pixelService
+                // keeps the ids it has already sent).
+                if (this.justOrdered) {
+                    pixelService.purchase(res.data.data);
+                }
             }).catch((error) => {
                 this.loading.isActive = false;
             });

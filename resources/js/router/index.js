@@ -10,6 +10,7 @@ import NotFoundComponent from "../components/exception/NotFoundComponent.vue";
 import ENV from "../config/env";
 import appService from "../services/appService";
 import store, { registerAdminModules } from "../store";
+import pixelService from "../services/pixelService";
 import administratorRoutes from "./modules/administratorRoutes";
 import authRoutes from "./modules/authRoutes";
 import blogRoutes from "./modules/blogRoutes";
@@ -163,4 +164,24 @@ router.beforeEach(async (to, from, next) => {
         next();
     }
 });
+
+/**
+ * The shop is a single-page app: the Pixel's base code fires PageView once,
+ * for the screen the visitor landed on, and would never hear about any other.
+ * Meta's "people who visited" audiences are built from these, so every screen
+ * has to report itself.
+ *
+ * `from.name` is null only for that first navigation, which the base code has
+ * already counted - counting it again would double every landing.
+ */
+router.afterEach((to, from) => {
+    if (from.name) {
+        pixelService.pageView();
+    }
+
+    // Cheap and de-duplicated inside: picks up the customer's details as soon
+    // as they log in, claim a guest checkout or choose a delivery address.
+    pixelService.identifyFromStore(store);
+});
+
 export default router;

@@ -274,6 +274,7 @@ import { FreeMode, Navigation, Thumbs } from 'swiper/modules';
 import LoadingComponent from "../components/LoadingComponent";
 import starRating from "vue-star-rating";
 import targetService from "../../../services/targetService";
+import pixelService from "../../../services/pixelService";
 import router from "../../../router";
 import CategoryBreadcrumbComponent from "../components/CategoryBreadcrumbComponent";
 import ProductListComponent from "../components/ProductListComponent";
@@ -444,6 +445,12 @@ export default {
                 this.loading.isActive = true;
                 this.props.search.slug = this.$route.params.slug;
                 this.$store.dispatch("frontendProduct/show", this.props.search).then((res) => {
+                    // The event an ad click is retargeted from: it tells Meta
+                    // which product this visitor looked at, which is what
+                    // catalogue ads and "viewed but did not buy" audiences are
+                    // built on.
+                    pixelService.viewContent(res.data.data);
+
                     this.initProduct = {
                         isVariation: false,
                         variationId: null,
@@ -637,6 +644,12 @@ export default {
             }
 
             this.enableAddToCardButton = true;
+
+            pixelService.addToCart(
+                { id: this.temp.productId, sku: this.temp.sku, name: this.temp.name, price: this.temp.price },
+                this.temp.quantity
+            );
+
             this.productArray = {
                 name: this.temp.name,
                 product_id: this.temp.productId,

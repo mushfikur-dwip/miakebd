@@ -794,6 +794,7 @@ class ProductService
                 })->whereNotNull('id')->reject(function ($brand) {
                     return (bool) ($brand->is_default ?? false);
                 })->unique('id')->values()->all(),
+                'variations' => $variationArray,
                 'max_price'  => ceil($productCategory->max('variation_price') + 50),
             ]);
         } catch (Exception $exception) {

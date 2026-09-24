@@ -27,6 +27,10 @@ class OrderProductResource extends JsonResource
             'product_name'            => $this->product?->name,
             'product_image'           => $this->product?->thumb,
             'product_slug'            => $this->product?->slug,
+            // The product's own SKU, for the pixel's Purchase when the
+            // catalogue is keyed on SKU (META_CONTENT_ID=sku). The line's `sku`
+            // column can be a variation's, which the catalogue does not list.
+            'product_sku'             => $this->product?->sku,
             'category_name'           => $this?->product?->category?->name,
             'price'                   => $this->price,
             'currency_price'          => AppLibrary::currencyAmountFormat($this->price),

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ApiKeyMiddleware;
+use App\Http\Middleware\CaptureMetaClickIds;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\Installed;
@@ -44,6 +45,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append([
             SecurityHeaders::class,
         ]);
+        // Page loads only: saves Meta's ad-click and browser ids as cookies so
+        // a sale is still credited to its ad when the pixel script is blocked.
+        $middleware->web(append: [
+            CaptureMetaClickIds::class,
+        ]);
+        // Meta's own cookies, read by its pixel in the browser and by the
+        // Conversions API on the server. Encrypting them would make both see
+        // gibberish. They hold Meta ids, nothing of ours.
+        $middleware->encryptCookies(except: ['_fbc', '_fbp']);
         $middleware->validateCsrfTokens(
             except: [
                 '/payment/sslcommerz/*',

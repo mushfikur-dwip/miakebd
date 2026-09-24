@@ -9,18 +9,118 @@ use App\Models\Product;
 
 class SeoSchema
 {
+    /**
+     * The product's price as the customer sees it, and its regular price when
+     * an offer is running. One place, because the JSON-LD, the social preview,
+     * the catalogue feed and the product page must never disagree on a price -
+     * Google and Meta both disapprove items whose markup contradicts the page.
+     *
+     * @return array{current: float, regular: float, on_sale: bool, sale_ends: ?string, sale_starts: ?string}
+     */
+    public static function pricing(Product $product): array
+    {
+        $regular = (float) (count($product->variations) > 0 ? $product->variation_price : $product->selling_price);
+        $onSale  = AppLibrary::isBetweenDate($product->offer_start_date, $product->offer_end_date)
+            && (float) $product->discount > 0;
+        $current = $onSale ? $regular - (($regular / 100) * (float) $product->discount) : $regular;
+
+        return [
+            'current'     => round($current, 2),
+            'regular'     => round($regular, 2),
+            'on_sale'     => $onSale && $current < $regular,
+            'sale_starts' => $onSale ? date('c', strtotime((string) $product->offer_start_date)) : null,
+            'sale_ends'   => $onSale ? date('c', strtotime((string) $product->offer_end_date)) : null,
+        ];
+    }
+
+    /**
+     * A name as it should be shown to a search engine: no control characters
+     * (a category here is stored as "\x1DSkin Care"), no doubled spaces.
+     */
+    public static function cleanName(?string $value): string
+    {
+        $value = html_entity_decode(strip_tags((string) $value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $value = preg_replace('/[\x00-\x1F\x7F]/u', ' ', $value);
+
+        return trim(preg_replace('/\s+/u', ' ', $value));
+    }
+
+    /**
+     * The brand worth naming - never the placeholder brand that products
+     * without one are filed under.
+     */
+    public static function brandName(Product $product): ?string
+    {
+        $brand = $product->brand;
+
+        if (!$brand || (bool) ($brand->is_default ?? false)) {
+            return null;
+        }
+
+        return self::cleanName($brand->name) ?: null;
+    }
+
+    /**
+     * A real description for a product nobody has written one for yet.
+     *
+     * Products added after the SEO import have no product_seos row, and some
+     * have no description either, so their only "description" was their own
+     * name repeated - which is what Google showed under the link, and all an
+     * AI assistant had to go on. This says
+     * what a shopper searching for the product wants to know: that it is
+     * genuine, what it costs, who makes it and how it arrives.
+     */
+    public static function fallbackDescription(Product $product): string
+    {
+        $name     = self::cleanName($product->name);
+        $brand    = self::brandName($product);
+        $category = self::cleanName($product->category?->name);
+        $price    = self::pricing($product)['current'];
+
+        $what = trim(($brand ? "100% authentic {$brand}" : '100% authentic') . ($category ? ' ' . mb_strtolower($category) : ''));
+
+        $parts = ["Buy {$name} in Bangladesh"];
+        if ($price > 0) {
+            $parts[0] .= ' at ৳' . number_format($price, 0);
+        }
+        $parts[] = "{$what}, sold by Suglow";
+        $parts[] = 'Cash on delivery across Bangladesh, delivered in 1-3 days';
+
+        return implode('. ', $parts) . '.';
+    }
+
+    /**
+     * Whether a stored description is real text rather than the product's
+     * name pasted back in.
+     */
+    public static function hasRealDescription(Product $product): bool
+    {
+        $description = self::plainText($product->seo?->description ?: $product->description);
+        $name        = self::cleanName($product->name);
+
+        return $description !== ''
+            && mb_strtolower(self::cleanName($description)) !== mb_strtolower($name)
+            && mb_strlen($description) >= 40;
+    }
+
+    /** The description to publish: the written one, or the generated one. */
+    public static function description(Product $product): string
+    {
+        return self::hasRealDescription($product)
+            ? self::plainText($product->seo?->description ?: $product->description)
+            : self::fallbackDescription($product);
+    }
+
     public static function product(Product $product): array
     {
-        $price = count($product->variations) > 0 ? $product->variation_price : $product->selling_price;
-        $currentPrice = AppLibrary::isBetweenDate($product->offer_start_date, $product->offer_end_date)
-            ? $price - (($price / 100) * $product->discount)
-            : $price;
+        $pricing = self::pricing($product);
+        $currentPrice = $pricing['current'];
         $inStock = self::isInStock($product);
         // Config-derived for the same reason as the canonical in
         // RootController: this URL becomes the schema @id and Offer.url, and
         // must not vary with the host the request happened to use.
-        $url = rtrim((string) config('app.url'), '/') . '/product/' . rawurlencode($product->slug);
-        $description = self::plainText($product->seo?->description ?: $product->description ?: $product->name);
+        $siteUrl = rtrim((string) config('app.url'), '/');
+        $url = $siteUrl . '/product/' . rawurlencode($product->slug);
 
         $schema = [
             '@context' => 'https://schema.org',
@@ -30,20 +130,37 @@ class SeoSchema
             // ("Invalid string length in field name"). Ten products here run to
             // 190. Capped for the markup only — the page and the database keep
             // the full name.
-            'name' => self::limit((string) $product->name, 150),
-            'description' => $description,
+            'name' => self::limit(self::cleanName($product->name), 150),
+            // Google caps this at 5,000 characters.
+            'description' => self::limit(self::description($product), 5000),
             'url' => $url,
             'image' => array_values(array_filter($product->previews ?: [$product->cover])),
             'sku' => $product->sku,
-            'category' => $product->category?->name,
+            'category' => self::cleanName($product->category?->name) ?: null,
             'offers' => array_filter([
                 '@type' => 'Offer',
                 'url' => $url,
                 'priceCurrency' => 'BDT',
                 'price' => number_format((float) $currentPrice, 2, '.', ''),
+                // Only when the price really does expire - an offer's end.
+                // Google warns when it is missing, but an invented date would
+                // tell it the regular price stops being valid on that day.
+                'priceValidUntil' => $pricing['on_sale'] ? substr((string) $pricing['sale_ends'], 0, 10) : null,
+                // The regular price, shown struck through in Google's results
+                // while an offer runs.
+                'priceSpecification' => $pricing['on_sale'] ? [
+                    '@type' => 'UnitPriceSpecification',
+                    'priceType' => 'https://schema.org/StrikethroughPrice',
+                    'price' => number_format($pricing['regular'], 2, '.', ''),
+                    'priceCurrency' => 'BDT',
+                ] : null,
+                'itemCondition' => 'https://schema.org/NewCondition',
                 'availability' => $inStock
                     ? 'https://schema.org/InStock'
                     : 'https://schema.org/OutOfStock',
+                // The same entity the site-wide graph declares, so Google and
+                // AI answers attribute every offer to one known retailer.
+                'seller' => ['@id' => $siteUrl . '/#organization'],
                 'hasMerchantReturnPolicy' => self::returnPolicy(),
                 'shippingDetails' => self::shippingDetails(),
             ]),
@@ -56,8 +173,8 @@ class SeoSchema
             $schema += $gtin;
         }
 
-        if ($product->brand?->name) {
-            $schema['brand'] = ['@type' => 'Brand', 'name' => $product->brand->name];
+        if ($brand = self::brandName($product)) {
+            $schema['brand'] = ['@type' => 'Brand', 'name' => $brand];
         }
 
         if ((int) $product->rating_star_count > 0 && (float) $product->rating_star > 0) {
@@ -204,7 +321,7 @@ class SeoSchema
      *
      * @return array<string,string>|null
      */
-    private static function gtinFor(Product $product): ?array
+    public static function gtinFor(Product $product): ?array
     {
         $code = preg_replace('/\D/', '', (string) $product->sku);
 
@@ -264,7 +381,7 @@ class SeoSchema
     /**
      * Trim to a length on a word boundary. Mirrors CategoryMetaResolver::limit().
      */
-    private static function limit(string $value, int $length): string
+    public static function limit(string $value, int $length): string
     {
         $value = trim($value);
 
@@ -377,6 +494,27 @@ class SeoSchema
         }
 
         return (int) $product->stock_items_sum_quantity > 0;
+    }
+
+    /**
+     * Every block of a description as plain paragraphs - the meta
+     * description, the question-and-answer block and the product facts the
+     * SEO import wrote. plainText() keeps only the first, which is right for a
+     * <meta> tag; a catalogue feed or a crawler reading the page wants all of
+     * it, since that is exactly what an AI assistant quotes from.
+     *
+     * @return array<int,string>
+     */
+    public static function paragraphs(?string $value): array
+    {
+        $html = preg_replace('/<\s*(br|\/p|\/li|\/h[1-6]|\/div|\/tr)\s*\/?>/i', "\n", (string) $value);
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/[\x00-\x09\x0B-\x1F\x7F]/u', ' ', $text);
+
+        return array_values(array_filter(array_map(
+            fn ($line) => trim(preg_replace('/[ \t\x{A0}]+/u', ' ', $line)),
+            preg_split('/\R/u', $text)
+        ), fn ($line) => $line !== ''));
     }
 
     public static function plainText(?string $value): string

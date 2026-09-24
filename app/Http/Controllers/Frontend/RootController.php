@@ -38,8 +38,13 @@ class RootController extends Controller
             ->withReviewRating()
             ->findOrFail($product->id);
 
-        $description = SeoSchema::plainText($product->seo?->description ?: $product->description ?: $product->name);
-        $title = $product->seo?->title ?: $product->name;
+        // The written SEO description, or - for the products added since the
+        // SEO import, whose only description was their own name - one built
+        // from the product's real facts. See SeoSchema::fallbackDescription().
+        $description = SeoSchema::description($product);
+        // "... Price in Bangladesh" is how shoppers here search for a product,
+        // and it is the form the imported SEO titles already take.
+        $title = SeoSchema::cleanName($product->seo?->title) ?: SeoSchema::cleanName($product->name) . ' Price in Bangladesh';
         $keywordValues = json_decode((string) $product->seo?->meta_keyword, true);
         if (!is_array($keywordValues)) {
             // Legacy rows stored as a plain comma-separated string.
@@ -95,7 +100,72 @@ class RootController extends Controller
             // in one @graph. Commerce keeps reading $structuredData so the
             // og/product:* tags still cannot drift from the offers block.
             'structuredData' => SeoSchema::productPage($product),
+            'productPage' => $this->productFacts($product, $structuredData),
         ]);
+    }
+
+    /**
+     * What the page says about the product, as plain HTML for readers that
+     * never run JavaScript - ChatGPT, Perplexity, Claude and most AI crawlers,
+     * and Google before it renders. Until now they saw the product's name and
+     * a phone number; the price, brand, description and questions-and-answers
+     * existed only inside the Vue app.
+     *
+     * Everything here is what the app itself shows the customer, so it is the
+     * same page described twice, not separate content for robots.
+     */
+    private function productFacts(Product $product, array $schema): array
+    {
+        $siteUrl  = rtrim((string) config('app.url'), '/');
+        $pricing  = SeoSchema::pricing($product);
+        $category = $product->category;
+
+        $paragraphs = SeoSchema::hasRealDescription($product)
+            ? SeoSchema::paragraphs($product->description ?: $product->seo?->description)
+            : [SeoSchema::fallbackDescription($product)];
+
+        // Products from the same category: the links a crawler follows to the
+        // rest of the catalogue, since the app's own "related products" row is
+        // drawn by JavaScript it never runs.
+        $related = [];
+        try {
+            if ($category) {
+                $related = Product::query()
+                    ->select(['id', 'name', 'slug'])
+                    ->where('product_category_id', $category->id)
+                    ->where('id', '<>', $product->id)
+                    ->where('status', Status::ACTIVE)
+                    ->storefront()
+                    ->whereNotNull('slug')
+                    ->where('slug', '<>', '')
+                    ->latest('id')
+                    ->limit(12)
+                    ->get()
+                    ->map(fn ($item) => [
+                        'name' => SeoSchema::cleanName($item->name),
+                        'url'  => $siteUrl . '/product/' . rawurlencode($item->slug),
+                    ])
+                    ->all();
+            }
+        } catch (\Throwable $e) {
+            $related = [];
+        }
+
+        return [
+            'name'          => SeoSchema::cleanName($product->name),
+            'brand'         => SeoSchema::brandName($product),
+            'brand_url'     => SeoSchema::brandName($product) ? $siteUrl . '/product?brand=' . $product->brand->id : null,
+            'category'      => SeoSchema::cleanName($category?->name) ?: null,
+            'category_url'  => $category?->slug ? $siteUrl . '/product-category/' . rawurlencode($category->slug) : null,
+            'price'         => $pricing['current'],
+            'regular_price' => $pricing['on_sale'] ? $pricing['regular'] : null,
+            'in_stock'      => SeoSchema::isInStock($product),
+            'sku'           => $product->sku,
+            'gtin'          => ($gtin = SeoSchema::gtinFor($product)) ? (string) reset($gtin) : null,
+            'image'         => $schema['image'][0] ?? null,
+            'paragraphs'    => array_slice($paragraphs, 0, 60),
+            'related'       => $related,
+        ];
     }
 
     /**

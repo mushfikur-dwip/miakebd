@@ -65,7 +65,8 @@ class MetaPixel
         return strtoupper((string) env('CURRENCY', 'BDT')) ?: 'BDT';
     }
 
-    private static function configuredId(): ?string
+    /** The id from .env or settings - not from a pasted snippet. */
+    public static function configuredId(): ?string
     {
         $id = trim((string) config('services.meta_pixel.id'));
 

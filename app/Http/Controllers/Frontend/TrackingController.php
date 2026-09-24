@@ -71,10 +71,13 @@ class TrackingController extends Controller
         $price    = $this->meta->productValue($product);
         $id       = $this->meta->contentId($product);
 
+        // No content_name: product names here read "acne", "salicylic",
+        // "eczema", and Meta restricts pixels it judges to be sending health
+        // information. The catalogue feed carries the names instead, matched
+        // on the id - so the ads lose nothing.
         return [
             'content_ids'  => [$id],
             'content_type' => 'product',
-            'content_name' => $product->name,
             'contents'     => [['id' => $id, 'quantity' => $quantity, 'item_price' => $price]],
             'value'        => round($price * $quantity, 2),
             'currency'     => MetaPixel::resolve()['currency'],
@@ -104,7 +107,7 @@ class TrackingController extends Controller
         }
 
         return [
-            'content_ids'  => array_column($contents, 'id'),
+            'content_ids'  => array_values(array_unique(array_column($contents, 'id'))),
             'content_type' => 'product',
             'contents'     => $contents,
             'num_items'    => array_sum(array_column($contents, 'quantity')),

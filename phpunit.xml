@@ -18,6 +18,9 @@
         </include>
     </source>
     <php>
+        <!-- The suite peaks around 120 MB now that feed tests process real
+             images; PHP's default 128 MB left no headroom. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

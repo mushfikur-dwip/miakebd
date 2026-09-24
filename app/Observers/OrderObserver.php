@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Enums\AddressType;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\PaymentStatus;
 use App\Enums\Source;
 use App\Models\Order;
 use App\Models\Transaction;
@@ -32,40 +33,56 @@ class OrderObserver
      * credit for. Both copies carry the same event_id - "order-{id}" - so Meta
      * keeps one and discards the duplicate.
      *
-     * Till orders are excluded: nobody clicked an ad to reach the counter, and
-     * reporting them would flatter every campaign.
+     * Deferred until the order's transaction commits: the order row is
+     * inserted first and its product lines and delivery address after it, so
+     * at the moment of `created` there is nothing yet to report. Still inside
+     * the customer's own request, so their IP, browser and ad click id are the
+     * ones Meta matches on.
+     *
+     * An online payment is stored but held until the money arrives - see
+     * updated(). Till orders are excluded: nobody clicked an ad to reach the
+     * counter, and reporting them would flatter every campaign.
      */
     private function reportPurchaseToMeta(Order $order): void
     {
-        try {
-            if ((int) $order->source === Source::POS || (int) $order->order_type === OrderType::POS) {
-                return;
-            }
-
-            $meta = app(MetaConversionsService::class);
-
-            if (!$meta->enabled()) {
-                return;
-            }
-
-            $address = optional($order->address()->where('address_type', AddressType::SHIPPING)->first());
-
-            $meta->queue(
-                'Purchase',
-                'order-' . $order->id,
-                $meta->userData($order->user, request(), [
-                    'city'     => $address->city,
-                    'state'    => $address->state,
-                    'zip_code' => $address->zip_code,
-                    'country'  => $address->country,
-                ]),
-                $meta->orderCustomData($order->fresh('orderProducts')),
-                url('/account/order-details/' . $order->id)
-            );
-        } catch (\Throwable $e) {
-            // An ad platform must never be able to break an order.
-            Log::warning('Could not queue the Meta Purchase event: ' . $e->getMessage());
+        if ($this->isTillOrder($order)) {
+            return;
         }
+
+        DB::afterCommit(function () use ($order) {
+            try {
+                $meta = app(MetaConversionsService::class);
+
+                if (!$meta->enabled()) {
+                    return;
+                }
+
+                $order   = $order->fresh(['orderProducts', 'user']);
+                $address = optional($order->address()->where('address_type', AddressType::SHIPPING)->first());
+
+                $meta->queue(
+                    'Purchase',
+                    'order-' . $order->id,
+                    $meta->userData($order->user, request(), [
+                        'city'     => $address->city,
+                        'state'    => $address->state,
+                        'zip_code' => $address->zip_code,
+                        'country'  => $address->country,
+                    ]),
+                    $meta->orderCustomData($order),
+                    url('/account/order-details/' . $order->id),
+                    $meta->orderIsSale($order)
+                );
+            } catch (\Throwable $e) {
+                // An ad platform must never be able to break an order.
+                Log::warning('Could not queue the Meta Purchase event: ' . $e->getMessage());
+            }
+        });
+    }
+
+    private function isTillOrder(Order $order): bool
+    {
+        return (int) $order->source === Source::POS || (int) $order->order_type === OrderType::POS;
     }
 
     /**
@@ -75,6 +92,16 @@ class OrderObserver
     {
         if ($order->isDirty('status') && $order->status == OrderStatus::DELIVERED) {
             $this->handleCashback($order);
+        }
+
+        // The online payment went through: the Purchase stored when the order
+        // was placed can go to Meta now. A no-op for anything already sent.
+        if ($order->isDirty('payment_status') && (int) $order->payment_status === PaymentStatus::PAID && !$this->isTillOrder($order)) {
+            try {
+                app(MetaConversionsService::class)->release('order-' . $order->id);
+            } catch (\Throwable $e) {
+                Log::warning('Could not release the Meta Purchase event: ' . $e->getMessage());
+            }
         }
     }
 

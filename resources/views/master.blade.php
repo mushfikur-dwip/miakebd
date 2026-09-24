@@ -278,16 +278,28 @@
     <script>window.__BOOT_SETTING__ = {!! json_encode($bootSetting ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!};</script>
 
     {{-- ==================== META PIXEL ====================
-         The base code loads here, in the document, so a visitor arriving from
-         an ad is counted before the Vue bundle has even parsed. The shop is a
-         single-page app, so the rest of the funnel - PageView on every later
-         screen, ViewContent, AddToCart, InitiateCheckout, Purchase, and the
-         customer's own details for Advanced Matching - is fired from
-         resources/js/services/pixelService.js.
+         Meta's base code, with one change: fbevents.js is fetched once the
+         page has finished loading (or after 3.5s, whichever is first), not
+         while it is still drawing. `fbq` exists from this line on and queues
+         every call - the init and PageView below included - so nothing is
+         lost; the script replays the queue when it arrives. What this buys is
+         that a 100 KB third-party script never competes with the product
+         photos and the app for the first paint, which is what Google's
+         real-user speed measurements (and so rankings) are taken from.
 
-         Nothing is printed when the id is unknown, and `render_base` is false
-         when the snippet is already pasted in Admin -> Analytics, so the pixel
-         is never initialised twice (which would double every number). --}}
+         Initialised exactly once. Customer matching is done by the
+         Conversions API on the server (hashed there), not by calling
+         fbq('init') a second time, which Meta flags as a duplicate pixel.
+         No <noscript> image: the shop cannot be used without JavaScript, and
+         an <img> inside <head> is invalid HTML that ends the head early for
+         any parser that does not run scripts.
+
+         The rest of the funnel - PageView on later screens, ViewContent,
+         AddToCart, InitiateCheckout, Purchase - is fired from
+         resources/js/services/pixelService.js. Nothing is printed when the id
+         is unknown, and `render_base` is false when the snippet is already
+         pasted in Admin -> Analytics, so the pixel is never initialised twice
+         (which would double every number). --}}
     @if (!blank($metaPixel['id'] ?? null))
         <script>window.__BOOT_PIXEL__ = {!! json_encode([
             'id'         => $metaPixel['id'],
@@ -301,15 +313,16 @@
                 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
                 n.callMethod.apply(n,arguments):n.queue.push(arguments)};
                 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-                n.queue=[];t=b.createElement(e);t.async=!0;
+                n.queue=[];var d=0,l=function(){if(d)return;d=1;
+                t=b.createElement(e);t.async=!0;
                 t.src=v;s=b.getElementsByTagName(e)[0];
-                s.parentNode.insertBefore(t,s)}(window, document,'script',
+                s.parentNode.insertBefore(t,s)};
+                if(b.readyState==='complete'){l()}else{f.addEventListener('load',l);setTimeout(l,3500)}
+                }(window, document,'script',
                 'https://connect.facebook.net/en_US/fbevents.js');
                 fbq('init', "{{ $metaPixel['id'] }}");
                 fbq('track', 'PageView');
             </script>
-            <noscript><img height="1" width="1" style="display:none"
-                src="https://www.facebook.com/tr?id={{ $metaPixel['id'] }}&ev=PageView&noscript=1" alt=""/></noscript>
         @endif
     @endif
     {{-- ==================== END META PIXEL ==================== --}}
@@ -360,6 +373,51 @@
                 @endif
                 <p>Available at Suglow with cash on delivery across Bangladesh.
                    Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
+            @elseif (!empty($productPage))
+                {{-- The product as the app shows it: what an AI assistant or a
+                     crawler that does not run JavaScript reads, quotes and
+                     links to. Built by RootController::productFacts() from the
+                     same data as the page, the JSON-LD and the feed. --}}
+                <p><a href="{{ $siteUrl }}/">Home</a>
+                    @if ($productPage['category_url'])
+                        › <a href="{{ $productPage['category_url'] }}">{{ $productPage['category'] }}</a>
+                    @endif
+                    › {{ $productPage['name'] }}</p>
+                <h1>{{ $productPage['name'] }}</h1>
+                @if ($productPage['image'])
+                    <img src="{{ $productPage['image'] }}" alt="{{ $productPage['name'] }}" width="600" height="600" style="max-width:100%;height:auto">
+                @endif
+                <p><strong>Price in Bangladesh: ৳{{ number_format($productPage['price'], 0) }}</strong>
+                    @if ($productPage['regular_price'])
+                        <del>৳{{ number_format($productPage['regular_price'], 0) }}</del>
+                    @endif
+                    — {{ $productPage['in_stock'] ? 'In stock' : 'Out of stock' }}</p>
+                <ul>
+                    @if ($productPage['brand'])
+                        <li>Brand: <a href="{{ $productPage['brand_url'] }}">{{ $productPage['brand'] }}</a></li>
+                    @endif
+                    @if ($productPage['category'])
+                        <li>Category: <a href="{{ $productPage['category_url'] }}">{{ $productPage['category'] }}</a></li>
+                    @endif
+                    @if ($productPage['gtin'])
+                        <li>Barcode (GTIN): {{ $productPage['gtin'] }}</li>
+                    @endif
+                    <li>100% authentic, sold by Suglow</li>
+                    <li>Cash on delivery across Bangladesh, delivered in 1-3 days</li>
+                </ul>
+                <h2>About {{ $productPage['name'] }}</h2>
+                @foreach ($productPage['paragraphs'] as $paragraph)
+                    <p>{{ $paragraph }}</p>
+                @endforeach
+                @if (!empty($productPage['related']))
+                    <h2>More {{ $productPage['category'] ?: 'products' }} at Suglow</h2>
+                    <ul>
+                        @foreach ($productPage['related'] as $relatedProduct)
+                            <li><a href="{{ $relatedProduct['url'] }}">{{ $relatedProduct['name'] }}</a></li>
+                        @endforeach
+                    </ul>
+                @endif
+                <p>Order online or call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
             @elseif (!empty($blogPost))
                 {{-- The full article, for crawlers that do not run JS. Rendered
                      as markup rather than stripped text so headings, lists and
@@ -392,6 +450,22 @@
                     </ul>
                 @endif
                 <p><a href="{{ $siteUrl }}/blog">All Suglow blog articles</a></p>
+            @elseif (!empty($category['name']))
+                {{-- A category's products as plain links: the SPA draws its
+                     listing with JavaScript, so without these a crawler that
+                     does not run it could not reach the products at all. --}}
+                <h1>{{ $category['name'] }} Price in Bangladesh</h1>
+                <p>{{ $category['description'] }}</p>
+                @if (!empty($category['products']))
+                    <h2>{{ $category['name'] }} products at Suglow</h2>
+                    <ul>
+                        @foreach ($category['products'] as $categoryProduct)
+                            <li><a href="{{ $categoryProduct['url'] }}">{{ $categoryProduct['name'] }}</a></li>
+                        @endforeach
+                    </ul>
+                @endif
+                <p><a href="{{ $siteUrl }}/product">All products</a> ·
+                   Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
             @elseif ($controllerSeo)
                 <h1>{{ $controllerSeo['title'] }}</h1>
                 @if (!empty($controllerSeo['image']))

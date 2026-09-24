@@ -14,21 +14,47 @@
  *   AddToCart       - "added but did not buy" audiences
  *   InitiateCheckout- "reached checkout but did not buy" audiences
  *   Purchase        - conversion, and the value ads optimise towards
- *   Advanced Matching - the customer's own phone/name/city when the shop knows
- *                     them, which is what lets Meta match a visitor to a real
- *                     profile instead of guessing from a cookie
+ *
+ * Deliberately not sent from the browser:
+ *   - product names and categories. Here they read "acne", "salicylic",
+ *     "eczema", and Meta restricts pixels it judges to be sending health
+ *     information. The catalogue feed supplies names, matched on content_ids.
+ *   - the customer's details. Matching is done by the Conversions API on the
+ *     server, hashed there; handing them to the pixel meant calling
+ *     fbq('init') a second time, which Meta reports as a duplicate pixel.
  *
  * Every entry point is guarded: with no pixel configured, or with fbevents.js
  * blocked (common), each call is a no-op. Tracking must never be able to break
  * a page.
  */
 
+import axios from "axios";
+
+/** Purchases already reported, so a refreshed receipt is not counted twice. */
+const PURCHASE_KEY = "pixel-purchased-orders";
+
+/** App\Enums\PaymentGateway::CASH_ON_DELIVERY and App\Enums\PaymentStatus::PAID. */
+const CASH_ON_DELIVERY = 1;
+const PAID = 5;
+
+function config() {
+    return (typeof window !== "undefined" && window.__BOOT_PIXEL__) || null;
+}
+
+function ready() {
+    return typeof window !== "undefined" && typeof window.fbq === "function";
+}
+
+function currency() {
+    return config()?.currency || "BDT";
+}
+
 /**
  * Which field a product is identified by - "id" or "sku".
  *
- * It must match the id column of the Facebook catalogue feed or catalogue ads
- * retarget the wrong item, so it is set once on the server
- * (META_CONTENT_ID) and read from there by both sides.
+ * It must match the id column of the catalogue feed or catalogue ads retarget
+ * the wrong item, so it is set once on the server (META_CONTENT_ID) and read
+ * from there by the browser, the Conversions API and the feed alike.
  */
 function contentIdField() {
     return config()?.content_id === "sku" ? "sku" : "id";
@@ -47,54 +73,20 @@ function newEventId() {
     return "e" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
 }
 
-import axios from "axios";
-
-/** Purchases already reported, so a refreshed receipt is not counted twice. */
-const PURCHASE_KEY = "pixel-purchased-orders";
-
-/** Last Advanced Matching payload sent, to avoid re-initialising on every hop. */
-let lastIdentity = null;
-
-function config() {
-    return (typeof window !== "undefined" && window.__BOOT_PIXEL__) || null;
-}
-
-function ready() {
-    return typeof window !== "undefined" && typeof window.fbq === "function";
-}
-
-function currency() {
-    return config()?.currency || "BDT";
-}
-
-/** Bangladeshi numbers the way Meta wants them: country code, digits only. */
-function normalisePhone(phone, callingCode) {
-    const digits = String(phone || "").replace(/[^0-9]/g, "");
-    if (!digits) {
-        return null;
-    }
-
-    const code = String(callingCode || "880").replace(/[^0-9]/g, "") || "880";
-
-    if (digits.startsWith(code)) {
-        return digits;
-    }
-
-    // Local form: 01712345678 or 1712345678.
-    return code + digits.replace(/^0+/, "");
-}
-
 function money(value) {
     const amount = Number(value);
     return Number.isFinite(amount) ? Number(amount.toFixed(2)) : 0;
 }
 
+/** `{ id, sku }` in, the catalogue id out - the SKU only when there is one. */
 function contentId(product) {
     if (!product) {
         return null;
     }
 
-    const value = product[contentIdField()] ?? product.id;
+    const preferred = contentIdField() === "sku" ? product.sku : product.id;
+    const value = preferred !== undefined && preferred !== null && preferred !== "" ? preferred : product.id;
+
     return value === undefined || value === null ? null : String(value);
 }
 
@@ -122,61 +114,6 @@ function mirrorToServer(event, eventId, body) {
 }
 
 export default {
-    /**
-     * Tells Meta who this visitor is, when the shop knows.
-     *
-     * Passed to fbq('init'), which normalises and hashes the values in the
-     * browser before they leave it - the raw phone number is never sent. A
-     * matched visitor can be retargeted across their devices, and purchases
-     * they make later are attributed to the ad they actually clicked.
-     */
-    identify(user = {}, address = {}) {
-        const settings = config();
-        if (!ready() || !settings?.id) {
-            return;
-        }
-
-        const name = String(user.name || "").trim();
-        const spaceAt = name.indexOf(" ");
-
-        const data = {
-            em: user.email || undefined,
-            ph: normalisePhone(user.phone, user.country_code) || undefined,
-            fn: (spaceAt > 0 ? name.slice(0, spaceAt) : name) || undefined,
-            ln: (spaceAt > 0 ? name.slice(spaceAt + 1) : "") || undefined,
-            ct: address.city || undefined,
-            st: address.state || undefined,
-            zp: address.zip_code || undefined,
-            country: address.country || undefined,
-            external_id: user.id ? String(user.id) : undefined,
-        };
-
-        Object.keys(data).forEach((key) => data[key] === undefined && delete data[key]);
-
-        const fingerprint = JSON.stringify(data);
-        if (!Object.keys(data).length || fingerprint === lastIdentity) {
-            return;
-        }
-        lastIdentity = fingerprint;
-
-        try {
-            window.fbq("init", settings.id, data);
-        } catch (e) {
-            // Never let tracking break the page.
-        }
-    },
-
-    /** Reads whatever the store already knows about this visitor. */
-    identifyFromStore(store) {
-        try {
-            const user = store?.getters?.authInfo || {};
-            const address = store?.getters?.["frontendCart/shippingAddress"] || {};
-            this.identify(user, address);
-        } catch (e) {
-            // ignore
-        }
-    },
-
     /**
      * `eventId` is what pairs this with the server's copy of the same event.
      * Meta keeps whichever arrives first and drops the other.
@@ -209,8 +146,6 @@ export default {
         this.track("ViewContent", {
             content_ids: [id],
             content_type: "product",
-            content_name: product.name,
-            content_category: product.category_name || product.category?.name || undefined,
             value: money(product.flat_discounted_price ?? product.flat_price ?? product.price),
             currency: currency(),
         }, eventId);
@@ -230,7 +165,6 @@ export default {
         this.track("AddToCart", {
             content_ids: [id],
             content_type: "product",
-            content_name: product.name,
             contents: [{ id, quantity, item_price: price }],
             value: money(price * quantity),
             currency: currency(),
@@ -251,7 +185,7 @@ export default {
         const eventId = newEventId();
 
         this.track("InitiateCheckout", {
-            content_ids: contents.map((c) => c.id),
+            content_ids: [...new Set(contents.map((c) => c.id))],
             content_type: "product",
             contents,
             num_items: contents.reduce((sum, c) => sum + (Number(c.quantity) || 0), 0),
@@ -268,13 +202,21 @@ export default {
     },
 
     /**
-     * Fires once per order. The receipt is a normal page a customer can
-     * reload, bookmark or reach again from their order list, and every reload
-     * would otherwise be counted - and paid for - as another sale.
+     * Fires once per order, and only for a real sale: cash on delivery, or an
+     * online payment that has gone through. An abandoned bKash payment is not
+     * a conversion - the server holds its copy back on the same rule.
+     *
+     * The receipt is a normal page a customer can reload, bookmark or reach
+     * again from their order list, and every reload would otherwise be counted
+     * - and paid for - as another sale.
      */
     purchase(order) {
         const orderId = order?.id;
         if (!ready() || !orderId) {
+            return;
+        }
+
+        if (Number(order.payment_method) !== CASH_ON_DELIVERY && Number(order.payment_status) !== PAID) {
             return;
         }
 
@@ -291,8 +233,8 @@ export default {
 
         const contents = (order.order_products || order.products || [])
             .map((line) => {
-                const id = line.product_id ? String(line.product_id) : null;
-                return id ? { id, quantity: line.quantity, item_price: money(line.price) } : null;
+                const id = contentId(line.product_id ? { id: line.product_id, sku: line.product_sku } : null);
+                return id ? { id, quantity: Number(line.quantity) || 1, item_price: money(line.price) } : null;
             })
             .filter(Boolean);
 
@@ -301,7 +243,7 @@ export default {
         // whichever copy arrives first. Never mirrored from here - a purchase
         // the browser could declare would be a forgeable conversion.
         this.track("Purchase", {
-            content_ids: contents.map((c) => c.id),
+            content_ids: [...new Set(contents.map((c) => c.id))],
             content_type: "product",
             contents,
             num_items: contents.reduce((sum, c) => sum + (Number(c.quantity) || 0), 0),
@@ -316,10 +258,5 @@ export default {
         } catch (e) {
             // A private window cannot store this; a duplicate is better than a lost sale.
         }
-    },
-
-    /** For the lead capture work, when that lands. */
-    lead(params = {}) {
-        this.track("Lead", { currency: currency(), ...params });
     },
 };

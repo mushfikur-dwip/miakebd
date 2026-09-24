@@ -178,10 +178,6 @@ router.afterEach((to, from) => {
     if (from.name) {
         pixelService.pageView();
     }
-
-    // Cheap and de-duplicated inside: picks up the customer's details as soon
-    // as they log in, claim a guest checkout or choose a delivery address.
-    pixelService.identifyFromStore(store);
 });
 
 export default router;

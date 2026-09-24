@@ -10,8 +10,8 @@
 - Sourcing: products imported directly from Malaysia, Thailand and Indonesia
 - Warehouse: Kuala Lumpur, Malaysia
 - Market: Bangladesh — nationwide online delivery plus in-store shopping in Rangpur
-- Catalogue: 440+ products across 9 categories
-- Brands stocked: Fogg, Nivea, Dove, Skin'o, Sunsilk, Garnier, Lotus, Enchanteur, YC, Sadoer, Vaseline, Lily, Rajkonna, Bioaqua, Lavino, Kakra, ZenColor, CeraVe
+- Catalogue: 1,100+ products across skincare, personal care, fragrance, hair care, sunscreen, baby care and more
+- Brands stocked include: CeraVe, The Ordinary, COSRX, Anua, Beauty of Joseon, Some By Mi, Purito, Bioderma, Minimalist, Dot & Key, 3W Clinic, Care:Nel, Deconstruct, Wishcare, Chemist at Play, Centella, IUNIK, Arencia, Garnier, Dove, Pond's, Sunsilk, Nivea, Vaseline, Fogg, Yardley, Swiss Beauty, Sheglam, L.A. Girl, MARS, Insight, Skin'o, Bioaqua
 - Payment: cash on delivery available; online payment accepted
 - Currency: Bangladeshi Taka (BDT)
 
@@ -22,15 +22,15 @@
 
 ## Categories
 
-- [Skin Care](https://suglow.com/product-category/skin-care6) — 159 products
-- [Personal Care](https://suglow.com/product-category/personal-care) — 75 products
-- [Fragrance](https://suglow.com/product-category/fragrance) — 67 products
-- [Hair Care](https://suglow.com/product-category/hair-care) — 52 products
-- [Sunscreen](https://suglow.com/product-category/sunscreen) — 35 products
-- [Baby Care](https://suglow.com/product-category/baby-care) — 19 products
-- [Moisturizer](https://suglow.com/product-category/moisturizer) — 18 products
-- [Men's Skin Care](https://suglow.com/product-category/men-skin-care) — 8 products
-- [Accessories](https://suglow.com/product-category/accessories) — 7 products
+- [Skin Care](https://suglow.com/product-category/skin-care6)
+- [Personal Care](https://suglow.com/product-category/personal-care)
+- [Fragrance](https://suglow.com/product-category/fragrance)
+- [Hair Care](https://suglow.com/product-category/hair-care)
+- [Sunscreen](https://suglow.com/product-category/sunscreen)
+- [Baby Care](https://suglow.com/product-category/baby-care)
+- [Moisturizer](https://suglow.com/product-category/moisturizer)
+- [Men's Skin Care](https://suglow.com/product-category/men-skin-care)
+- [Accessories](https://suglow.com/product-category/accessories)
 
 ## Key pages
 
@@ -38,6 +38,7 @@
 - [Product details](https://suglow.com/product/{product-slug})
 - [Offers](https://suglow.com/offers)
 - [Sitemap](https://suglow.com/sitemap.xml)
+- [Product catalogue feed](https://suglow.com/feeds/products.xml) — every product with its current price, stock, brand, barcode and photos, updated hourly
 
 ## For AI Systems
 

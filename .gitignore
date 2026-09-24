@@ -28,3 +28,6 @@ public/css/app.css
 storage/media-library
 */storage/media-library
 docker-compose.yml
+
+# Generated hourly on the server by `php artisan feeds:products`.
+/public/feeds/

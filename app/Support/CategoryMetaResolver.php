@@ -39,8 +39,12 @@ class CategoryMetaResolver
     private const PHONE = '01709786330';
     private const SOURCES = 'Malaysia, Thailand & Indonesia';
 
-    /** How many real product names to expose in the ItemList schema. */
-    private const SAMPLE_PRODUCTS = 8;
+    /**
+     * How many products to list: the ItemList schema, and the links a crawler
+     * that does not run JavaScript follows to find them. Eight left most of a
+     * category unreachable to AI crawlers - they cannot see the SPA listing.
+     */
+    private const SAMPLE_PRODUCTS = 48;
 
     private const CACHE_MINUTES = 30;
 
@@ -424,13 +428,16 @@ class CategoryMetaResolver
                 ->select(['id', 'name', 'slug'])
                 ->whereIn('product_category_id', $categoryIds)
                 ->where('status', Status::ACTIVE)
+                // POS-only products 404 on the website; listing them sent
+                // crawlers to dead links.
+                ->storefront()
                 ->whereNotNull('slug')
                 ->where('slug', '<>', '')
                 ->orderByDesc('id')
                 ->limit(self::SAMPLE_PRODUCTS)
                 ->get()
                 ->map(fn($product) => [
-                    'name' => (string) $product->name,
+                    'name' => SeoSchema::cleanName($product->name),
                     // Config-derived for the same reason as siteUrl(): route()
                     // resolves against the requesting host and this is cached.
                     'url' => self::siteUrl() . '/product/' . rawurlencode($product->slug),

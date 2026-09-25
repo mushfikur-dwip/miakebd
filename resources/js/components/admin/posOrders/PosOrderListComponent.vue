@@ -248,7 +248,8 @@ export default {
             return this.$store.getters['posOrder/lists'];
         },
         customers: function () {
-            return this.$store.getters['user/lists'];
+            // "name - phone", so this filter can be found by number too.
+            return appService.customerOptions(this.$store.getters['user/lists']);
         },
         outlets: function () {
             return this.$store.getters['outlet/lists'];

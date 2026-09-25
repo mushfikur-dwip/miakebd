@@ -338,7 +338,9 @@ export default {
       return this.$store.getters["product/lists"];
     },
     customers: function () {
-      return this.$store.getters['user/lists'];
+      // Relabelled to "name - phone" so the box finds a customer by either.
+      // The picker searches the label and nothing else (see appService).
+      return appService.customerOptions(this.$store.getters['user/lists']);
     },
     outlets: function () {
       return this.$store.getters['outlet/lists'];

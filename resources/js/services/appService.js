@@ -10,6 +10,40 @@ import taxTypeEnum from "../enums/modules/taxTypeEnum";
 import store from "../store";
 
 export default {
+    /**
+     * How a customer is shown - and therefore searched - in a picker.
+     *
+     * vue-next-select filters its options by testing the search box against
+     * the label and nothing else, so a number that is not in the label cannot
+     * be found. At a till the phone number is usually all the cashier has, so
+     * it goes in the label: "Rima Akter - 01711111111".
+     *
+     * Typing either part finds the customer, and the number stays visible
+     * afterwards, which is how two people with the same name are told apart.
+     */
+    customerLabel: function (customer) {
+        if (!customer) {
+            return "";
+        }
+
+        const name = String(customer.name || "").trim();
+        const phone = String(customer.local_phone || customer.phone || "").trim();
+
+        if (!phone) {
+            return name;
+        }
+
+        return name ? `${name} - ${phone}` : phone;
+    },
+
+    /** The same list, relabelled for a picker. Leaves ids untouched. */
+    customerOptions: function (customers) {
+        return (customers || []).map((customer) => ({
+            ...customer,
+            name: this.customerLabel(customer),
+        }));
+    },
+
     phoneNumber: function (e) {
         let char = String.fromCharCode(e.keyCode);
         if (/^[+]?[0-9]*$/.test(char)) return true;

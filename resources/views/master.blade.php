@@ -77,8 +77,10 @@
         if ($controllerSeo) {
             // ---- CONTROLLER-RESOLVED PAGE (product or category) ----
             // Category titles already end in "— Suglow"; appending the company
-            // name unconditionally produced "... — Suglow | Suglow".
-            $seoTitle       = str_contains($controllerSeo['title'], $companyName)
+            // name unconditionally produced "... — Suglow | Suglow". The check
+            // ignores case: the company name is stored as "SUGLOW", so a
+            // case-sensitive match missed "Suglow" and appended it anyway.
+            $seoTitle       = mb_stripos($controllerSeo['title'], (string) $companyName) !== false
                 ? $controllerSeo['title']
                 : $controllerSeo['title'] . ' | ' . $companyName;
             $seoSocialTitle = $seoTitle;
@@ -450,6 +452,47 @@
                     </ul>
                 @endif
                 <p><a href="{{ $siteUrl }}/blog">All Suglow blog articles</a></p>
+            @elseif (!empty($brandPage))
+                {{-- A brand's products as plain links, with prices - what an AI
+                     assistant quotes for "CeraVe price in Bangladesh". --}}
+                <p><a href="{{ $siteUrl }}/">Home</a> › <a href="{{ $siteUrl }}/product">All products</a> › {{ $brandPage['name'] }}</p>
+                <h1>{{ $brandPage['name'] }} Price in Bangladesh</h1>
+                <p>{{ $brandPage['description'] }}</p>
+                @if (!empty($brandPage['products']))
+                    <h2>{{ $brandPage['name'] }} products at Suglow</h2>
+                    <ul>
+                        @foreach ($brandPage['products'] as $brandProduct)
+                            <li><a href="{{ $brandProduct['url'] }}">{{ $brandProduct['name'] }}</a>
+                                @if ($brandProduct['price'] > 0) — ৳{{ number_format($brandProduct['price'], 0) }} @endif</li>
+                        @endforeach
+                    </ul>
+                @endif
+                <p>100% authentic {{ $brandPage['name'] }}, sold by Suglow. Cash on delivery across Bangladesh.
+                   Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
+            @elseif (!empty($listingPage))
+                <h1>All Products — Authentic Cosmetics &amp; Skincare in Bangladesh</h1>
+                <p>{{ $controllerSeo['description'] ?? '' }}</p>
+                <h2>Shop by category</h2>
+                <ul>
+                    <li><a href="{{ $siteUrl }}/product-category/skin-care6">Skin Care</a></li>
+                    <li><a href="{{ $siteUrl }}/product-category/personal-care">Personal Care</a></li>
+                    <li><a href="{{ $siteUrl }}/product-category/fragrance">Fragrance</a></li>
+                    <li><a href="{{ $siteUrl }}/product-category/hair-care">Hair Care</a></li>
+                    <li><a href="{{ $siteUrl }}/product-category/sunscreen">Sunscreen</a></li>
+                    <li><a href="{{ $siteUrl }}/product-category/baby-care">Baby Care</a></li>
+                    <li><a href="{{ $siteUrl }}/product-category/moisturizer">Moisturizer</a></li>
+                    <li><a href="{{ $siteUrl }}/product-category/men-skin-care">Men's Skin Care</a></li>
+                    <li><a href="{{ $siteUrl }}/product-category/accessories">Accessories</a></li>
+                </ul>
+                @if (!empty($listingPage['brands']))
+                    <h2>Shop by brand</h2>
+                    <ul>
+                        @foreach ($listingPage['brands'] as $listingBrand)
+                            <li><a href="{{ $listingBrand['url'] }}">{{ $listingBrand['name'] }}</a></li>
+                        @endforeach
+                    </ul>
+                @endif
+                <p>Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
             @elseif (!empty($category['name']))
                 {{-- A category's products as plain links: the SPA draws its
                      listing with JavaScript, so without these a crawler that

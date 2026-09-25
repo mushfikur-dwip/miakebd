@@ -72,8 +72,20 @@ Route::get('/product', function (\Illuminate\Http\Request $request) {
         return redirect()->route('product.category', ['slug' => $slug] + $carry, 301);
     }
 
-    return app(RootController::class)->index();
+    return app(RootController::class)->listing();
 })->middleware(['installed'])->name('product.listing');
+
+// A brand's own indexable page ("CeraVe price in Bangladesh"). Vue renders the
+// same path client-side; this gives crawlers the brand's title, products and
+// structured data. Declared before the fallback, like the category route.
+Route::get('/brand/{slug}', [RootController::class, 'brand'])
+    ->middleware(['installed'])
+    ->where('slug', '[A-Za-z0-9\-_.]+')
+    ->name('brand.show');
+
+Route::get('/offers', [RootController::class, 'offers'])
+    ->middleware(['installed'])
+    ->name('offers');
 // Blog. Server-rendered metadata for the same reason the product and category
 // routes exist: Vue writes the head only after JS runs, and an article that
 // serves generic HTML to crawlers cannot rank for what it was written for.

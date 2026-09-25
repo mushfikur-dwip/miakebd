@@ -83,7 +83,9 @@ class SeoSchema
         if ($price > 0) {
             $parts[0] .= ' at ৳' . number_format($price, 0);
         }
-        $parts[] = "{$what}, sold by Suglow";
+        // Kept near Google's ~160-character snippet: the shop's name is
+        // already in the title, so it is not repeated here.
+        $parts[] = $what;
         $parts[] = 'Cash on delivery across Bangladesh, delivered in 1-3 days';
 
         return implode('. ', $parts) . '.';

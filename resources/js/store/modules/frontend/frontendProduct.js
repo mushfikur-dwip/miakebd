@@ -18,6 +18,8 @@ export const frontendProduct = {
         categoryWiseProducts: [],
         categoryWiseBands: [],
         categoryWiseVariations: [],
+        // The brand a /brand/:brandSlug listing is for (null elsewhere).
+        categoryWiseBrand: null,
         categoryWiseProductPage: {},
         categoryWiseProductPagination: {},
         offerProducts: [],
@@ -72,6 +74,9 @@ export const frontendProduct = {
         },
         categoryWiseVariations: function (state) {
             return state.categoryWiseVariations;
+        },
+        categoryWiseBrand: function (state) {
+            return state.categoryWiseBrand;
         },
         categoryWiseProductPage: function (state) {
             return state.categoryWiseProductPage;
@@ -283,6 +288,7 @@ export const frontendProduct = {
             state.categoryWiseProducts   = payload.products;
             state.categoryWiseBands      = payload.brands;
             state.categoryWiseVariations = payload.variations;
+            state.categoryWiseBrand      = payload.brand || null;
         },
         categoryWiseProductPage: function (state, payload) {
             if (typeof payload !== "undefined" && payload !== null) {

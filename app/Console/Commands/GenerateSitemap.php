@@ -94,6 +94,17 @@ class GenerateSitemap extends Command
                 }
             });
 
+        // Brand pages ("CeraVe price in Bangladesh"). Only brands with products
+        // on the website - an empty brand page is served as noindex, so
+        // advertising it here would contradict the page itself.
+        foreach (\App\Support\BrandMetaResolver::all() as $brand) {
+            $this->writeUrl($writer, $brand['url'], $brand['updated_at'] ?? now(), 'weekly', '0.8');
+            $count++;
+        }
+
+        $this->writeUrl($writer, "{$baseUrl}/offers", now(), 'daily', '0.7');
+        $count++;
+
         Page::query()
             ->select(['id', 'slug', 'updated_at', 'status'])
             ->where('status', Status::ACTIVE)

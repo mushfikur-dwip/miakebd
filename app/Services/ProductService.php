@@ -640,6 +640,19 @@ class ProductService
                 }
             }
 
+            // /brand/{slug}: the brand page's own listing. Resolved from the
+            // slug here, so a brand page opened straight from Google does not
+            // need the brand list loaded first. An unknown slug lists nothing
+            // rather than everything.
+            $pageBrand = !blank($request->brand_slug)
+                ? \App\Models\ProductBrand::where('slug', (string) $request->brand_slug)->storefront()->first()
+                : null;
+            $brandPageFilter = function ($query) use ($request, $pageBrand) {
+                if (!blank($request->brand_slug)) {
+                    $query->where('products.product_brand_id', $pageBrand?->id ?? 0);
+                }
+            };
+
             $productCategory = Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.status', 'products.product_category_id', 'products.product_brand_id', 'products.variation_price')->with('brand', 'variations')->where(function ($query) use ($request, $categories) {
                 if (count($categories)) {
                     $i = 0;
@@ -658,7 +671,7 @@ class ProductService
                         $query->where($customProductFilterMask[$key], 'like', '%' . $req . '%');
                     }
                 }
-            })->get();
+            })->where($brandPageFilter)->get();
 
             $perPage     = $request->post('per_page', 30);
             $orderColumn = 'products.name';
@@ -739,7 +752,7 @@ class ProductService
                             }
                         }
                     }
-                })->orderBy($orderColumn, $orderType)->where(function ($query) use ($request) {
+                })->where($brandPageFilter)->orderBy($orderColumn, $orderType)->where(function ($query) use ($request) {
                     if ($request->min_price >= 0 && $request->max_price > 0) {
                         $query->whereBetween('variation_price', [$request->min_price, $request->max_price]);
                     }
@@ -796,6 +809,12 @@ class ProductService
                 })->unique('id')->values()->all(),
                 'variations' => $variationArray,
                 'max_price'  => ceil($productCategory->max('variation_price') + 50),
+                // The brand a /brand/{slug} listing is for, for its heading.
+                'brand'      => $pageBrand ? [
+                    'id'   => $pageBrand->id,
+                    'name' => \App\Support\SeoSchema::cleanName($pageBrand->name),
+                    'slug' => $pageBrand->slug,
+                ] : null,
             ]);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());

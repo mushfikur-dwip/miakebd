@@ -8,9 +8,11 @@
 
             <div class="flex items-center justify-between gap-5 mb-6 max-md:mb-8">
                 <div class="flex flex-wrap items-end gap-3 max-md:flex-col max-md:items-start max-md:gap-1.5">
-                    <h3 class="text-3xl font-bold capitalize max-sm:text-lg">
-                        {{ $t('label.explore_all_products') }}
-                    </h3>
+                    <!-- h1: on /brand/:brandSlug this is the brand name, the one
+                         heading Google reads the page by once it renders. -->
+                    <h1 class="text-3xl font-bold capitalize max-sm:text-lg">
+                        {{ pageBrand ? pageBrand.name : $t('label.explore_all_products') }}
+                    </h1>
                     <span class="text-xl font-medium capitalize max-sm:text-sm">
                         ({{
                             pagination.meta ? pagination.meta.total : 0
@@ -127,7 +129,7 @@
                                 </div>
                             </div>
 
-                            <div v-if="categoryWiseBands.length > 0" class="filter-group border-b border-gray-100">
+                            <div v-if="categoryWiseBands.length > 0 && !pageBrand" class="filter-group border-b border-gray-100">
                                 <button :key="'eventBrand'" @click.prevent="colspanHideShow($event, 'brand')"
                                     type="button"
                                     class="filter-btn active group flex items-center justify-between w-full py-5 px-4 ltr:md:pl-0 rtl:pr-0">
@@ -255,6 +257,8 @@ export default {
                 category: null,
                 name: null,
                 brand: [],
+                // /brand/:brandSlug - the server resolves it to the brand.
+                brand_slug: null,
                 variation: [],
                 min_price: null,
                 max_price: null
@@ -289,6 +293,10 @@ export default {
         },
         categoryWiseVariations: function () {
             return this.$store.getters["frontendProduct/categoryWiseVariations"];
+        },
+        // The brand this listing is for, on /brand/:brandSlug only.
+        pageBrand: function () {
+            return this.$route.params.brandSlug ? this.$store.getters["frontendProduct/categoryWiseBrand"] : null;
         }
     },
     mounted() {
@@ -330,6 +338,9 @@ export default {
             } else {
                 this.productSearchForm.name = null;
             }
+
+            const brandSlug = this.$route.params.brandSlug;
+            this.productSearchForm.brand_slug = typeof brandSlug === "string" && brandSlug !== "" ? brandSlug : null;
 
             if (typeof this.$route.query.brand !== "undefined" && this.$route.query.brand !== "") {
                 this.productSearchForm.brand = JSON.stringify([this.$route.query.brand]);

@@ -10,6 +10,7 @@ use App\Models\Analytic;
 use App\Models\Product;
 use App\Models\ThemeSetting;
 use App\Support\BlogMetaResolver;
+use App\Support\BrandMetaResolver;
 use App\Support\CategoryMetaResolver;
 use App\Support\MediaUrl;
 use App\Support\MetaPixel;
@@ -154,7 +155,9 @@ class RootController extends Controller
         return [
             'name'          => SeoSchema::cleanName($product->name),
             'brand'         => SeoSchema::brandName($product),
-            'brand_url'     => SeoSchema::brandName($product) ? $siteUrl . '/product?brand=' . $product->brand->id : null,
+            'brand_url'     => SeoSchema::brandName($product)
+                ? (filled($product->brand->slug) ? BrandMetaResolver::url($product->brand->slug) : $siteUrl . '/product?brand=' . $product->brand->id)
+                : null,
             'category'      => SeoSchema::cleanName($category?->name) ?: null,
             'category_url'  => $category?->slug ? $siteUrl . '/product-category/' . rawurlencode($category->slug) : null,
             'price'         => $pricing['current'],
@@ -193,6 +196,75 @@ class RootController extends Controller
             ],
             'structuredData' => CategoryMetaResolver::structuredData($meta),
             'category' => $meta,
+        ]);
+    }
+
+    /**
+     * /brand/{slug} — a brand's own page: "CeraVe price in Bangladesh".
+     *
+     * Vue renders the listing on the same path; this makes the raw HTML right
+     * for crawlers. An unknown, inactive or placeholder brand 404s.
+     */
+    public function brand(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        $meta = BrandMetaResolver::forSlug($slug);
+
+        abort_if($meta === null, 404);
+
+        return $this->shell([
+            'seo' => [
+                'title'       => $meta['title'],
+                'description' => $meta['description'],
+                'keywords'    => $meta['keywords'],
+                'canonical'   => $meta['url'],
+                'image'       => $meta['image'],
+                'type'        => 'website',
+                'robots'      => $meta['robots'],
+            ],
+            'structuredData' => BrandMetaResolver::structuredData($meta),
+            'brandPage'      => $meta,
+        ]);
+    }
+
+    /**
+     * /product — every product. Its own title, and links to every brand page
+     * for crawlers, which cannot run the SPA listing.
+     */
+    public function listing(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        $siteUrl = rtrim((string) config('app.url'), '/');
+
+        return $this->shell([
+            'seo' => [
+                'title'       => 'All Products — Authentic Cosmetics & Skincare Price in Bangladesh | Suglow',
+                'description' => 'Browse every authentic cosmetic, skincare, hair care and fragrance product at Suglow. Original imports, cash on delivery across Bangladesh.',
+                'keywords'    => null,
+                // Query-string variants (?brand=, ?name=, sorting) all
+                // canonicalise here, so they never compete with each other.
+                'canonical'   => $siteUrl . '/product',
+                'image'       => null,
+                'type'        => 'website',
+                'robots'      => 'index, follow, max-image-preview:large',
+            ],
+            'listingPage' => ['brands' => BrandMetaResolver::all()],
+        ]);
+    }
+
+    /**
+     * /offers — the discounts page.
+     */
+    public function offers(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        return $this->shell([
+            'seo' => [
+                'title'       => 'Offers & Discounts on Authentic Cosmetics in Bangladesh | Suglow',
+                'description' => 'Current offers and discounts on authentic skincare, makeup and cosmetics at Suglow. Limited-time prices, cash on delivery across Bangladesh.',
+                'keywords'    => null,
+                'canonical'   => rtrim((string) config('app.url'), '/') . '/offers',
+                'image'       => null,
+                'type'        => 'website',
+                'robots'      => 'index, follow, max-image-preview:large',
+            ],
         ]);
     }
 

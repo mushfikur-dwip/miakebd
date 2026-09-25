@@ -35,6 +35,7 @@
 ## Key pages
 
 - [All products](https://suglow.com/product)
+- [Brand pages](https://suglow.com/brand/{brand-slug}) — every product of one brand with current prices, e.g. [CeraVe](https://suglow.com/brand/cerave), [The Ordinary](https://suglow.com/brand/the-ordinary), [COSRX](https://suglow.com/brand/cosrx)
 - [Product details](https://suglow.com/product/{product-slug})
 - [Offers](https://suglow.com/offers)
 - [Sitemap](https://suglow.com/sitemap.xml)

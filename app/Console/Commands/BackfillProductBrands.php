@@ -50,17 +50,21 @@ class BackfillProductBrands extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
 
-        // Longest first: otherwise "Dove" would claim "Dove Body Love" before
-        // a more specific brand had a chance, and "Clean & Clear" would never
-        // match because a shorter name matched earlier in the string.
-        $brands = collect(self::BRANDS)
-            ->unique()
-            ->sortByDesc(fn ($name) => mb_strlen($name))
-            ->values();
+        $candidates = $this->candidateBrands();
 
+        // Products with no brand at all, and products filed under the
+        // placeholder brand - which since the default-brand migration is where
+        // every unbranded product lives, so looking only for NULL found nothing.
+        $defaultId = ProductBrand::defaultId();
         $products = Product::query()
             ->where('status', Status::ACTIVE)
-            ->whereNull('product_brand_id')
+            ->where(function ($query) use ($defaultId) {
+                $query->whereNull('product_brand_id');
+
+                if ($defaultId) {
+                    $query->orWhere('product_brand_id', $defaultId);
+                }
+            })
             ->orderBy('id')
             ->get(['id', 'name', 'product_brand_id']);
 
@@ -68,90 +72,153 @@ class BackfillProductBrands extends Command
         $unmatched = 0;
 
         foreach ($products as $product) {
-            $brand = $this->matchBrand((string) $product->name, $brands);
+            $key = $this->matchBrand((string) $product->name, $candidates);
 
-            if ($brand === null) {
+            if ($key === null) {
                 $unmatched++;
                 continue;
             }
 
-            $matches[] = ['id' => $product->id, 'name' => $product->name, 'brand' => $brand];
+            $matches[] = ['id' => $product->id, 'name' => $product->name, 'key' => $key];
         }
 
-        $used = collect($matches)->pluck('brand')->unique()->sort()->values();
-
-        $this->info('Products without a brand : ' . $products->count());
-        $this->info('Matched to a brand       : ' . count($matches));
-        $this->info('No brand found in name   : ' . $unmatched);
-        $this->info('Distinct brands needed   : ' . $used->count());
+        $this->info('Products without a real brand : ' . $products->count());
+        $this->info('Matched to a brand            : ' . count($matches));
+        $this->info('No brand found in the name    : ' . $unmatched);
 
         if (empty($matches)) {
-            $this->warn('Nothing matched — no changes.');
+            $this->warn('Nothing matched - no changes.');
 
             return self::SUCCESS;
         }
 
-        $this->table(
-            ['ID', 'Product', 'Brand'],
-            array_map(fn ($m) => [
-                $m['id'],
-                mb_strimwidth($m['name'], 0, 55, '…'),
-                $m['brand'],
-            ], array_slice($matches, 0, 25))
-        );
+        // Per brand first: a wrong brand shows up here as one odd line, which
+        // is far easier to spot than in a list of hundreds of products.
+        $perBrand = collect($matches)->groupBy('key')->map(fn ($group, $key) => [
+            $candidates[$key]['name'],
+            $candidates[$key]['id'] ? 'existing' : 'NEW',
+            $group->count(),
+            mb_strimwidth((string) $group->first()['name'], 0, 60, '…'),
+        ])->sortByDesc(2)->values()->all();
 
-        if (count($matches) > 25) {
-            $this->line('  … and ' . (count($matches) - 25) . ' more.');
-        }
-
-        $this->line('Brands to create/reuse: ' . $used->implode(', '));
+        $this->table(['Brand', 'Brand is', 'Products', 'Example product'], $perBrand);
 
         if ($dryRun) {
-            $this->warn('Dry run — nothing was written. Re-run without --dry-run to apply.');
+            $this->warn('Dry run - nothing was written. Re-run without --dry-run to apply.');
 
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($matches, $used) {
+        DB::transaction(function () use ($matches, $candidates) {
             $ids = [];
 
-            foreach ($used as $name) {
-                $brand = ProductBrand::firstOrCreate(
-                    ['slug' => Str::slug($name)],
-                    ['name' => $name, 'status' => Status::ACTIVE]
-                );
-
-                $ids[$name] = $brand->id;
+            foreach (collect($matches)->pluck('key')->unique() as $key) {
+                $ids[$key] = $candidates[$key]['id'] ?? ProductBrand::firstOrCreate(
+                    ['slug' => Str::slug($candidates[$key]['name'])],
+                    ['name' => $candidates[$key]['name'], 'status' => Status::ACTIVE]
+                )->id;
             }
 
-            foreach ($matches as $m) {
-                DB::table('products')
-                    ->where('id', $m['id'])
-                    ->update(['product_brand_id' => $ids[$m['brand']]]);
+            foreach ($matches as $match) {
+                DB::table('products')->where('id', $match['id'])->update(['product_brand_id' => $ids[$match['key']]]);
             }
         });
 
-        $this->info('Created/reused ' . $used->count() . ' brands and updated ' . count($matches) . ' products.');
+        $this->info('Updated ' . count($matches) . ' products.');
 
         return self::SUCCESS;
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int,string>  $brands
+     * The brands a product may be matched to, keyed by normalised name and
+     * longest first - so "Beauty of Joseon" wins over "Beauty Glazed" and
+     * "Clean & Clear" is tried before anything shorter.
+     *
+     * Brands created in the admin panel are matched only at the START of a
+     * product name, which is how these products are named ("MARS Matte
+     * Mousse ..."): some of them are ordinary words ("image", "insight",
+     * "centella") that appear inside other brands' product names. The curated
+     * list below may also match anywhere, as it always could.
+     *
+     * @return array<string,array{name: string, id: ?int, anywhere: bool}>
      */
-    private function matchBrand(string $productName, $brands): ?string
+    private function candidateBrands(): array
     {
-        // Normalise separators so "Clean&Clear" and "Clean & Clear" both hit.
-        $haystack = ' ' . mb_strtolower(preg_replace('/[^a-z0-9&]+/i', ' ', $productName)) . ' ';
+        $candidates = [];
 
-        foreach ($brands as $brand) {
-            $needle = ' ' . mb_strtolower(preg_replace('/[^a-z0-9&]+/i', ' ', $brand)) . ' ';
+        foreach (ProductBrand::query()->where('status', Status::ACTIVE)->storefront()->get(['id', 'name']) as $brand) {
+            $key = $this->normalise((string) $brand->name);
 
-            if (str_contains($haystack, $needle)) {
-                return $brand;
+            if ($key !== '' && !isset($candidates[$key])) {
+                $candidates[$key] = ['name' => (string) $brand->name, 'id' => (int) $brand->id, 'anywhere' => false];
+            }
+        }
+
+        foreach (self::BRANDS as $name) {
+            $key = $this->normalise($name);
+
+            if (isset($candidates[$key])) {
+                $candidates[$key]['anywhere'] = true;
+            } else {
+                $candidates[$key] = ['name' => $name, 'id' => null, 'anywhere' => true];
+            }
+        }
+
+        uksort($candidates, fn ($a, $b) => strlen(str_replace(' ', '', $b)) <=> strlen(str_replace(' ', '', $a)));
+
+        return $candidates;
+    }
+
+    /**
+     * @param  array<string,array{name: string, id: ?int, anywhere: bool}>  $candidates
+     */
+    private function matchBrand(string $productName, array $candidates): ?string
+    {
+        $words = array_values(array_filter(explode(' ', $this->normalise($productName)), 'strlen'));
+
+        if (!$words) {
+            return null;
+        }
+
+        // 1. At the start of the name, allowing for the brand's letters being
+        //    spaced differently ("Deconstruct" for "de cons truct", "WishCare"
+        //    for "Wish Care") - but only on whole words, so "bob" never
+        //    claims "Bobbi Brown".
+        foreach (array_keys($candidates) as $key) {
+            $needle = str_replace(' ', '', $key);
+            $joined = '';
+
+            foreach ($words as $word) {
+                $joined .= $word;
+
+                if (strlen($joined) >= strlen($needle)) {
+                    break;
+                }
+            }
+
+            if ($joined === $needle) {
+                return $key;
+            }
+        }
+
+        // 2. Anywhere in the name, for the curated list only.
+        $haystack = ' ' . implode(' ', $words) . ' ';
+
+        foreach ($candidates as $key => $brand) {
+            if ($brand['anywhere'] && str_contains($haystack, ' ' . $key . ' ')) {
+                return $key;
             }
         }
 
         return null;
+    }
+
+    /** "POND'S", "Pond’s" and "ponds" all become "ponds"; "Care:Nel" becomes "care nel". */
+    private function normalise(string $value): string
+    {
+        $value = mb_strtolower(str_replace(["'", '’', '`'], '', $value));
+        $value = preg_replace('/[^a-z0-9&]+/', ' ', $value);
+
+        return trim(preg_replace('/\s+/', ' ', $value));
     }
 }

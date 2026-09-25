@@ -19,8 +19,10 @@
                  hides all but six of them behind an arrow nobody clicks. The
                  list is capped instead, and the rest live behind Show More. -->
             <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
+                <!-- The brand's own page, which Google can index; the
+                     ?brand= filter only for a brand saved without a slug. -->
                 <router-link v-for="brand in visibleBrands" :key="brand.id"
-                    :to="{ name: 'frontend.product', query: { brand: brand.id } }"
+                    :to="brand.slug ? { name: 'frontend.brand', params: { brandSlug: brand.slug } } : { name: 'frontend.product', query: { brand: brand.id } }"
                     class="group rounded-2xl border border-gray-100 bg-white shadow-xs transition-all duration-300 hover:border-primary hover:shadow-card">
                     <figure class="w-full h-20 sm:h-24 flex items-center justify-center p-3">
                         <img :src="brand.cover" :alt="brand.name" loading="lazy" decoding="async"

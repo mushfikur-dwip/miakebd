@@ -82,6 +82,18 @@ export default [
         },
     },
     {
+        // A brand's own page, served with its own title and structured data
+        // by RootController::brand(). The param is `brandSlug`, not `slug`:
+        // ProductComponent reads route.params.slug as a category.
+        path: "/brand/:brandSlug",
+        component: ProductComponent,
+        name: "frontend.brand",
+        meta: {
+            isFrontend: true,
+            auth: false,
+        },
+    },
+    {
         path: "/product/:slug",
         component: ProductDetailsComponent,
         name: "frontend.product.details",

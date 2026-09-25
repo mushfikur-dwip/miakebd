@@ -23,6 +23,11 @@ class ProductRelationResource extends JsonResource
             'brands'         => SimpleProductBrandResource::collection($this['brands']),
             'variations'     => (object)$this['variations'],
             'max_price'      => AppLibrary::convertAmountFormat($this['max_price']),
+            // get(), not $this['brand']: an array-style read of a key the
+            // service did not set is a fatal "undefined array key" here, after
+            // the controller's try/catch - exactly how a missing `variations`
+            // key once took the whole shop page down.
+            'brand'          => $this->resource->get('brand'),
             'current_page'   => $products['current_page'],
             'first_page_url' => $products['first_page_url'],
             'from'           => $products['from'],

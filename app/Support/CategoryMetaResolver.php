@@ -408,6 +408,9 @@ class CategoryMetaResolver
         try {
             return Product::whereIn('product_category_id', $categoryIds)
                 ->where('status', Status::ACTIVE)
+                // What a shopper can actually buy online - the count is
+                // printed in the page's description.
+                ->storefront()
                 ->count();
         } catch (\Throwable $e) {
             return 0;

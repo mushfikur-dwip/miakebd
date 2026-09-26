@@ -1,6 +1,5 @@
 <template>
-    <LoadingComponent :props="loading" />
-    <div v-if="show" class="co-card">
+    <div v-if="show" class="co-card co-address">
         <div class="co-card-head">
             <span class="co-card-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -10,11 +9,11 @@
                 </svg>
             </span>
             <h3>{{ title }}</h3>
-            <div class="flex flex-wrap items-center gap-2">
+            <div v-if="!formVisible && addresses.length > 0" class="flex flex-wrap items-center gap-2">
                 <button
-                    v-if="Object.keys(selectedAddress).length > 0"
+                    v-if="selected.id"
                     type="button"
-                    @click.prevent="edit(selectedAddress)"
+                    @click.prevent="startEdit(selected)"
                     class="address-action bg-[#E6FFF0] text-success"
                 >
                     <i class="lab-fill-edit"></i>
@@ -22,9 +21,7 @@
                 </button>
                 <button
                     type="button"
-                    @click.prevent="
-                        showTarget(slug + '-address-modal', 'modal-active')
-                    "
+                    @click.prevent="startAdd"
                     class="address-action bg-primary-slate text-primary"
                 >
                     <i class="lab-fill-circle-plus"></i>
@@ -32,436 +29,160 @@
                 </button>
             </div>
         </div>
+
         <div class="co-card-body">
-            <div class="co-opts">
+            <!-- Placeholder while the list loads, so a customer who has saved
+                 addresses never sees the empty form flash up first. -->
+            <div v-if="!loaded && addresses.length === 0" class="addr-skeleton" aria-hidden="true">
+                <span></span><span></span>
+            </div>
+
+            <!-- The form sits in the card itself - nothing to open. It is what a
+                 customer with no saved address sees straight away, and what
+                 "Add New" and "Edit" swap in for the list. -->
+            <form v-else-if="formVisible" class="block w-full" @submit.prevent="save" novalidate>
+                <DeliveryAddressFields :form="form" :errors="errors" />
+
+                <div class="addr-buttons">
+                    <button type="submit" class="addr-save" :disabled="saving">
+                        <span v-if="saving" class="addr-spinner" aria-hidden="true"></span>
+                        {{ saving ? $t("label.please_wait") : $t("button.save_address") }}
+                    </button>
+                    <button v-if="addresses.length > 0" type="button" class="addr-cancel" @click.prevent="closeForm">
+                        {{ $t("button.cancel") }}
+                    </button>
+                </div>
+            </form>
+
+            <div v-else class="co-opts addr-list">
                 <button
-                    type="button"
-                    :class="
-                        Object.keys(selectedAddress).length > 0 &&
-                        address.id === selectedAddress.id
-                            ? 'selected'
-                            : ''
-                    "
-                    @click.prevent="activeAddress(address)"
                     v-for="address in addresses"
                     :key="address.id"
+                    type="button"
                     class="co-opt"
+                    :class="selected.id === address.id ? 'selected' : ''"
+                    :aria-pressed="selected.id === address.id"
+                    @click.prevent="method(address)"
                 >
                     <span class="co-radio" aria-hidden="true"></span>
                     <span class="co-opt-text">
                         <b>{{ address.full_name }}</b>
-                        <span v-if="address.phone"
-                            >{{ address.country_code ?? "" }} {{ address.phone }}</span
-                        >
+                        <span v-if="address.phone" dir="ltr">{{ address.country_code ?? "" }} {{ address.phone }}</span>
                         <span v-if="address.address">{{ address.address }}</span>
-                        <span v-if="address.state">{{ address.state }}</span>
+                        <span v-if="address.state" class="addr-district">{{ address.state }}</span>
                     </span>
                 </button>
             </div>
         </div>
     </div>
-
-    <div
-        :id="slug + '-address-modal'"
-        class="fixed inset-0 z-50 p-3 w-screen h-dvh overflow-y-auto bg-black/50 transition-all duration-300 opacity-0 invisible"
-    >
-        <div
-            class="w-full rounded-xl mx-auto bg-white transition-all duration-300 max-w-3xl"
-        >
-            <div
-                class="flex items-center justify-between gap-2 py-4 px-4 border-b border-slate-100"
-            >
-                <h3 class="text-lg font-bold capitalize">
-                    {{ $t("label.address") }}
-                </h3>
-                <button
-                    @click.prevent="reset"
-                    type="button"
-                    class="lab-line-circle-cross text-lg text-[#E93C3C]"
-                ></button>
-            </div>
-            <form class="w-full p-5" @submit.prevent="save">
-                <div class="form-row">
-                    <!-- Row 1: Full Name (Full Width) -->
-                    <div class="form-col-12">
-                        <label
-                            for="full_name"
-                            class="text-sm font-medium capitalize mb-1 field-title required"
-                        >
-                            {{ $t("label.full_name") }}
-                        </label>
-                        <input
-                            type="text"
-                            v-model="address.form.full_name"
-                            :class="errors.full_name ? 'invalid' : ''"
-                            class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
-                        />
-                        <small class="db-field-alert" v-if="errors.full_name">
-                            {{ errors.full_name[0] }}
-                        </small>
-                    </div>
-
-                    <!-- Row 2: Phone + Email -->
-                    <div class="form-col-12">
-                        <label
-                            for="phone"
-                            class="text-sm font-medium capitalize mb-1 field-title required"
-                        >
-                            {{ $t("label.phone") }}
-                        </label>
-                        <div
-                            :class="errors.phone ? 'invalid' : ''"
-                            class="field-control flex items-center"
-                        >
-                            <div class="w-fit flex-shrink-0 px-2">
-                                <span class="flex items-center gap-1">
-                                    <span
-                                        class="whitespace-nowrap flex-shrink-0 text-xs"
-                                        >+880</span
-                                    >
-                                </span>
-                            </div>
-                            <input
-                                v-model="address.form.phone"
-                                v-on:keypress="phoneNumber($event)"
-                                :class="errors.phone ? 'invalid' : ''"
-                                type="text"
-                                id="phone"
-                                class="pl-2 text-sm w-full h-full"
-                            />
-                        </div>
-                        <small class="db-field-alert" v-if="errors.phone">
-                            {{ errors.phone[0] }}
-                        </small>
-                    </div>
-
-                    <div class="form-col-12 sm:form-col-6">
-                        <label
-                            for="email"
-                            class="text-sm font-medium capitalize mb-1 field-title"
-                        >
-                            {{ $t("label.email") }}
-                        </label>
-                        <input
-                            type="email"
-                            v-model="address.form.email"
-                            :class="errors.email ? 'invalid' : ''"
-                            class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
-                        />
-                        <small class="db-field-alert" v-if="errors.email">
-                            {{ errors.email[0] }}
-                        </small>
-                    </div>
-
-                    <!-- Row 3: District (State) -->
-                    <div class="form-col-12 sm:form-col-6">
-                        <label
-                            class="text-sm font-medium capitalize mb-1 field-title required"
-                            for="state"
-                        >
-                            District
-                        </label>
-                        <vue-select
-                            class="w-full h-12 px-4 rounded-lg text-base capitalize border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500 appearance-none"
-                            id="state"
-                            v-bind:class="errors.state ? 'invalid' : ''"
-                            v-model="address.form.state"
-                            :options="address.states"
-                            label-by="name"
-                            value-by="name"
-                            :closeOnSelect="true"
-                            :searchable="true"
-                            :clearOnClose="true"
-                            placeholder="--"
-                            search-placeholder="--"
-                        />
-                        <small class="db-field-alert" v-if="errors.state">
-                            {{ errors.state[0] }}
-                        </small>
-                    </div>
-
-                    <!-- Row 4: Full Address (Full Width) -->
-                    <div class="form-col-12">
-                        <label
-                            class="text-sm font-medium capitalize mb-1 field-title required"
-                            for="street_address"
-                        >
-                            Full Address
-                        </label>
-                        <input
-                            type="text"
-                            :class="errors.address ? 'invalid' : ''"
-                            v-model="address.form.address"
-                            class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
-                        />
-                        <small class="db-field-alert" v-if="errors.address">
-                            {{ errors.address[0] }}
-                        </small>
-                    </div>
-
-                    <div class="form-col-12 sm:form-col-6">
-                        <div class="flex flex-wrap gap-6 mt-2">
-                            <button
-                                type="submit"
-                                class="font-bold text-center h-12 leading-12 px-8 rounded-full whitespace-nowrap bg-primary text-white capitalize"
-                            >
-                                {{ $t("button.save_address") }}
-                            </button>
-
-                            <button
-                                @click.prevent="reset"
-                                type="button"
-                                class="font-bold text-center h-12 leading-12 px-8 rounded-full whitespace-nowrap bg-[#F7F7FC] capitalize"
-                            >
-                                {{ $t("button.cancel") }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
 </template>
 
 <script>
-import orderTypeEnum from "../../../../enums/modules/orderTypeEnum";
-import appService from "../../../../services/appService";
-import targetService from "../../../../services/targetService";
 import alertService from "../../../../services/alertService";
-import LoadingComponent from "../../components/LoadingComponent.vue";
+import deliveryFormService from "../../../../services/deliveryFormService";
+import DeliveryAddressFields from "./DeliveryAddressFields.vue";
 
 export default {
     name: "AddressComponent",
+    components: { DeliveryAddressFields },
     props: {
-        show: { type: Boolean, Default: false },
-        slug: { type: String, Default: "shipping" },
+        show: { type: Boolean, default: false },
+        slug: { type: String, default: "shipping" },
         title: { type: String },
         selectedAddress: { type: Object },
         method: { type: Function },
     },
     data() {
         return {
-            loading: {
-                isActive: false,
-            },
-            orderTypeEnum: orderTypeEnum,
-            address: {
-                form: {
-                    full_name: "",
-                    email: "",
-                    country_code: "+880",
-                    phone: "",
-                    country: "Bangladesh",
-                    state: null,
-                    address: "",
-                },
-                search: {
-                    paginate: 0,
-                    order_column: "id",
-                    order_type: "asc",
-                },
-                states: [],
-            },
-            worldMapData: [],
-            activeAddressId: null,
-            errors: {},
+            // The list is loaded by CheckoutComponent; this card only shows it.
+            formOpen: false,
+            editingId: null,
+            saving: false,
+            form: deliveryFormService.empty(this.$store.getters.authInfo),
+            errors: deliveryFormService.noErrors(),
         };
-    },
-    components: {
-        LoadingComponent,
     },
     computed: {
         addresses: function () {
-            return this.$store.getters["frontendAddress/lists"];
+            return this.$store.getters["frontendAddress/lists"] || [];
         },
-        countries: function () {
-            return this.$store.getters["frontendCountryStateCity/countries"];
+        loaded: function () {
+            return this.$store.getters["frontendAddress/loaded"];
         },
-    },
-    mounted() {
-        this.loading.isActive = true;
-        setTimeout(() => {
-            this.callCountry();
-            // Auto-select Bangladesh and load states
-            this.address.form.country = "Bangladesh";
-            this.callStates("Bangladesh");
-        }, 300);
-        this.$store
-            .dispatch("frontendAddress/lists", {
-                search: {
-                    paginate: 0,
-                    order_column: "id",
-                    order_type: "asc",
-                },
-            })
-            .then((res) => {
-                this.purgeForeignAddress();
-                this.loading.isActive = false;
-            })
-            .catch((err) => {
-                this.loading.isActive = false;
-            });
-
-        this.loading.isActive = false;
-        this.address.form.country_code = "+880";
+        selected: function () {
+            return this.selectedAddress || {};
+        },
+        formVisible: function () {
+            return this.formOpen || (this.loaded && this.addresses.length === 0);
+        },
     },
     methods: {
-        // The cart is persisted to localStorage, so the address chosen for an
-        // earlier order survives into the next one — and every guest checkout
-        // creates a fresh user row, so that id then belongs to somebody else.
-        // OrderRequest requires shipping_id/billing_id and the order is
-        // refused, which is why a second order could never be placed. If the
-        // stored address is not in this customer's own list, drop it so they
-        // are asked to pick one instead of silently sending a dead id.
-        purgeForeignAddress: function () {
-            const selected = this.selectedAddress || {};
-
-            if (!selected.id) {
+        startAdd: function () {
+            this.editingId = null;
+            this.form = deliveryFormService.empty(this.$store.getters.authInfo);
+            this.errors = deliveryFormService.noErrors();
+            this.formOpen = true;
+        },
+        startEdit: function (address) {
+            this.editingId = address.id;
+            this.form = deliveryFormService.fromAddress(address);
+            this.errors = deliveryFormService.noErrors();
+            this.formOpen = true;
+        },
+        closeForm: function () {
+            this.formOpen = false;
+            this.editingId = null;
+            this.errors = deliveryFormService.noErrors();
+        },
+        save: async function () {
+            if (this.saving) {
                 return;
             }
 
-            const owned = (this.addresses || []).some(address => address.id === selected.id);
-
-            if (!owned) {
-                this.activeAddressId = null;
-                this.method({});
+            this.errors = deliveryFormService.validate(this.form, this.$t);
+            if (deliveryFormService.hasErrors(this.errors)) {
+                return;
             }
-        },
-        phoneNumber(e) {
-            return appService.phoneNumber(e);
-        },
-        activeAddress: function (address) {
-            this.activeAddressId = address.id;
-            this.method(address);
-        },
-        showTarget: function (targetID, addClass) {
-            targetService.showTarget(targetID, addClass);
-        },
-        callCountry: function () {
-            this.$store.dispatch("frontendCountryStateCity/countries");
-        },
-        callStates: function (countryName) {
-            this.address.form.state = null;
-            this.address.states = [];
 
-            this.$store
-                .dispatch(
-                    "frontendCountryStateCity/statesByCountry",
-                    countryName
-                )
-                .then((res) => {
-                    this.address.states = res.data.data;
-                });
-        },
-        reset: function () {
-            targetService.hideTarget(
-                this.slug + "-address-modal",
-                "modal-active"
-            );
-            this.$store.dispatch("frontendAddress/reset").then().catch();
-            this.errors = {};
-            this.address.form = {
-                full_name: "",
-                email: "",
-                country_code: "+880",
-                phone: "",
-                country: "Bangladesh",
-                state: null,
-                address: "",
-            };
-            this.address.states = [];
-        },
-        save: function () {
+            this.saving = true;
+
             try {
-                const tempId =
-                    this.$store.getters["frontendAddress/temp"].temp_id;
-                this.loading.isActive = true;
-                this.$store
-                    .dispatch("frontendAddress/save", this.address)
-                    .then((res) => {
-                        targetService.hideTarget(
-                            this.slug + "-address-modal",
-                            "modal-active"
-                        );
-                        this.loading.isActive = false;
-                        alertService.successFlip(
-                            tempId === null ? 0 : 1,
-                            this.$t("label.address")
-                        );
-                        this.address.form = {
-                            full_name: "",
-                            email: "",
-                            country_code: "+880",
-                            phone: "",
-                            country: null,
-                            state: null,
-                            zip_code: "",
-                            address: "",
-                        };
-                        this.address.states = [];
-                        this.errors = {};
-                        this.activeAddress(res.data.data);
-                    })
-                    .catch((err) => {
-                        this.loading.isActive = false;
-                        this.errors = err.response.data.errors;
-                    });
+                // The store decides POST or PUT from its temp state, which the
+                // other address card may have left behind - set it explicitly.
+                if (this.editingId) {
+                    await this.$store.dispatch("frontendAddress/edit", this.editingId);
+                } else {
+                    await this.$store.dispatch("frontendAddress/reset");
+                }
+
+                const response = await this.$store.dispatch("frontendAddress/save", {
+                    form: deliveryFormService.payload(this.form),
+                    search: { paginate: 0, order_column: "id", order_type: "desc" },
+                });
+
+                const saved = response.data.data;
+
+                // Shown at once rather than when the store's own refresh comes
+                // back: until then a first address would leave the list empty,
+                // keeping the filled-in form on screen to be submitted twice.
+                this.$store.commit("frontendAddress/lists", [saved].concat(this.addresses.filter(item => item.id !== saved.id)));
+
+                this.saving = false;
+                alertService.successFlip(this.editingId ? 1 : 0, this.$t("label.address"));
+                this.closeForm();
+
+                // Selecting it re-prices shipping: an edit may have changed
+                // the district.
+                this.method(saved);
             } catch (err) {
-                this.loading.isActive = false;
-                alertService.error(err);
-            }
-        },
-        edit: function (address) {
-            if (Object.keys(this.selectedAddress).length > 0) {
-                targetService.showTarget(
-                    this.slug + "-address-modal",
-                    "modal-active"
-                );
-                this.loading.isActive = true;
-                this.$store
-                    .dispatch("frontendAddress/edit", address.id)
-                    .then(async (res) => {
-                        this.loading.isActive = false;
+                this.saving = false;
 
-                        if (address.state !== "") {
-                            await this.$store
-                                .dispatch(
-                                    "frontendCountryStateCity/statesByCountry",
-                                    address.country
-                                )
-                                .then((res) => {
-                                    this.address.states = res.data.data;
-                                });
-                        } else {
-                            await this.$store
-                                .dispatch(
-                                    "frontendCountryStateCity/statesByCountry",
-                                    address.country
-                                )
-                                .then((res) => {
-                                    this.address.states = res.data.data;
-                                });
-                            this.address.form.state = null;
-                        }
+                const result = deliveryFormService.fromResponse(err, this.$t);
+                this.errors = Object.assign(deliveryFormService.noErrors(), result.fields);
 
-                        this.address.form = {
-                            full_name: address.full_name,
-                            email: address.email,
-                            country_code: address.country_code,
-                            phone: address.phone,
-                            country: address.country || "Bangladesh",
-                            state: address.state,
-                            address: address.address,
-                        };
-
-                        if (address.state === "") {
-                            this.address.form.state = null;
-                        }
-
-                    })
-                    .catch((err) => {
-                        alertService.error(err.response.data.message);
-                    });
+                if (result.message) {
+                    alertService.error(result.message);
+                }
             }
         },
     },
@@ -487,9 +208,117 @@ export default {
     filter: brightness(0.96);
 }
 
+.addr-list {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.addr-district {
+    font-weight: 600;
+    color: #1f1f39 !important;
+}
+
+.addr-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.addr-save,
+.addr-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 46px;
+    padding: 0 26px;
+    border-radius: 9999px;
+    font-size: 14.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.addr-save {
+    min-width: 170px;
+    color: #ffffff;
+    background: rgb(var(--primary));
+}
+
+.addr-save:hover:not(:disabled) {
+    filter: brightness(1.06);
+}
+
+.addr-save:disabled {
+    opacity: 0.75;
+    cursor: wait;
+}
+
+.addr-cancel {
+    color: #1f1f39;
+    background: #f7f7fc;
+}
+
+.addr-cancel:hover {
+    filter: brightness(0.97);
+}
+
+.addr-spinner {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    border: 2px solid rgb(255 255 255 / 0.35);
+    border-top-color: #ffffff;
+    animation: addr-spin 0.7s linear infinite;
+}
+
+@keyframes addr-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.addr-skeleton {
+    display: grid;
+    gap: 11px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.addr-skeleton span {
+    display: block;
+    height: 86px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #f3f4f7 0%, #fafafc 50%, #f3f4f7 100%);
+    background-size: 200% 100%;
+    animation: addr-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes addr-shimmer {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: -100% 0;
+    }
+}
+
+@media (max-width: 639px) {
+    .addr-save {
+        flex: 1;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .address-action {
+    .address-action,
+    .addr-save,
+    .addr-cancel {
         transition: none;
+    }
+
+    .addr-spinner,
+    .addr-skeleton span {
+        animation: none;
     }
 }
 </style>

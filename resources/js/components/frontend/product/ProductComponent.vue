@@ -2,18 +2,23 @@
     <LoadingComponent :props="loading" />
     <section class="mb-10 sm:mb-20">
         <div class="container">
-            <CategoryBreadcrumbComponent
-                v-if="categorySlug"
-                :categories="ancestorsAndSelfCategories" />
+            <!-- Height held for the breadcrumb: it arrives after the products
+                 and pushed the whole listing down 24px when it did. -->
+            <div v-if="categorySlug" class="min-h-[24px]">
+                <CategoryBreadcrumbComponent :categories="ancestorsAndSelfCategories" />
+            </div>
 
             <div class="flex items-center justify-between gap-5 mb-6 max-md:mb-8">
                 <div class="flex flex-wrap items-end gap-3 max-md:flex-col max-md:items-start max-md:gap-1.5">
-                    <!-- h1: on /brand/:brandSlug this is the brand name, the one
-                         heading Google reads the page by once it renders. -->
+                    <!-- h1: the brand on /brand/:brandSlug, the category on
+                         /product-category/:slug - the one heading Google reads
+                         the page by. Every category page used to be headed
+                         "Explore All Products". -->
                     <h1 class="text-3xl font-bold capitalize max-sm:text-lg">
-                        {{ pageBrand ? pageBrand.name : $t('label.explore_all_products') }}
+                        {{ pageBrand ? pageBrand.name : (currentCategoryName || $t('label.explore_all_products')) }}
                     </h1>
-                    <span class="text-xl font-medium capitalize max-sm:text-sm">
+                    <span v-if="!(loadingContent.isActive && categoryWiseProducts.length === 0)"
+                          class="text-xl font-medium capitalize max-sm:text-sm">
                         ({{
                             pagination.meta ? pagination.meta.total : 0
                         }} {{
@@ -123,7 +128,7 @@
                                         </div>
                                         <VueSimpleRangeSlider @mouseup="priceOptionRange" @touchend="priceOptionRange"
                                             :keepJustSignificantFigures="true" popover-content-editable="false"
-                                            significant-figures="1" active-bar-color="#F23E14" bar-color="#D9DBE9"
+                                            significant-figures="1" active-bar-color="#A9616B" bar-color="#D9DBE9"
                                             class="p-1 w-full" :min="0" :max="maxRange" v-model="productPrice.range" />
                                     </div>
                                 </div>
@@ -199,7 +204,10 @@
 
                 <div class="w-full p-4 max-md:p-0">
                     <div class="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-12 componentLoading">
-                        <LoadingContentComponent :props="loadingContent" />
+                        <!-- First load: card-shaped placeholders. Paging through
+                             an already-shown list keeps the content spinner. -->
+                        <ProductCardSkeleton v-if="loadingContent.isActive && categoryWiseProducts.length === 0" :count="6" />
+                        <LoadingContentComponent v-else :props="loadingContent" />
                         <ProductListComponent v-if="categoryWiseProducts.length > 0" :products="categoryWiseProducts" />
                     </div>
 
@@ -223,6 +231,7 @@ import "vue-simple-range-slider/css";
 import LoadingComponent from "../components/LoadingComponent";
 import PaginationComponent from "../components/PaginationComponent";
 import LoadingContentComponent from "../components/LoadingContentComponent.vue";
+import ProductCardSkeleton from "../components/ProductCardSkeleton.vue";
 import CategoryBreadcrumbComponent from "../components/CategoryBreadcrumbComponent.vue";
 
 export default {
@@ -230,6 +239,7 @@ export default {
     components: {
         CategoryBreadcrumbComponent,
         LoadingContentComponent,
+        ProductCardSkeleton,
         LoadingComponent,
         ProductListComponent,
         VueSimpleRangeSlider,
@@ -281,6 +291,12 @@ export default {
         },
         pagination: function () {
             return this.$store.getters["frontendProduct/categoryWiseProductPagination"];
+        },
+        // The category this page is for: the last of its ancestors-and-self.
+        currentCategoryName: function () {
+            const list = this.categorySlug ? (this.ancestorsAndSelfCategories || []) : [];
+
+            return list.length > 0 ? list[list.length - 1].name : null;
         },
         ancestorsAndSelfCategories: function () {
             return this.$store.getters["frontendProductCategory/ancestorsAndSelf"];

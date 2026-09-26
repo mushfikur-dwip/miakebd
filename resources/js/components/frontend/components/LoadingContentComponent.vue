@@ -1,5 +1,5 @@
 <template>
-    <VueElementLoading spinner="bar-fade-scale" color="#F23E14" :active="props.isActive" :is-full-screen="false"/>
+    <VueElementLoading spinner="bar-fade-scale" color="#A9616B" :active="props.isActive" :is-full-screen="false"/>
 </template>
 
 <script>

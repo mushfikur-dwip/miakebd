@@ -20,8 +20,9 @@ class SendMetaEvents extends Command
 
     public function handle(MetaConversionsService $meta): int
     {
-        $sent = $meta->sendPending();
-        $meta->prune();
+        // Through the fallback's lock, so a cron run and a storefront-driven
+        // run can never post the same pending rows twice.
+        $sent = \App\Support\ScheduleFallback::sendMetaEvents();
 
         if ($sent > 0) {
             $this->info("Sent {$sent} event(s) to Meta.");

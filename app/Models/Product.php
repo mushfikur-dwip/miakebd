@@ -112,6 +112,24 @@ class Product extends Model implements HasMedia
         return $query->where($col, Status::ACTIVE);
     }
 
+    /**
+     * Products that have a photo before products that do not.
+     *
+     * More than half the catalogue (650 of 1,146 in September 2026) had no
+     * photo yet, and the default A-Z order put rows of "No Image Available"
+     * tiles at the top of category pages - the first thing an ad click saw.
+     * Applied ahead of the chosen order, so within each group that order still
+     * holds. Callers use it only where the shopper did not ask for a specific
+     * sort: a price sort must stay strictly by price.
+     */
+    public function scopePhotosFirst($query)
+    {
+        return $query->orderByRaw(
+            'CASE WHEN EXISTS (SELECT 1 FROM media WHERE media.model_type = ? AND media.model_id = products.id AND media.collection_name = ?) THEN 0 ELSE 1 END',
+            [$this->getMorphClass(), 'product']
+        );
+    }
+
     public function scopeRandAndLimitOrOrderBy($query, $rand = 0, $orderColumn = 'id', $orderType = 'asc')
     {
         if ($rand > 0) {

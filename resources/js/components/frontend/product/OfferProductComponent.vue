@@ -4,9 +4,10 @@
         <div class="container">
             <div class="flex items-center justify-between gap-5 mb-6 max-md:mb-8">
                 <div class="flex flex-wrap items-end gap-3 max-md:flex-col max-md:items-start max-md:gap-1.5">
-                    <h3 class="text-3xl font-bold capitalize max-sm:text-lg">
+                    <!-- The page's main heading (was an h3, leaving no h1). -->
+                    <h1 class="text-3xl font-bold capitalize max-sm:text-lg">
                         {{ $t('label.offer_products') }}
-                    </h3>
+                    </h1>
                     <span class="text-xl font-medium capitalize max-sm:text-sm">
                         ({{ products.length }} {{ products.length > 1 ? $t('label.products_found') : $t('label.product_found') }})
                     </span>

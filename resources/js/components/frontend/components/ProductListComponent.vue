@@ -1,5 +1,9 @@
 <template>
-    <div v-if="products.length > 0" v-for="product in products"
+    <!-- Cards after the first row fade up as they scroll into view. The first
+         row is left alone: it is what the shopper sees on arrival, and hiding
+         it for an animation would only delay the page's largest paint. -->
+    <div v-if="products.length > 0" v-for="(product, index) in products" :key="product.id"
+        v-reveal="index >= 4 ? (index % 4) * 70 : false"
         class="p-2 miron contain-layout rounded-2xl bg-white shadow-card transition-[transform,box-shadow] duration-300 sm:hover:shadow-hover sm:hover:-translate-y-1 group">
         <div class="relative overflow-hidden rounded-xl isolate card-shine">
             <label
@@ -11,8 +15,14 @@
                 -{{ discountPercent(product) }}%
             </label>
 
+            <span v-if="isStockOut(product)"
+                class="text-[11px] font-bold uppercase tracking-wide rounded-full py-0.5 px-2 absolute bottom-3 right-3 z-10 bg-white/90 text-heading">
+                {{ $t('label.stock_out') }}
+            </span>
+
             <button type="button" @click.prevent="wishlist(product, product.wishlist = !product.wishlist)"
-                :class="product.wishlist ? 'lab-fill-heart text-primary' : 'lab-line-heart'"
+                :class="[product.wishlist ? 'lab-fill-heart text-primary' : 'lab-line-heart', popped === product.id ? 'heart-pop' : '']"
+                :aria-label="$t('button.favorite')" :aria-pressed="!!product.wishlist"
                 class="w-7 h-7 leading-7 rounded-full text-center text-base shadow-badge absolute top-3 right-3 z-10 bg-white transition-all duration-300 hover:scale-110 active:scale-95">
             </button>
 
@@ -23,6 +33,7 @@
                     :alt="product.name"
                     :width="372"
                     :height="405"
+                    :eager="index < 2"
                     img-class="w-full h-full object-cover rounded-xl transition-transform duration-500 group-hover:scale-105"
                 />
             </router-link>
@@ -65,10 +76,35 @@
         </router-link>
 
         <div class="px-1 sm:px-0 pb-2">
-            <button @click.prevent="addToCart(product)" type="button"
-                class="w-full h-11 rounded-full bg-primary text-white font-bold text-sm transition-all duration-300 hover:bg-primary/90 hover:shadow-btn-primary active:scale-[0.98] flex items-center justify-center gap-2">
-                <i class="lab-line-shopping-bag text-base"></i>
-                <span>{{ $t('button.add_to_cart') }}</span>
+            <!-- Out of stock: said on the card, not discovered at the last step
+                 of checkout when the order is refused. -->
+            <button v-if="isStockOut(product)" type="button" disabled
+                class="w-full h-11 rounded-full bg-[#F1F1F6] text-[#8a8ca3] font-bold text-sm cursor-not-allowed flex items-center justify-center gap-2">
+                <span>{{ $t('label.stock_out') }}</span>
+            </button>
+
+            <!-- A size or shade has to be picked first, on the product page. -->
+            <router-link v-else-if="product.has_variations"
+                :to="{ name: 'frontend.product.details', params: { slug: product.slug } }"
+                class="w-full h-11 rounded-full border-2 border-primary text-primary font-bold text-sm transition-all duration-300 hover:bg-primary hover:text-white active:scale-[0.98] flex items-center justify-center gap-2">
+                <span>{{ $t('button.choose_options') }}</span>
+                <i class="lab-line-arrow-right text-sm"></i>
+            </router-link>
+
+            <button v-else @click.prevent="addToCart(product)" type="button"
+                :class="added === product.id ? 'bg-success hover:bg-success' : 'bg-primary hover:bg-primary/90'"
+                class="cart-btn w-full h-11 rounded-full text-white font-bold text-sm transition-all duration-300 hover:shadow-btn-primary active:scale-[0.98] flex items-center justify-center gap-2">
+                <template v-if="added === product.id">
+                    <svg class="cart-btn-tick w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    <span>{{ $t('label.added') }}</span>
+                </template>
+                <template v-else>
+                    <i class="lab-line-shopping-bag text-base"></i>
+                    <span>{{ $t('button.add_to_cart') }}</span>
+                </template>
             </button>
         </div>
     </div>
@@ -92,7 +128,10 @@ export default {
     },
     data() {
         return {
-            rating: []
+            rating: [],
+            // The card currently showing "Added", and the heart mid-pop.
+            added: null,
+            popped: null,
         }
     },
     methods: {
@@ -104,15 +143,35 @@ export default {
             }
             return Math.round(((price - discounted) / price) * 100);
         },
+        // null means the listing did not say; only a real figure of 0 or
+        // less is out of stock.
+        isStockOut: function (product) {
+            return product.stock !== null && product.stock !== undefined && Number(product.stock) <= 0;
+        },
         wishlist: function (product, toggle) {
+            if (toggle) {
+                this.popped = product.id;
+                setTimeout(() => {
+                    if (this.popped === product.id) {
+                        this.popped = null;
+                    }
+                }, 450);
+            }
+
             this.$store.dispatch("frontendWishlist/toggle", {
                 product_id: product.id,
                 toggle: toggle
             }).then((res) => {
+                if (toggle) {
+                    pixelService.addToWishlist(product);
+                }
             }).catch((err) => {
-                if (err.response.status === 401) {
+                // No response at all on a dropped connection.
+                if (err && err.response && err.response.status === 401) {
                     product.wishlist = false;
                     router.push({ name: "auth.login" });
+                } else {
+                    product.wishlist = !toggle;
                 }
             });
         },
@@ -120,7 +179,7 @@ export default {
             // Determine the correct price based on whether it's an offer
             const finalPrice = product.is_offer ? (product.flat_discounted_price || 0) : (product.flat_price || 0);
             const oldPrice = product.flat_price || 0;
-            
+
             const productArray = {
                 name: product.name,
                 product_id: product.id,
@@ -128,7 +187,9 @@ export default {
                 variation_names: '',
                 variation_id: 0,
                 sku: product.sku || '',
-                stock: product.stock || 100,
+                // A listing that did not load stock sends null; the server
+                // still checks stock when the order is placed.
+                stock: product.stock === null || product.stock === undefined ? 100 : Number(product.stock),
                 taxes: product.taxes || [],
                 shipping: product.shipping || {},
                 quantity: 1,
@@ -145,10 +206,16 @@ export default {
                 campaign_id: product.campaign_id || null
             };
 
-            pixelService.addToCart(product, 1);
-
             this.$store.dispatch("frontendCart/lists", productArray).then((res) => {
+                pixelService.addToCart(product, 1);
                 alertService.success(this.$t('message.add_to_cart'));
+
+                this.added = product.id;
+                setTimeout(() => {
+                    if (this.added === product.id) {
+                        this.added = null;
+                    }
+                }, 1600);
             }).catch((err) => {
                 if (err.message === 'maximum_quantity') {
                     alertService.error(this.$t('message.maximum_quantity'));
@@ -162,3 +229,27 @@ export default {
     }
 }
 </script>
+
+<style scoped>
+/* The heart swells and settles when a product is saved. */
+.heart-pop {
+    animation: heart-pop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes heart-pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+
+/* The tick draws itself on the "Added" state. */
+.cart-btn-tick path {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: cart-tick 0.35s ease-out forwards;
+}
+
+@keyframes cart-tick {
+    to { stroke-dashoffset: 0; }
+}
+</style>

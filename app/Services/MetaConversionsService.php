@@ -85,7 +85,7 @@ class MetaConversionsService
         ]);
 
         // Unhashed by design - these are Meta's own identifiers, not personal data.
-        $data['client_ip_address'] = $request?->ip();
+        $data['client_ip_address'] = $this->clientIp($request);
         $data['client_user_agent'] = $request?->userAgent();
 
         if ($fbp = $this->metaCookie($request, '_fbp')) {
@@ -144,6 +144,22 @@ class MetaConversionsService
 
             return false;
         }
+    }
+
+    /**
+     * A shopper became a customer with an account - signed up, or claimed
+     * their guest orders. Server-side only: the account exists here, and the
+     * event_id is fixed per user, so a retried request still counts once.
+     */
+    public function completeRegistration(User $user, ?Request $request = null): bool
+    {
+        return $this->queue(
+            'CompleteRegistration',
+            'registration-' . $user->id,
+            $this->userData($user, $request),
+            ['status' => 'completed', 'currency' => MetaPixel::resolve()['currency'], 'value' => 0],
+            $request ? rtrim((string) config('app.url'), '/') . '/register' : null
+        );
     }
 
     /**
@@ -366,6 +382,34 @@ class MetaConversionsService
         }
 
         return strtok((string) $url, '?#') ?: null;
+    }
+
+    /**
+     * The shopper's own address, for Meta's matching.
+     *
+     * The site sits behind Hostinger's CDN and TrustProxies trusts no proxy,
+     * so $request->ip() may be the CDN edge the request came through - the
+     * same address for thousands of shoppers, which Meta can match to nobody.
+     * The CDN names the visitor first in X-Forwarded-For. Trusting that header
+     * app-wide would let anyone dodge the per-IP rate limits by writing it
+     * themselves; here the worst a forged value can do is spoil the match of
+     * the forger's own event, so it is read for this one purpose only.
+     */
+    private function clientIp(?Request $request): ?string
+    {
+        if (!$request) {
+            return null;
+        }
+
+        foreach (explode(',', (string) $request->headers->get('X-Forwarded-For', '')) as $candidate) {
+            $candidate = trim($candidate);
+
+            if (filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return $candidate;
+            }
+        }
+
+        return $request->ip();
     }
 
     /**

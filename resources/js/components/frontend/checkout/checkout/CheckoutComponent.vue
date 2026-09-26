@@ -1,5 +1,4 @@
 <template>
-    <LoadingComponent :props="loading"/>
     <!-- Shop notice, written and toggled from Settings → Site. Rendered above
          everything so it is read before any payment decision. -->
     <div v-if="checkoutNotice" class="checkout-notice col-12">
@@ -10,10 +9,12 @@
     <div class="row">
         <div class="col-12 lg:col-8">
             <div class="flex flex-col gap-4">
-                <!-- Anonymous visitors choose a path first. Everything below needs
-                     a token: the address book, the outlets and the order endpoint
-                     are all per-user. -->
-                <GuestGateComponent v-if="!authStatus" />
+                <!-- A visitor who arrives without a session gets the one-step
+                     guest form, and keeps it until it has moved them on to
+                     payment: its button starts the session part-way through,
+                     and swapping to the signed-in layout at that moment would
+                     yank the form away mid-submit. -->
+                <GuestGateComponent v-if="guestMode" />
 
                 <template v-else>
                     <div class="co-card">
@@ -98,13 +99,13 @@
             <div class="co-sticky">
                 <SummeryComponent>
                     <template #promo>
-                        <ExtraComponent v-if="authStatus" />
+                        <ExtraComponent v-if="!guestMode" />
                     </template>
 
                     <template #action>
                         <!-- Desktop keeps the action in the card; on a phone it
                              lives in the bar pinned to the bottom instead. -->
-                        <div v-if="authStatus" class="max-lg:hidden mt-4">
+                        <div v-if="!guestMode" class="max-lg:hidden mt-4">
                             <button type="button" class="co-place" @click.prevent="selectAddress">
                                 {{ $t('button.save_and_pay') }}
                             </button>
@@ -119,7 +120,7 @@
         </div>
     </div>
 
-    <div v-if="authStatus" class="co-bar">
+    <div v-if="!guestMode" class="co-bar">
         <div class="co-bar-total">
             <span>{{ $t('label.total') }}</span>
             <b>{{ money(total) }}</b>
@@ -137,24 +138,23 @@ import ExtraComponent from "../ExtraComponent.vue";
 import router from "../../../../router";
 import alertService from "../../../../services/alertService";
 import appService from "../../../../services/appService";
-import LoadingComponent from "../../components/LoadingComponent.vue";
 import statusEnum from "../../../../enums/modules/statusEnum";
 import activityEnum from "../../../../enums/modules/activityEnum";
+import pixelService from "../../../../services/pixelService";
 
 
 export default {
     name: "CheckoutComponent",
-    components: {ExtraComponent, SummeryComponent, AddressComponent, GuestGateComponent, LoadingComponent},
+    components: {ExtraComponent, SummeryComponent, AddressComponent, GuestGateComponent},
     data() {
         return {
-            loading: {
-                isActive: false
-            },
             enums : {
                 statusEnum: statusEnum,
                 activityEnum: activityEnum
             },
             orderTypeEnum: orderTypeEnum,
+            // Fixed at arrival, not tied to authStatus: see the template.
+            guestMode: !this.$store.getters.authStatus,
             shippingAndBillingCheck: true,
             billingStatus: false
         }
@@ -205,12 +205,21 @@ export default {
     },
     mounted() {
         this.loadCheckoutData();
+
+        // The step most shoppers abandon on, so this is where "started
+        // checkout but did not buy" has to begin - it used to wait for the
+        // payment step, and everyone who left at the address form was lost.
+        pixelService.initiateCheckoutOnce(this.$store.getters['frontendCart/lists'] || [], this.total);
     },
     watch: {
-        // A guest who has just started a session needs the same data a
-        // logged-in customer gets, without a page reload.
+        // Not while the guest form is on screen: its session starts part-way
+        // through its own submit, and an address list fetched at that moment
+        // predates the address it is about to save — syncAddresses would then
+        // clear the very address the form had just selected.
         authStatus: function (value) {
-            if (value) {
+            if (!value) {
+                this.guestMode = true;
+            } else if (!this.guestMode) {
                 this.loadCheckoutData();
             }
         }
@@ -226,28 +235,59 @@ export default {
                 setting.site_currency_position
             );
         },
+        // No full-screen spinner: nothing here blocks the page. The address card
+        // shows its own placeholder until its list arrives, and the pick-up
+        // option appears when the outlets do.
         loadCheckoutData: function () {
-            // Skipped for anonymous visitors — the guest gate is all they see,
-            // so these two requests would only delay it.
+            // Skipped for anonymous visitors — the guest form loads the one
+            // list it needs itself.
             if (!this.authStatus) {
                 return;
             }
 
-            this.loading.isActive = true;
-            this.$store.dispatch('frontendOrderArea/lists').then(res => {
-                this.loading.isActive = false;
-            }).catch((err) => {
-                this.loading.isActive = false;
-            });
+            // The shipping charge is worked out from the district's order
+            // area, and an address picked before this list arrived was priced
+            // at the default. The server recomputes the total and refuses an
+            // order that disagrees, so re-price once the areas are in.
+            this.$store.dispatch('frontendOrderArea/lists').then(() => {
+                if (this.getShippingAddress && this.getShippingAddress.id) {
+                    this.$store.dispatch('frontendCart/shippingAddress', this.getShippingAddress).then().catch();
+                }
+            }).catch(() => {});
 
-            this.loading.isActive = true;
             this.$store.dispatch('frontendOutlet/lists', {
                 status : this.enums.statusEnum.ACTIVE
-            }).then(res => {
-                this.loading.isActive = false;
-            }).catch((err) => {
-                this.loading.isActive = false;
-            });
+            }).then().catch(() => {});
+
+            // Loaded once here rather than by each address card: the shipping
+            // and billing cards used to fetch the same list twice.
+            this.$store.dispatch('frontendAddress/lists', {
+                search: { paginate: 0, order_column: 'id', order_type: 'desc' }
+            }).then(() => {
+                this.syncAddresses();
+            }).catch(() => {});
+        },
+        // The cart is persisted to localStorage, so the address chosen for an
+        // earlier order survives into the next one — and every guest checkout
+        // creates a fresh user row, so that id then belongs to somebody else.
+        // OrderRequest requires shipping_id/billing_id and the order is
+        // refused, which is why a second order could never be placed. Drop any
+        // address that is not in this customer's own list, then pick their
+        // newest one so a returning customer has nothing to click.
+        syncAddresses: function () {
+            const addresses = this.$store.getters['frontendAddress/lists'] || [];
+            const owns = (address) => !!address && !!address.id && addresses.some(item => item.id === address.id);
+
+            let shipping = this.getShippingAddress;
+
+            if (!owns(shipping)) {
+                shipping = addresses.length > 0 ? addresses[0] : {};
+                this.shippingAddress(shipping);
+            }
+
+            if (!owns(this.getBillingAddress)) {
+                this.$store.dispatch('frontendCart/billingAddress', this.shippingAndBillingCheck ? shipping : {}).then().catch();
+            }
         },
         changeOrderType: function (e) {
             this.$store.dispatch('frontendCart/updateOrderType', e)
@@ -276,8 +316,13 @@ export default {
         },
         selectAddress: function () {
             if (this.orderType === orderTypeEnum.DELIVERY) {
-                if (Object.keys(this.getShippingAddress).length === 0 || Object.keys(this.getBillingAddress).length === 0) {
-                    alertService.error(this.$t("message.shipping_and_billing_address"));
+                if (!(this.getShippingAddress || {}).id || !(this.getBillingAddress || {}).id) {
+                    alertService.error(this.$t("message.save_your_address"));
+
+                    const card = document.querySelector('.co-address');
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                     return;
                 }
             } else if (Object.keys(this.modelOutlet || {}).length === 0) {

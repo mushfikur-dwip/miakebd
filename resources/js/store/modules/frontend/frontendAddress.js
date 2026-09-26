@@ -5,6 +5,9 @@ export const frontendAddress = {
     namespaced: true,
     state: {
         lists: [],
+        // False until the first list arrives, so the checkout can tell "no
+        // saved addresses" from "not loaded yet".
+        loaded: false,
         page: {},
         pagination: [],
         show: {},
@@ -16,6 +19,9 @@ export const frontendAddress = {
     getters: {
         lists: function (state) {
             return state.lists;
+        },
+        loaded: function (state) {
+            return state.loaded;
         },
         pagination: function (state) {
             return state.pagination;
@@ -86,6 +92,7 @@ export const frontendAddress = {
     mutations: {
         lists: function (state, payload) {
             state.lists = payload;
+            state.loaded = true;
         },
         pagination: function (state, payload) {
             state.pagination = payload;

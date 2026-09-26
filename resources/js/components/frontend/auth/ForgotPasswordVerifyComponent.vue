@@ -75,6 +75,11 @@ export default {
         this.phoneOrEmailChecking();
     },
     methods: {
+        // The × on the error message called this, but it was never defined:
+        // the click threw and the message could not be dismissed.
+        close: function () {
+            this.errors = {};
+        },
         phoneOrEmailChecking: function () {
             this.loading.isActive = true;
             const otpPhone = this.$store.getters['phone'];

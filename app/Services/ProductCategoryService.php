@@ -7,6 +7,8 @@ use Exception;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use App\Models\ProductCategory;
+use App\Models\SlugRedirect;
+use App\Support\CategoryMetaResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Requests\PaginateRequest;
@@ -110,11 +112,7 @@ class ProductCategoryService
     public function store(ProductCategoryRequest $request)
     {
         try {
-            $categorySlug = Str::slug($request->name);
-            $slug = ProductCategory::where('slug', $categorySlug)->first();
-            if ($slug) {
-                $categorySlug = Str::slug($request->name) . $request->parent_id;
-            }
+            $categorySlug = $this->uniqueSlug($request->name);
             $productCategory = ProductCategory::create(Arr::except($request->validated(), 'parent_id') + ['slug' => $categorySlug, 'parent_id' => $request->parent_id == 'NULL' ? NULL : $request->parent_id]);
             if ($request->image) {
                 $productCategory->addMediaFromRequest('image')->toMediaCollection('product-category');
@@ -132,10 +130,18 @@ class ProductCategoryService
     public function update(ProductCategoryRequest $request, ProductCategory $productCategory): ProductCategory
     {
         try {
-            $categorySlug = Str::slug($request->name);
-            $slug = ProductCategory::where('slug', $categorySlug)->first();
-            if ($slug) {
-                $categorySlug = Str::slug($request->name) . $request->parent_id;
+            // The URL stays put unless the name itself changed. This used to
+            // look the slug up, find the category being edited, and append its
+            // parent id - "skin-care6", "baby-careNULL" - so every save moved
+            // the page to a new address and broke the old one.
+            $categorySlug = $productCategory->slug;
+            if (blank($categorySlug) || Str::slug($request->name) !== Str::slug($productCategory->name)) {
+                $categorySlug = $this->uniqueSlug($request->name, $productCategory->id);
+
+                if (filled($productCategory->slug) && $productCategory->slug !== $categorySlug) {
+                    SlugRedirect::remember(SlugRedirect::PRODUCT_CATEGORY, $productCategory->slug, $categorySlug);
+                    CategoryMetaResolver::forget($productCategory->slug);
+                }
             }
 
             $productCategory->update(Arr::except($request->validated(), 'parent_id') + ['slug' => $categorySlug, 'parent_id' => $request->parent_id == 'NULL' ? NULL : $request->parent_id]);
@@ -148,6 +154,23 @@ class ProductCategoryService
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
+    }
+
+    /**
+     * The name's slug, or the name's slug with -2, -3... when another category
+     * already has it. Never the parent id, and never the literal "NULL".
+     */
+    private function uniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name) ?: 'category';
+        $slug = $base;
+        $n    = 2;
+
+        while (ProductCategory::where('slug', $slug)->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))->exists()) {
+            $slug = $base . '-' . $n++;
+        }
+
+        return $slug;
     }
 
     /**

@@ -315,7 +315,7 @@
 
                 <!-- Card Button Start -->
                 <button @click.prevent="openCanvas('cart-canvas')" type="button"
-                    class="hidden lg:block flex-shrink-0 relative">
+                    class="hidden lg:block flex-shrink-0 relative" :class="cartBump ? 'cart-bump' : ''">
                     <i
                         class="lab-line-bag text-xl w-10 h-10 !leading-10 text-center rounded-full bg-secondary text-white"></i>
                     <span v-if="carts.length > 0"
@@ -397,11 +397,13 @@ import campaignTypeEnum from "../../../enums/modules/campaignTypeEnum";
 import forEach from "lodash/forEach";
 import axios from 'axios';
 import { useCanvas } from "../../../composables/canvas";
+import cartBump from "../../../composables/cartBump";
 
 
 export default {
     name: "FrontendNavbarComponent",
     components: { MenuChildrenComponent },
+    mixins: [cartBump],
     setup() {
         const isSticky = ref();
         const { openCanvas } = useCanvas();

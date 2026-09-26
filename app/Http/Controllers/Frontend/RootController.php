@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\SettingResource;
 use App\Models\Analytic;
 use App\Models\Product;
+use App\Models\SlugRedirect;
 use App\Models\ThemeSetting;
 use App\Support\BlogMetaResolver;
 use App\Support\BrandMetaResolver;
@@ -178,9 +179,19 @@ class RootController extends Controller
      * correct for crawlers. An unknown or inactive slug 404s rather than
      * rendering an empty listing under a real-looking URL.
      */
-    public function category(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function category(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\RedirectResponse
     {
         $meta = CategoryMetaResolver::forSlug($slug);
+
+        // A renamed category (or one whose slug the old "NULL" bug mangled):
+        // send search engines and shared links on to the page's new address,
+        // passing its ranking along, instead of a dead end.
+        if ($meta === null && ($target = SlugRedirect::target(SlugRedirect::PRODUCT_CATEGORY, $slug))) {
+            return redirect()->to(
+                rtrim((string) config('app.url'), '/') . '/product-category/' . rawurlencode($target),
+                301
+            );
+        }
 
         abort_if($meta === null, 404);
 

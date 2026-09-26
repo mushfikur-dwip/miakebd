@@ -55,6 +55,28 @@ axios.interceptors.request.use(
     error => Promise.reject(error),
 );
 
+// A request that never got an answer - dropped mobile data, a timeout - has no
+// `response`, and 47 catch handlers across the storefront read
+// `err.response.data` or `err.response.status` straight off it. Each of those
+// threw inside its own catch, so the shopper saw nothing at all: the button
+// just did not work. Giving such errors a response of status 0 with a readable
+// message makes every one of those handlers show "check your internet".
+axios.interceptors.response.use(
+    response => response,
+    error => {
+        if (error && !error.response && !axios.isCancel(error)) {
+            error.isNetworkError = true;
+            error.response = {
+                status: 0,
+                data: { status: false, message: i18n.global.t('message.check_connection') },
+                headers: {},
+                config: error.config,
+            };
+        }
+        return Promise.reject(error);
+    },
+);
+
 const app = createApp(DefaultComponent);
 app.component('vue-select', VueNextSelect)
 app.use(router)

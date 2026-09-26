@@ -62,9 +62,10 @@ class GenerateProductFeed extends Command
         $xml->writeElement('link', $siteUrl);
         $xml->writeElement('description', 'Authentic cosmetics and skincare, delivered across Bangladesh.');
 
-        $written = 0;
-        $noImage = 0;
-        $noPrice = 0;
+        $written     = 0;
+        $noImage     = 0;
+        $noPrice     = 0;
+        $missingFile = [];
 
         Product::query()
             ->with(['media', 'brand', 'category', 'variations', 'seo'])
@@ -74,13 +75,31 @@ class GenerateProductFeed extends Command
             ->whereNotNull('slug')
             ->where('slug', '<>', '')
             ->orderBy('id')
-            ->chunk(200, function ($products) use ($xml, $meta, $siteUrl, &$written, &$noImage, &$noPrice) {
+            ->chunk(200, function ($products) use ($xml, $meta, $siteUrl, &$written, &$noImage, &$noPrice, &$missingFile) {
                 foreach ($products as $product) {
+                    // Only photos whose file is really on disk. Ten products
+                    // had media rows whose files were gone (uploads 1685-1727,
+                    // September 2026): their image links 404'd, and Meta and
+                    // Google reject a catalogue item whose image cannot be
+                    // fetched. Better left out, and reported, until re-uploaded.
+                    $previews = $product->previews;
+                    $media    = $product->getMedia('product')->values();
+                    $present  = [];
+                    foreach ($previews as $index => $url) {
+                        if ($url && isset($media[$index]) && $this->fileExists($media[$index])) {
+                            $present[] = $url;
+                        }
+                    }
+
+                    if ($previews && !$present) {
+                        $missingFile[] = $product->id;
+                    }
+
                     // Absolute, whatever the storage disk is configured to
                     // return: both platforms reject a relative image link.
                     $images = array_values(array_map(
                         fn ($url) => str_starts_with($url, '/') && !str_starts_with($url, '//') ? $siteUrl . $url : $url,
-                        array_filter($product->previews)
+                        $present
                     ));
 
                     if (!$images) {
@@ -113,7 +132,31 @@ class GenerateProductFeed extends Command
             $this->warn("Left out {$noImage} with no product photo and {$noPrice} with no price - add them in the admin panel to include them.");
         }
 
+        if ($missingFile) {
+            $message = 'Photo file missing on disk for product ids ' . implode(', ', $missingFile) . ' - re-upload their photos.';
+            $this->warn($message);
+            \Illuminate\Support\Facades\Log::warning('Product feed: ' . $message);
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Whether the file the image link points at exists: the preview
+     * conversion when it was generated, otherwise the original.
+     */
+    private function fileExists(\Spatie\MediaLibrary\MediaCollections\Models\Media $media): bool
+    {
+        try {
+            if ($media->hasGeneratedConversion('preview') && is_file($media->getPath('preview'))) {
+                return true;
+            }
+
+            return is_file($media->getPath());
+        } catch (\Throwable $e) {
+            // A disk that cannot be stat'ed (not local): keep the old behaviour.
+            return true;
+        }
     }
 
     private function item(\XMLWriter $xml, Product $product, string $id, array $images, array $pricing, string $siteUrl): void

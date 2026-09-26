@@ -11,6 +11,9 @@
 //   v-reveal="'zoom'"                     variant: fade | left | right | zoom
 //   v-reveal="150"                        start 150ms after entering view
 //   v-reveal="{ variant: 'left', delay: 150 }"
+//   v-reveal="false"                      off - e.g. the first row of a grid,
+//                                         which is on screen at load and must
+//                                         not be hidden for an animation
 
 const prefersReducedMotion =
     typeof window !== 'undefined' &&
@@ -54,6 +57,8 @@ function parseBinding(value) {
 
 export default {
     mounted(el, binding) {
+        if (binding.value === false) return;
+
         const { variant, delay, stagger } = parseBinding(binding.value);
 
         const obs = getObserver();

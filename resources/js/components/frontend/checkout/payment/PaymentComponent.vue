@@ -1,7 +1,30 @@
 <template>
     <LoadingComponent :props="loading" />
     <div class="row">
-        <div class="col-12 lg:col-8">
+        <div class="col-12 lg:col-8 flex flex-col gap-4">
+            <!-- The guest form goes straight from typing the address to here,
+                 so this is where it is read back before the order is placed. -->
+            <div v-if="deliverTo" class="co-card">
+                <div class="co-card-head">
+                    <span class="co-card-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                        </svg>
+                    </span>
+                    <h3>{{ deliverTo.heading }}</h3>
+                    <router-link :to="{ name: 'frontend.checkout.checkout' }" class="co-card-link">
+                        {{ $t('button.change') }}
+                    </router-link>
+                </div>
+                <div class="co-card-body pay-deliver">
+                    <b>{{ deliverTo.name }}</b>
+                    <span v-if="deliverTo.phone" dir="ltr">{{ deliverTo.phone }}</span>
+                    <span v-if="deliverTo.address">{{ deliverTo.address }}</span>
+                </div>
+            </div>
+
             <div v-if="remainingAmount > 0" class="co-card">
                 <div class="co-card-head">
                     <span class="co-card-icon" aria-hidden="true">
@@ -129,6 +152,7 @@ import menuSectionEnum from "../../../../enums/modules/menuSectionEnum";
 import ENV from "../../../../config/env";
 import pixelService from "../../../../services/pixelService";
 import ActivityEnum from "../../../../enums/modules/activityEnum";
+import orderTypeEnum from "../../../../enums/modules/orderTypeEnum";
 
 export default {
     name: "PaymentComponent",
@@ -220,11 +244,34 @@ export default {
         totalTax: function () {
             return this.$store.getters['frontendCart/totalTax'];
         },
+        deliverTo: function () {
+            if (this.orderType === orderTypeEnum.PICK_UP) {
+                const outlet = this.getOutletAddress || {};
+
+                return outlet.id ? {
+                    heading: this.$t('label.pick_up_address'),
+                    name: outlet.name,
+                    phone: outlet.phone ? ((outlet.country_code || '') + ' ' + outlet.phone).trim() : '',
+                    address: [outlet.address, outlet.state].filter(Boolean).join(', '),
+                } : null;
+            }
+
+            const address = this.getShippingAddress || {};
+
+            return address.id ? {
+                heading: this.$t('label.deliver_to'),
+                name: address.full_name,
+                phone: address.phone ? ((address.country_code || '') + ' ' + address.phone).trim() : '',
+                address: [address.address, address.state].filter(Boolean).join(', '),
+            } : null;
+        },
     },
     mounted() {
         // "Reached checkout but did not buy" - the audience worth retargeting
         // hardest, and the step Meta optimises towards before a purchase exists.
-        pixelService.initiateCheckout(this.products, this.total);
+        // Normally already sent from the checkout step; this covers a shopper
+        // who lands here directly. Once per basket either way.
+        pixelService.initiateCheckoutOnce(this.products, this.total);
 
         this.loading.isActive = true;
         this.$store.dispatch('frontendPaymentGateway/lists', { status: this.statusEnum.ACTIVE }).then(res => {
@@ -304,6 +351,17 @@ export default {
                 return;
             }
 
+            // Reachable with no address - a bookmarked or reloaded payment URL,
+            // or a cart that lost it - and the order endpoint would refuse it
+            // with a bare validation error. Send them back to fill it in.
+            if (!this.deliverTo) {
+                alertService.error(this.$t(this.orderType === orderTypeEnum.PICK_UP
+                    ? 'message.select_a_store_location'
+                    : 'message.save_your_address'));
+                this.$router.push({ name: 'frontend.checkout.checkout' });
+                return;
+            }
+
             // The server recomputes the total and refuses an order whose figure
             // differs, so send the one the current lines actually add up to.
             this.$store.dispatch('frontendCart/recalculate').then().catch();
@@ -348,6 +406,8 @@ export default {
             // Locked only once the request is actually about to leave, so a
             // failure while assembling the payload cannot strand the button.
             this.submitting = true;
+
+            pixelService.addPaymentInfo(this.products, this.remainingAmount);
             this.loading.isActive = true;
 
             this.$store.dispatch('frontendOrder/save', this.form).then(orderResponse => {
@@ -393,6 +453,23 @@ export default {
 </script>
 
 <style scoped>
+.pay-deliver {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-top: 13px;
+    padding-bottom: 14px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #6e7191;
+}
+
+.pay-deliver b {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #1f1f39;
+}
+
 .co-back {
     display: block;
     margin-top: 12px;

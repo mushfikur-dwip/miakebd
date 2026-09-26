@@ -169,6 +169,9 @@ class PaymentController extends Controller
                 // wallet order was being destroyed on the customer's next
                 // order, with the balance already debited and the Transaction
                 // row left orphaned.
+                //
+                // Done before the redirect, unlike the notifications below: the
+                // order page this redirects to reads the payment status.
                 if ($order->wallet_discount > 0 && $order->wallet_discount >= $order->total && $order->payment_status === PaymentStatus::UNPAID) {
                     DB::transaction(function () use ($order) {
                         $order->payment_status = PaymentStatus::PAID;
@@ -185,28 +188,54 @@ class PaymentController extends Controller
                     });
                 }
 
-                SendOrderMail::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
-                SendOrderSms::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
-                SendOrderPush::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
-
-                SendOrderGotMail::dispatch(['order_id' => $order->id]);
-                SendOrderGotSms::dispatch(['order_id' => $order->id]);
-                SendOrderGotPush::dispatch(['order_id' => $order->id]);
+                // After the response, not before it. The queue is `sync` on
+                // this host, so the six notifications - two mails over SMTP,
+                // two SMS and two pushes over HTTP - each ran inside this
+                // request, and the customer watched a blank redirect for all of
+                // them before the order page could even start loading. defer()
+                // sends the redirect first (litespeed_finish_request) and then
+                // does exactly the same work in the same PHP process.
+                defer(fn () => $this->sendOrderNotifications($order));
             } catch (\Exception $e) {
-                // Release the idempotency token. Claiming it up front is what
-                // stops id-walking, but holding it through a failure would
-                // leave the order permanently unconfirmed with no way to retry
-                // — a refresh would find the token already taken and skip the
-                // work silently.
-                Log::error('Order confirmation failed for #' . $order->id . ': ' . $e->getMessage());
-
-                try {
-                    Cache::forget('order-confirmed-' . $order->id);
-                } catch (\Throwable $ignored) {
-                }
+                $this->releaseConfirmation($order, $e);
             }
         }
 
         return redirect('/account/order-details/' . $order->id . '?status=success');
+    }
+
+    /**
+     * The customer's and the shop's order notifications. Runs at most once per
+     * order: successful() only defers it on the order's first visit.
+     */
+    private function sendOrderNotifications(Order $order): void
+    {
+        try {
+            SendOrderMail::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
+            SendOrderSms::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
+            SendOrderPush::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
+
+            SendOrderGotMail::dispatch(['order_id' => $order->id]);
+            SendOrderGotSms::dispatch(['order_id' => $order->id]);
+            SendOrderGotPush::dispatch(['order_id' => $order->id]);
+        } catch (\Exception $e) {
+            $this->releaseConfirmation($order, $e);
+        }
+    }
+
+    /**
+     * Release the idempotency token. Claiming it up front is what stops
+     * id-walking, but holding it through a failure would leave the order
+     * permanently unconfirmed with no way to retry — a refresh would find the
+     * token already taken and skip the work silently.
+     */
+    private function releaseConfirmation(Order $order, \Exception $e): void
+    {
+        Log::error('Order confirmation failed for #' . $order->id . ': ' . $e->getMessage());
+
+        try {
+            Cache::forget('order-confirmed-' . $order->id);
+        } catch (\Throwable $ignored) {
+        }
     }
 }

@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use App\Services\OtpManagerService;
 use App\Services\PermissionService;
 use App\Services\GuestMergeService;
+use App\Services\MetaConversionsService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SignupRequest;
 use App\Http\Resources\MenuResource;
@@ -186,6 +187,8 @@ class SignupController extends Controller
                 // of them may survive the upgrade.
                 $primary->tokens()->delete();
 
+                app(MetaConversionsService::class)->completeRegistration($primary, $request);
+
                 return response(['status' => true, 'message' => trans('all.message.register_successfully')]);
             }
         }
@@ -202,6 +205,9 @@ class SignupController extends Controller
         ]);
         $user->assignRole(EnumRole::CUSTOMER);
         if ($user) {
+            // The sign-up conversion for Meta. Queued only; never delays this reply.
+            app(MetaConversionsService::class)->completeRegistration($user, $request);
+
             return response(['status' => true, 'message' => trans('all.message.register_successfully')]);
         } else {
             return response(['status' => false, 'message' => trans('all.message.register_not_completed')], 422);

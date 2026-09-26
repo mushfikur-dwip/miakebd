@@ -84,7 +84,7 @@ class PromotionProductService
     {
         try {
             $perPage = $paginateRequest->get('per_page', 32);
-            return $promotion->products()->select('products.id', 'products.name', 'products.sku', 'products.slug',  'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')->withReviewRating()->with('media', 'variations', 'taxes')->active('products.status')->storefront()->whereNull('deleted_at')->paginate($perPage);
+            return $promotion->products()->select('products.id', 'products.name', 'products.sku', 'products.slug',  'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status', 'products.show_stock_out', 'products.can_purchasable')->withStockQuantity()->withReviewRating()->with('media', 'variations', 'taxes')->active('products.status')->storefront()->whereNull('deleted_at')->paginate($perPage);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

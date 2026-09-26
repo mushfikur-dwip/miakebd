@@ -460,7 +460,7 @@ class ProductService
             $orderType   = $request->get('order_type') ?? 'desc';
             $rand        = $request->get('rand', 0) > 0 ? $request->get('rand') : 0;
 
-            return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
+            return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status', 'products.show_stock_out', 'products.can_purchasable')->withStockQuantity()
                 ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
                 ->with('media', 'variations', 'taxes')
                 ->withReviewRating()
@@ -689,7 +689,7 @@ class ProductService
                 $orderType   = 'desc';
             }
 
-            $products = Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.product_category_id', 'products.product_brand_id', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
+            $products = Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.product_category_id', 'products.product_brand_id', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status', 'products.show_stock_out', 'products.can_purchasable')->withStockQuantity()
                 ->withReviewRating()
                 ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
                 ->with('media', 'brand', 'variations', 'reviews')
@@ -752,7 +752,11 @@ class ProductService
                             }
                         }
                     }
-                })->where($brandPageFilter)->orderBy($orderColumn, $orderType)->where(function ($query) use ($request) {
+                })->where($brandPageFilter)
+                // Default order only: an explicit sort (price, rating, newest) is
+                // exactly what the shopper asked for.
+                ->when(blank($request->post('sort_by')), fn ($query) => $query->photosFirst())
+                ->orderBy($orderColumn, $orderType)->where(function ($query) use ($request) {
                     if ($request->min_price >= 0 && $request->max_price > 0) {
                         $query->whereBetween('variation_price', [$request->min_price, $request->max_price]);
                     }
@@ -835,7 +839,7 @@ class ProductService
             $orderType   = $request->get('order_type') ?? 'desc';
             $rand        = $request->get('rand', 0) > 0 ? $request->get('rand') : 0;
 
-            return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
+            return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status', 'products.show_stock_out', 'products.can_purchasable')->withStockQuantity()
                 ->withReviewRating()
                 ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
                 ->with('media', 'variations', 'taxes')
@@ -843,6 +847,7 @@ class ProductService
                 ->where('products.add_to_flash_sale', Ask::YES)
                 ->where('products.offer_start_date', '<=', $now)
                 ->where('products.offer_end_date', '>=', $now)
+                ->photosFirst()
                 ->randAndLimitOrOrderBy($rand, $orderColumn, $orderType)
                 ->$method($methodValue);
         } catch (Exception $exception) {
@@ -864,13 +869,14 @@ class ProductService
             $orderType   = $request->get('order_type') ?? 'desc';
             $rand        = $request->get('rand', 0) > 0 ? $request->get('rand') : 0;
 
-            return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
+            return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status', 'products.show_stock_out', 'products.can_purchasable')->withStockQuantity()
                 ->withReviewRating()
                 ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
                 ->with('media', 'variations', 'taxes')
                 ->active('products.status')
                 ->where('products.offer_start_date', '<=', $now)
                 ->where('products.offer_end_date', '>=', $now)
+                ->photosFirst()
                 ->randAndLimitOrOrderBy($rand, $orderColumn, $orderType)
                 ->$method($methodValue);
         } catch (Exception $exception) {
@@ -935,32 +941,49 @@ class ProductService
             $orderType   = $request->get('order_type') ?? 'desc';
             $rand        = $request->get('rand', 0) > 0 ? $request->get('rand') : 0;
 
+            $base = fn () => Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status', 'products.show_stock_out', 'products.can_purchasable')->withStockQuantity()
+                ->withReviewRating()
+                ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
+                ->with('media', 'variations', 'taxes', 'tags')
+                ->active('products.status')
+                ->whereNot('products.id', $product->id)
+                // A related row of "No Image Available" tiles sells nothing.
+                ->photosFirst();
+
             if (count($productTags) > 0) {
-                return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
-                    ->withReviewRating()
-                    ->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])
-                    ->with('media', 'variations', 'taxes', 'tags')
-                    ->active('products.status')
+                $tagged = $base()
                     ->whereHas('tags', function ($query) use ($productTags) {
-                        if (count($productTags) > 0) {
-                            $i = 0;
-                            foreach ($productTags as $productTag) {
-                                if ($i === 0) {
-                                    $query->where('name', 'like', '%' . $productTag->name . '%');
-                                } else {
-                                    $query->orWhere('name', 'like', '%' . $productTag->name . '%');
-                                }
-                                $i++;
+                        $i = 0;
+                        foreach ($productTags as $productTag) {
+                            if ($i === 0) {
+                                $query->where('name', 'like', '%' . $productTag->name . '%');
+                            } else {
+                                $query->orWhere('name', 'like', '%' . $productTag->name . '%');
                             }
+                            $i++;
                         }
                         return $query;
                     })
-                    ->whereNot('id', $product->id)
                     ->randAndLimitOrOrderBy($rand, $orderColumn, $orderType)
                     ->$method($methodValue);
-            } else {
+
+                if (count($tagged) > 0) {
+                    return $tagged;
+                }
+            }
+
+            // Most products carry no tags, and for them this used to return
+            // nothing, so the product page had no "related products" row at all
+            // - the one place a shopper who is not sold on this item is shown
+            // another. Products from the same category stand in.
+            if (!$product->product_category_id) {
                 return collect([]);
             }
+
+            return $base()
+                ->where('products.product_category_id', $product->product_category_id)
+                ->randAndLimitOrOrderBy($rand ?: 8, $orderColumn, $orderType)
+                ->$method($methodValue);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
@@ -980,7 +1003,7 @@ class ProductService
             $orderType   = $request->get('order_type') ?? 'desc';
             $rand        = $request->get('rand', 0) > 0 ? $request->get('rand') : 0;
 
-            return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status')
+            return Product::storefront()->select('products.id', 'products.name', 'products.sku', 'products.slug', 'products.selling_price', 'products.variation_price', 'products.add_to_flash_sale', 'products.offer_start_date', 'products.offer_end_date', 'products.discount', 'products.status', 'products.show_stock_out', 'products.can_purchasable')->withStockQuantity()
                 ->withReviewRating()
                 ->with('media', 'variations', 'taxes', 'wishlist')
                 ->whereHas('wishlist', function ($query) {

@@ -1,11 +1,14 @@
 <?php
 
 use App\Http\Middleware\ApiKeyMiddleware;
+use App\Http\Middleware\CachePublicResponse;
+use App\Http\Middleware\FlushPublicResponses;
 use App\Http\Middleware\CaptureMetaClickIds;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\Installed;
 use App\Http\Middleware\localization;
+use App\Http\Middleware\RunOverdueTasks;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
@@ -44,6 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // each header is for and why there is no CSP yet.
         $middleware->append([
             SecurityHeaders::class,
+            // Keeps the Meta outbox, product feed and sitemap going when the
+            // server's cron is not running. Works after the response is sent.
+            RunOverdueTasks::class,
         ]);
         // Page loads only: saves Meta's ad-click and browser ids as cookies so
         // a sale is still credited to its ad when the pixel script is blocked.
@@ -80,6 +86,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'installed' => Installed::class,
             'active' => EnsureUserIsActive::class,
             'staff' => EnsureStaff::class,
+            'cache.public' => CachePublicResponse::class,
+            'flush.public' => FlushPublicResponses::class,
 
         ]);
     })

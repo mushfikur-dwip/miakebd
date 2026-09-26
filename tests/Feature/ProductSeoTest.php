@@ -201,6 +201,22 @@ class ProductSeoTest extends TestCase
         return $items;
     }
 
+    public function test_a_product_whose_photo_file_is_gone_is_left_out_of_the_feed(): void
+    {
+        Storage::fake('public');
+
+        $kept = $this->withPhoto($this->product('Toner'));
+        $lost = $this->withPhoto($this->product('Primer'));
+        // The media row survives, its files do not - original and resized
+        // copies alike, as for uploads 1685-1727.
+        \Illuminate\Support\Facades\File::deleteDirectory(dirname($lost->getFirstMedia('product')->getPath()));
+
+        $items = $this->items($this->feed());
+
+        $this->assertArrayHasKey((string) $kept->id, $items);
+        $this->assertArrayNotHasKey((string) $lost->id, $items);
+    }
+
     public function test_the_feed_lists_sellable_products_with_what_both_platforms_need(): void
     {
         Storage::fake('public');

@@ -111,15 +111,15 @@ export default {
     },
     methods: {
         displayModeDefine: function () {
-            let dir = "ltr";
             const attributes = {
                 dir: "ltr",
             };
-            if (this.$store.getters['globalState/lists'].display_mode === DisplayModeEnum.LTR) {
-                dir = "ltr";
-            } else {
-                dir = "rtl";
-            }
+            // Right-to-left only when the language says so. This used to test
+            // for LTR and fall through to RTL - and on a first visit nothing is
+            // stored yet, so every new visitor (every ad click) saw the whole
+            // shop mirrored for a second or two until the language request
+            // answered, then watched it flip back.
+            const dir = this.$store.getters['globalState/lists'].display_mode === DisplayModeEnum.RTL ? "rtl" : "ltr";
             Object.keys(attributes).forEach(attr => {
                 document.documentElement.setAttribute(attr, dir);
             });

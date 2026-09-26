@@ -427,7 +427,7 @@
         "review": "Review",
         "show_more": "Show More",
         "categories": "Categories",
-        "offer_products": "offer Products",
+        "offer_products": "Offer Products",
         "company": "Company",
         "reference_no": "Reference No",
         "attachments": "Attachments",
@@ -885,7 +885,14 @@
         "select_sale_by": "Select Sale By",
         "search_employee": "Search Employee",
         "sales_amount": "Sales Amount",
-        "order_help_title": "Having trouble ordering?"
+        "order_help_title": "Having trouble ordering?",
+        "district": "District",
+        "select_district": "Select your district",
+        "full_address": "Full address",
+        "full_address_placeholder": "House / flat, road, area, thana",
+        "delivery_details": "Delivery details",
+        "deliver_to": "Delivering to",
+        "added": "Added"
     },
     "button": {
         "send": "Send",
@@ -1012,7 +1019,11 @@
         "add_tag": "Add Concern",
         "add_campaign": "Add Campaign",
         "whatsapp": "WhatsApp",
-        "phone_call": "Phone Call"
+        "phone_call": "Phone Call",
+        "continue_to_payment": "Continue to payment",
+        "change": "Change",
+        "continue_shopping": "Continue shopping",
+        "choose_options": "Choose options"
     },
     "number": {
         "10": "10",
@@ -1161,6 +1172,16 @@
         "campaign_ended": "These prices are no longer available. Browse the store for current offers.",
         "order_help_text": "Message us on WhatsApp or give us a call — we will place the order for you.",
         "whatsapp_order_greeting": "Hello! I would like to place this order.",
-        "order_help_product": "Having trouble ordering? Order on WhatsApp"
+        "order_help_product": "Having trouble ordering? Order on WhatsApp",
+        "district_required": "Please select your district",
+        "address_required": "Please enter your full address",
+        "address_too_short": "Please add house, road and area so the rider can find you",
+        "email_invalid": "Please enter a valid email address",
+        "check_connection": "Could not connect. Please check your internet and try again.",
+        "too_many_attempts": "Too many attempts. Please wait a minute and try again.",
+        "save_your_address": "Please add your delivery address first.",
+        "order_placed_title": "Order placed!",
+        "order_placed_thanks": "Thank you, {name}! We've received your order.",
+        "order_placed_thanks_plain": "Thank you! We've received your order."
     }
 }

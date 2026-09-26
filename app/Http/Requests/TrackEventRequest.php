@@ -25,14 +25,14 @@ class TrackEventRequest extends FormRequest
         return [
             // Purchase is missing on purpose: it is reported by the server
             // from the order itself (OrderObserver), so it can never be faked.
-            'event'    => ['required', 'string', Rule::in(['ViewContent', 'AddToCart', 'InitiateCheckout'])],
+            'event'    => ['required', 'string', Rule::in(['ViewContent', 'AddToCart', 'AddToWishlist', 'InitiateCheckout', 'AddPaymentInfo'])],
             // Shared with the browser's copy so Meta can drop the duplicate.
             'event_id' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
 
-            'product_id' => ['required_if:event,ViewContent,AddToCart', 'nullable', 'integer', 'exists:products,id'],
+            'product_id' => ['required_if:event,ViewContent,AddToCart,AddToWishlist', 'nullable', 'integer', 'exists:products,id'],
             'quantity'   => ['nullable', 'integer', 'min:1', 'max:100'],
 
-            'contents'            => ['required_if:event,InitiateCheckout', 'nullable', 'array', 'max:50'],
+            'contents'            => ['required_if:event,InitiateCheckout,AddPaymentInfo', 'nullable', 'array', 'max:50'],
             'contents.*.id'       => ['required', 'integer', 'exists:products,id'],
             'contents.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
 

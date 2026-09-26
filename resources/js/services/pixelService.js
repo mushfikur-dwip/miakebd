@@ -12,8 +12,12 @@
  *   ViewContent     - product pages: the event retargeting and catalogue ads
  *                     are built on
  *   AddToCart       - "added but did not buy" audiences
- *   InitiateCheckout- "reached checkout but did not buy" audiences
+ *   AddToWishlist   - "saved it for later" audiences
+ *   InitiateCheckout- "reached checkout but did not buy" audiences; fired on
+ *                     the checkout (address) step, where most drop off
+ *   AddPaymentInfo  - pressed Confirm on the payment step
  *   Purchase        - conversion, and the value ads optimise towards
+ *   CompleteRegistration - server-side only (MetaConversionsService)
  *
  * Deliberately not sent from the browser:
  *   - product names and categories. Here they read "acne", "salicylic",
@@ -171,6 +175,74 @@ export default {
         }, eventId);
 
         mirrorToServer("AddToCart", eventId, { product_id: product.id, quantity });
+    },
+
+    /** Hearted from a card or a product page - a "wants it later" audience. */
+    addToWishlist(product) {
+        const id = contentId(product);
+        if (!id) {
+            return;
+        }
+
+        const eventId = newEventId();
+
+        this.track("AddToWishlist", {
+            content_ids: [id],
+            content_type: "product",
+            value: money(product.flat_discounted_price ?? product.flat_price ?? product.price),
+            currency: currency(),
+        }, eventId);
+
+        mirrorToServer("AddToWishlist", eventId, { product_id: product.id });
+    },
+
+    /**
+     * On the checkout page, once per basket per visit: going back and forth
+     * between checkout and payment is one checkout, not several, and Meta
+     * optimises on the count.
+     */
+    initiateCheckoutOnce(lines = [], total = 0) {
+        const signature = "pixel-checkout:" + lines
+            .map((line) => line.product_id + "x" + line.quantity)
+            .sort()
+            .join(",");
+
+        try {
+            if (window.sessionStorage.getItem(signature)) {
+                return;
+            }
+            window.sessionStorage.setItem(signature, "1");
+        } catch (e) {
+            // No storage (private window): report it; one extra is harmless.
+        }
+
+        this.initiateCheckout(lines, total);
+    },
+
+    /** The shopper pressed Confirm on the payment step. */
+    addPaymentInfo(lines = [], total = 0) {
+        const contents = lines
+            .map((line) => {
+                const id = contentId(line.product_id ? { id: line.product_id, sku: line.sku } : null);
+                return id ? { id, quantity: line.quantity, item_price: money(line.price) } : null;
+            })
+            .filter(Boolean);
+
+        const eventId = newEventId();
+
+        this.track("AddPaymentInfo", {
+            content_ids: [...new Set(contents.map((c) => c.id))],
+            content_type: "product",
+            contents,
+            value: money(total),
+            currency: currency(),
+        }, eventId);
+
+        mirrorToServer("AddPaymentInfo", eventId, {
+            contents: lines
+                .filter((line) => line.product_id)
+                .map((line) => ({ id: line.product_id, quantity: Number(line.quantity) || 1 })),
+        });
     },
 
     /** Cart lines as the storefront cart stores them. */

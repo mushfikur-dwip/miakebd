@@ -1,4 +1,9 @@
 <template>
+    <!-- The home page's main heading, for search engines and screen readers.
+         The page opens on a banner slider, so there is no visible title to
+         promote; the text says exactly what the page is. -->
+    <h1 class="sr-only">Suglow — Authentic Cosmetics &amp; Skincare Online in Bangladesh</h1>
+
     <SliderComponent />
 
     <HomeBannerComponent />

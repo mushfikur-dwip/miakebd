@@ -176,7 +176,7 @@ Route::prefix('auth')->middleware(['installed', 'apiKey', 'localization'])->name
     // SMS, and claim is brute-forcible.
     Route::prefix('guest')->group(function () {
         Route::post('/start', [GuestController::class, 'start'])
-            ->middleware('throttle:10,1')->name('start');
+            ->middleware('throttle:guest-start')->name('start');
 
         Route::post('/send-otp', [GuestController::class, 'sendOtp'])
             ->middleware('throttle:3,1')->name('sendOtp');
@@ -218,7 +218,7 @@ Route::prefix('profile')->middleware(['installed', 'apiKey', 'auth:sanctum', 'lo
 // methods missing from a controller's `only:` list were open to any token, and
 // guest checkout hands a token to anyone with a phone number. Customers now stop
 // here, whatever a controller forgets. See EnsureStaff.
-Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle:300,1'])->group(function () {
+Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle:300,1', 'flush.public'])->group(function () {
     Route::prefix('timezone')->group(function () {
         Route::get('/', [TimezoneController::class, 'index']);
     });
@@ -893,11 +893,11 @@ Route::group(['prefix' => 'frontend'], function () {
     Route::get('language/{code}', [FrontendLanguageController::class, 'language']);
     Route::get('overview', [OverviewController::class, 'index']);
 
-    Route::prefix('setting')->group(function () {
+    Route::prefix('setting')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendSettingController::class, 'index']);
     });
 
-    Route::prefix('country-code')->group(function () {
+    Route::prefix('country-code')->middleware('cache.public:3600')->group(function () {
         Route::get('/', [FrontendCountryCodeController::class, 'index']);
         Route::get('/show/{country}', [FrontendCountryCodeController::class, 'show']);
         Route::get('/calling-code/{callingCode}', [FrontendCountryCodeController::class, 'callingCode']);
@@ -911,20 +911,20 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::delete('/{address}', [FrontendAddressController::class, 'destroy']);
     });
 
-    Route::prefix('language')->group(function () {
+    Route::prefix('language')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendLanguageController::class, 'index']);
         Route::get('/show/{language}', [FrontendLanguageController::class, 'show']);
     });
 
-    Route::prefix('slider')->group(function () {
+    Route::prefix('slider')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendSliderController::class, 'index']);
     });
     
-    Route::prefix('mobile-section')->group(function () {
+    Route::prefix('mobile-section')->middleware('cache.public:300')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\MobileSectionController::class, 'index']);
     });
 
-    Route::prefix('product-category')->group(function () {
+    Route::prefix('product-category')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendProductCategoryController::class, 'index']);
         Route::get('/ancestors-and-self/{productCategory:slug}', [FrontendProductCategoryController::class, 'ancestorsAndSelf']);
         Route::get('/tree', [FrontendProductCategoryController::class, 'tree']);
@@ -932,28 +932,28 @@ Route::group(['prefix' => 'frontend'], function () {
     });
 
     Route::prefix('product')->group(function () {
-        Route::get('/', [FrontendProductController::class, 'index']);
-        Route::get('/show/{product:slug}', [FrontendProductController::class, 'show']);
-        Route::get('/popular-products', [FrontendProductController::class, 'mostPopularProducts']);
-        Route::get('/flash-sale-products', [FrontendProductController::class, 'flashSaleProducts']);
-        Route::post('/category-wise-products', [FrontendProductController::class, 'categoryWiseProducts']);
-        Route::get('/offer-products', [FrontendProductController::class, 'offerProducts']);
+        Route::get('/', [FrontendProductController::class, 'index'])->middleware('cache.public:60');
+        Route::get('/show/{product:slug}', [FrontendProductController::class, 'show'])->middleware('cache.public:60');
+        Route::get('/popular-products', [FrontendProductController::class, 'mostPopularProducts'])->middleware('cache.public:60');
+        Route::get('/flash-sale-products', [FrontendProductController::class, 'flashSaleProducts'])->middleware('cache.public:60');
+        Route::post('/category-wise-products', [FrontendProductController::class, 'categoryWiseProducts'])->middleware('cache.public:60');
+        Route::get('/offer-products', [FrontendProductController::class, 'offerProducts'])->middleware('cache.public:60');
         Route::get('/wishlist-products', [FrontendProductController::class, 'wishlistProducts'])->middleware(['auth:sanctum']);
-        Route::get('/related-products/{product:slug}', [FrontendProductController::class, 'relatedProducts']);
-        Route::get('/initial-variation/{product}', [FrontendProductVariationController::class, 'initialVariation']);
-        Route::get('/children-variation/{productVariation}', [FrontendProductVariationController::class, 'childrenVariation']);
-        Route::get('/variation/ancestors-and-self/{productVariation}', [FrontendProductVariationController::class, 'ancestorsToString']);
-        Route::get('/all-variation/{product:slug}', [FrontendProductVariationController::class, 'allVariation']);
+        Route::get('/related-products/{product:slug}', [FrontendProductController::class, 'relatedProducts'])->middleware('cache.public:60');
+        Route::get('/initial-variation/{product}', [FrontendProductVariationController::class, 'initialVariation'])->middleware('cache.public:60');
+        Route::get('/children-variation/{productVariation}', [FrontendProductVariationController::class, 'childrenVariation'])->middleware('cache.public:60');
+        Route::get('/variation/ancestors-and-self/{productVariation}', [FrontendProductVariationController::class, 'ancestorsToString'])->middleware('cache.public:60');
+        Route::get('/all-variation/{product:slug}', [FrontendProductVariationController::class, 'allVariation'])->middleware('cache.public:60');
         Route::get('/show-with-trashed/{product:slug}', [FrontendProductController::class, 'showWithTrashed'])->withTrashed();
     });
 
-    Route::prefix('page')->group(function () {
+    Route::prefix('page')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendPageController::class, 'index']);
         Route::get('/show/{page:slug}', [FrontendPageController::class, 'show']);
         Route::get('/page-info/{page}', [FrontendPageController::class, 'show']);
     });
 
-    Route::prefix('blog')->group(function () {
+    Route::prefix('blog')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendBlogController::class, 'index']);
         // Declared before /show/{slug} so neither literal path can be captured
         // as a post slug.
@@ -965,7 +965,7 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::get('/related/{slug}', [FrontendBlogController::class, 'related']);
     });
 
-    Route::prefix('promotion')->group(function () {
+    Route::prefix('promotion')->middleware('cache.public:120')->group(function () {
         Route::get('/', [FrontendPromotionController::class, 'index']);
         Route::get('/show/{promotion:slug}', [FrontendPromotionController::class, 'show']);
         Route::get('/products/{promotion:slug}', [FrontendPromotionProductController::class, 'index']);
@@ -980,17 +980,17 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::get('/products/{campaign:slug}', [FrontendCampaignController::class, 'products']);
     });
 
-    Route::prefix('product-section')->group(function () {
+    Route::prefix('product-section')->middleware('cache.public:120')->group(function () {
         Route::get('/', [FrontendProductSectionController::class, 'index']);
         Route::get('/show/{productSection:slug}', [FrontendProductSectionController::class, 'show']);
         Route::get('/products/{productSection:slug}', [FrontendProductSectionProductController::class, 'index']);
     });
 
-    Route::prefix('product-brand')->group(function () {
+    Route::prefix('product-brand')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendProductBrandController::class, 'index']);
     });
 
-    Route::prefix('benefit')->group(function () {
+    Route::prefix('benefit')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendBenefitController::class, 'index']);
     });
 
@@ -1005,11 +1005,11 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::post('/coupon-checking', [FrontendCouponController::class, 'couponChecking'])->middleware('throttle:10,1');
     });
 
-    Route::prefix('payment-gateway')->group(function () {
+    Route::prefix('payment-gateway')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendPaymentGatewayController::class, 'index']);
     });
 
-    Route::prefix('order-area')->group(function () {
+    Route::prefix('order-area')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendOrderAreaController::class, 'index']);
     });
 
@@ -1076,7 +1076,7 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::get('/cities/{state}', [FrontendCountryStateCityController::class, 'citiesByState']);
     });
 
-    Route::prefix('outlet')->group(function () {
+    Route::prefix('outlet')->middleware('cache.public:300')->group(function () {
         Route::get('/', [FrontendOutletController::class, 'index']);
     });
 });

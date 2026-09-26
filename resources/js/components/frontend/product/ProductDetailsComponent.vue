@@ -3,10 +3,34 @@
     <section class="mb-12">
         <div class="container">
             <div class="row">
-                <div class="col-12">
+                <!-- Height held for the breadcrumb, which arrives after the
+                     product: it used to push the whole page down 24px when it
+                     did - the biggest layout shift on the product page. -->
+                <div class="col-12 min-h-[24px]">
                     <CategoryBreadcrumbComponent :categories="categories" />
                 </div>
 
+                <!-- Until this product has loaded: the page's real shape, so the
+                     gallery and the details do not jump when the data lands,
+                     instead of the previous product or a blank. -->
+                <template v-if="!productReady">
+                    <div class="col-12 sm:col-6 lg:col-5" aria-hidden="true">
+                        <div class="pd-skel aspect-square rounded-2xl"></div>
+                        <div class="grid grid-cols-4 gap-3 mt-3">
+                            <div v-for="n in 4" :key="n" class="pd-skel aspect-square rounded-lg"></div>
+                        </div>
+                    </div>
+                    <div class="col-12 sm:col-6 lg:col-7 lg:pl-10" aria-hidden="true">
+                        <div class="pd-skel h-9 w-11/12 rounded-lg mb-3"></div>
+                        <div class="pd-skel h-9 w-2/3 rounded-lg mb-6"></div>
+                        <div class="pd-skel h-8 w-40 rounded-lg mb-6"></div>
+                        <div class="pd-skel h-5 w-48 rounded mb-10"></div>
+                        <div class="pd-skel h-12 w-56 rounded-full mb-6"></div>
+                        <div class="pd-skel h-24 w-full rounded-2xl"></div>
+                    </div>
+                </template>
+
+                <template v-else>
                 <div v-if="images.length" class="col-12 sm:col-6 lg:col-5">
                     <Swiper dir="ltr" :spaceBetween="10" :navigation="true" :thumbs="{ swiper: thumbsSwiper }"
                         :modules="modules" class="gallery-swiper aspect-square bg-gray-100">
@@ -32,8 +56,12 @@
                         img-class="w-full h-full object-cover rounded-2xl" eager />
                 </div>
 
-                <div class="col-12 sm:col-6 lg:col-7 lg:pl-10">
-                    <h2 class="text-3xl sm:text-4xl font-bold capitalize mb-5">{{ product.name }}</h2>
+                <div class="col-12 sm:col-6 lg:col-7 lg:pl-10 pd-enter">
+                    <!-- The page's one h1: the product. It was an h2, so the
+                         rendered page had no main heading at all. -->
+                    <!-- 24px on a phone: the names here run long, and at 30px
+                         one took six lines before the price came into view. -->
+                    <h1 class="text-2xl leading-snug sm:text-4xl sm:leading-tight font-bold capitalize mb-4 sm:mb-5">{{ product.name }}</h1>
                     <h3 class="flex items-start gap-4 mb-5">
                         <span class="text-2xl font-bold">
                             {{
@@ -128,6 +156,7 @@
                          still reaches us with everything we need. -->
                     <OrderHelpComponent bare :product="orderHelpProduct" />
                 </div>
+                </template>
             </div>
         </div>
     </section>
@@ -378,6 +407,13 @@ export default {
         product: function () {
             return this.$store.getters["frontendProduct/show"];
         },
+        // The store still holds the previously viewed product until this
+        // page's own request answers.
+        productReady: function () {
+            const product = this.product || {};
+
+            return !!product.slug && product.slug === this.$route.params.slug;
+        },
         images: function () {
             return this.$store.getters["frontendProduct/showImages"];
         },
@@ -422,10 +458,16 @@ export default {
                 product_id: this.product.id,
                 toggle: toggle
             }).then((res) => {
+                if (toggle) {
+                    pixelService.addToWishlist(this.product);
+                }
             }).catch((err) => {
-                if (err.response.status === 401) {
+                // No response at all on a dropped connection.
+                if (err && err.response && err.response.status === 401) {
                     this.product.wishlist = false;
                     router.push({ name: "auth.login" });
+                } else {
+                    this.product.wishlist = !toggle;
                 }
             });
         },
@@ -508,8 +550,16 @@ export default {
         },
         updateSeoHead: function (product) {
             const seo = product.seo || {};
-            const title = seo.title || product.name;
+            // Same rule as the server-rendered <title> (master.blade.php):
+            // "<name> Price in Bangladesh" when there is no SEO title, and the
+            // shop name added only when the title does not already carry it -
+            // the imported titles end in "| Suglow BD", which used to become
+            // "... | Suglow BD | SUGLOW" as soon as the app took over the tab.
+            const title = seo.title || `${product.name} Price in Bangladesh`;
             const company = this.setting.company_name || 'Suglow';
+            const fullTitle = title.toLowerCase().includes(String(company).toLowerCase())
+                ? title
+                : `${title} | ${company}`;
             const descriptionSource = seo.description || product.details || product.name;
             const firstBlock = descriptionSource
                 .replace(/<\/p>\s*<p>\s*(?:<br\s*\/?>|&nbsp;|\s)*\s*<\/p>\s*<p>/gi, "</p>\n\n<p>")
@@ -527,7 +577,7 @@ export default {
             const keywords = Array.isArray(seo.meta_keyword) ? seo.meta_keyword.join(', ') : '';
 
             this.seoHead = {
-                title: `${title} | ${company}`,
+                title: fullTitle,
                 link: [
                     { key: 'canonical', rel: 'canonical', href: canonical },
                 ],
@@ -735,3 +785,34 @@ export default {
     }
 }
 </script>
+
+<style scoped>
+/* Placeholder blocks while the product loads. */
+.pd-skel {
+    background: linear-gradient(100deg, #f1f2f6 30%, #f8f8fb 50%, #f1f2f6 70%);
+    background-size: 220% 100%;
+    animation: pd-shimmer 1.3s ease-in-out infinite;
+}
+
+@keyframes pd-shimmer {
+    from { background-position: 120% 0; }
+    to { background-position: -120% 0; }
+}
+
+/* The details settle in when they replace the placeholder. */
+.pd-enter {
+    animation: pd-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes pd-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pd-skel,
+    .pd-enter {
+        animation: none;
+    }
+}
+</style>

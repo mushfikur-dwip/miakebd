@@ -37,7 +37,8 @@ class TrackingController extends Controller
 
         try {
             $event = $request->validated('event');
-            $data  = $event === 'InitiateCheckout'
+            // Basket events carry the cart; the rest are about one product.
+            $data  = in_array($event, ['InitiateCheckout', 'AddPaymentInfo'], true)
                 ? $this->checkoutData($request->validated('contents', []))
                 : $this->productData($request);
 

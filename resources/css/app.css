@@ -210,6 +210,10 @@
     .gallery-swiper:hover .swiper-button-prev,
     .gallery-swiper:hover .swiper-button-next { @apply visible opacity-100 }
     .thumb-swiper { @apply px-1 }
+    /* custom.css gives every .swiper min-height: 200px, which reserves room for
+       banner sliders but stretched this ~80px row of thumbnails to 200px and
+       left a blank band between the gallery and the product name. */
+    .swiper.thumb-swiper { min-height: 0 }
     .thumb-swiper .swiper-slide-thumb-active { @apply border-primary }
     .thumb-swiper .swiper-slide-thumb-active img { @apply border-white }
     /*==================================
@@ -1413,6 +1417,20 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
     }
 
     .card-shine:hover::after { transform: translateX(110%); }
+}
+
+/* The cart button springs when something is added to the cart (see
+   composables/cartBump.js), so the shopper sees where the product went.
+   Transform only. */
+.cart-bump {
+    animation: cart-bump 0.6s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+@keyframes cart-bump {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.2) rotate(-6deg); }
+    65% { transform: scale(0.95) rotate(3deg); }
+    100% { transform: scale(1); }
 }
 
 /* Skip layout and paint entirely for sections that are still offscreen. This

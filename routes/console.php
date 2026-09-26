@@ -8,6 +8,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Proof of life for App\Support\ScheduleFallback: while this is fresh, the
+// storefront leaves the jobs below to the cron.
+Schedule::call(fn () => \App\Support\ScheduleFallback::heartbeat())->name('schedule-heartbeat')->everyMinute();
+
 Schedule::command('sitemap:generate')->dailyAt('02:00')->withoutOverlapping();
 
 // Meta Conversions API: the storefront only stores events; this sends them in

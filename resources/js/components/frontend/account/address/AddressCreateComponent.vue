@@ -71,10 +71,12 @@
                                 </span>
                             </div>
                             <input
-                                v-model="props.form.phone"
-                                v-on:keypress="phoneNumber($event)"
+                                :value="props.form.phone"
+                                @input="onPhone($event)"
                                 v-bind:class="errors.phone ? 'invalid' : ''"
-                                type="text"
+                                type="tel"
+                                inputmode="numeric"
+                                autocomplete="tel-national"
                                 id="phone"
                                 class="pl-2 text-sm w-full h-full"
                             />
@@ -106,23 +108,25 @@
                         <label
                             class="text-sm font-medium capitalize mb-1 field-title required"
                             for="state"
-                            >District</label
+                            >{{ $t("label.district") }}</label
                         >
-                        <vue-select
-                            class="frontend-select w-full h-12 px-4 rounded-lg text-base capitalize border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500 appearance-none"
+                        <!-- Native select over the bundled list. The searchable
+                             dropdown read a list fetched on mount that Cancel and
+                             Save both emptied, so it was blank from the second
+                             address on; it also called a callCities() that no
+                             longer exists on every pick. -->
+                        <select
                             id="state"
-                            v-bind:class="errors.state ? 'invalid' : ''"
                             v-model="props.form.state"
-                            @update:modelValue="callCities($event)"
-                            :options="props.states"
-                            label-by="name"
-                            value-by="name"
-                            :closeOnSelect="true"
-                            :searchable="true"
-                            :clearOnClose="true"
-                            placeholder="--"
-                            search-placeholder="--"
-                        />
+                            autocomplete="address-level2"
+                            :class="errors.state ? 'invalid' : ''"
+                            class="w-full h-12 px-4 rounded-lg text-base bg-white border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
+                        >
+                            <option :value="null" disabled>{{ $t("label.select_district") }}</option>
+                            <option v-for="district in districts" :key="district.name" :value="district.name">
+                                {{ district.name }} ({{ district.bn_name }})
+                            </option>
+                        </select>
                         <small class="db-field-alert" v-if="errors.state">
                             {{ errors.state[0] }}
                         </small>
@@ -133,7 +137,7 @@
                         <label
                             class="text-sm font-medium capitalize mb-1 field-title required"
                             for="street_address"
-                            >Full Address</label
+                            >{{ $t("label.full_address") }}</label
                         ><input
                             type="text"
                             :class="errors.address ? 'invalid' : ''"
@@ -167,9 +171,10 @@
 </template>
 
 <script>
-import appService from "../../../../services/appService";
 import targetService from "../../../../services/targetService";
 import alertService from "../../../../services/alertService";
+import phoneService from "../../../../services/phoneService";
+import bdDistricts from "../../../../data/bdDistricts";
 import LoadingComponent from "../../components/LoadingComponent";
 
 export default {
@@ -184,19 +189,13 @@ export default {
             errors: {},
             targetID: "address",
             addClass: "modal-active",
-            worldMapData: [],
+            districts: bdDistricts,
         };
     },
     mounted() {
-        this.loading.isActive = true;
-        setTimeout(() => {
-            this.callCountry();
-            // Auto-select Bangladesh and load states
-            this.props.form.country = "Bangladesh";
-            this.callStates("Bangladesh");
-        }, 300);
+        // Bangladesh only; the districts are bundled, so nothing to load.
+        this.props.form.country = "Bangladesh";
         this.props.form.country_code = "+880";
-        this.loading.isActive = false;
     },
     computed: {
         addButton: function () {
@@ -207,8 +206,14 @@ export default {
         },
     },
     methods: {
-        phoneNumber(e) {
-            return appService.phoneNumber(e);
+        // Bengali digits converted, everything else dropped - the keypress
+        // filter this replaces blocked Bangla-keyboard numbers entirely.
+        onPhone(e) {
+            const cleaned = phoneService.clean(e.target.value);
+            if (e.target.value !== cleaned) {
+                e.target.value = cleaned;
+            }
+            this.props.form.phone = cleaned;
         },
         showTarget: function () {
             targetService.showTarget(this.targetID, this.addClass);
@@ -273,7 +278,13 @@ export default {
                     })
                     .catch((err) => {
                         this.loading.isActive = false;
-                        this.errors = err.response.data.errors;
+                        // No response at all on a dropped connection; reading
+                        // .data off undefined threw and the button froze.
+                        const data = err && err.response ? err.response.data : {};
+                        this.errors = data.errors || {};
+                        if (!data.errors) {
+                            alertService.error(data.message || this.$t("message.check_connection"));
+                        }
                     });
             } catch (err) {
                 this.loading.isActive = false;

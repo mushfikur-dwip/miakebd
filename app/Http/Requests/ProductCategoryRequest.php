@@ -10,6 +10,20 @@ use Illuminate\Validation\Validator;
 class ProductCategoryRequest extends FormRequest
 {
     /**
+     * Invisible control characters out of the name. "Skin Care" was stored as
+     * "\x1DSkin Care" - pasted in from somewhere - and the stray byte went into
+     * the page title, the h1 and the breadcrumb.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('name')) {
+            $this->merge([
+                'name' => trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', '', (string) $this->input('name'))),
+            ]);
+        }
+    }
+
+    /**
      * Determine if the user is authorized to make this request.
      *
      * @return bool

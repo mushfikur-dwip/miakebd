@@ -282,6 +282,10 @@ class GuestController extends Controller
 
         $target->refresh();
 
+        // The guest became a customer with an account: Meta's sign-up
+        // conversion. Queued only; this reply never waits for Meta.
+        app(\App\Services\MetaConversionsService::class)->completeRegistration($target, $request);
+
         return $this->tokenResponse(
             $target,
             'auth_token',

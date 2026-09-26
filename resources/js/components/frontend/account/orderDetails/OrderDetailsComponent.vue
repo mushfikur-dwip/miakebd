@@ -278,22 +278,7 @@
             {{ $t('button.return_request') }}</router-link>
     </div>
 
-    <div id="payment-modal"
-        :class="justOrdered ? 'modal-active' : ''"
-        class=" fixed inset-0 z-50 p-3 w-screen h-dvh overflow-y-auto bg-black/50 transition-all duration-300 opacity-0 invisible">
-        <div class="w-full rounded-xl mx-auto bg-white transition-all duration-300 max-w-[360px]">
-            <div class="px-4 py-5 relative">
-                <button @click.prevent="reset" type="button"
-                    class="lab-line-circle-cross text-lg text-[#E93C3C] absolute top-3 right-3"></button>
-                <h3 class="font-medium text-center mb-5">{{ $t('message.thank_you_for_your_order') }}</h3>
-                <img :src="setting.image_confirm" alt="confirm-image" class="w-[120px] mx-auto mb-5" />
-                <h4 class="font-semibold text-center mb-5">{{ $t('message.your_order_is_successfully_placed') }}</h4>
-                <button type="button" @click.prevent="reset" class="field-button font-semibold normal-case">{{
-                    $t('button.see_your_order_details') }}
-                </button>
-            </div>
-        </div>
-    </div>
+    <OrderSuccessComponent :open="justOrdered" :order="successOrder" :name="customerName" @close="reset" />
 </template>
 
 <script>
@@ -308,12 +293,13 @@ import targetService from "../../../../services/targetService";
 import { useRoute } from 'vue-router'
 import OrderReceiptComponent from "./OrderReceiptComponent";
 import GuestClaimComponent from "./GuestClaimComponent.vue";
+import OrderSuccessComponent from "./OrderSuccessComponent.vue";
 import orderTypeEnum from "../../../../enums/modules/orderTypeEnum";
 import askEnum from "../../../../enums/modules/askEnum";
 
 export default {
     name: "OrderDetailsComponent",
-    components: { LoadingComponent, OrderReceiptComponent, GuestClaimComponent },
+    components: { LoadingComponent, OrderReceiptComponent, GuestClaimComponent, OrderSuccessComponent },
     setup() {
         const route = useRoute();
         return { route: route };
@@ -368,6 +354,22 @@ export default {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
         },
+        // Only this order's figures - the store still holds whichever order was
+        // opened before until the fetch below replaces it.
+        successOrder: function () {
+            const order = this.order || {};
+
+            return String(order.id) === String(this.$route.params.id) ? order : {};
+        },
+        // Greets them by the name on the delivery address, which is what they
+        // just typed; the account's name (the same, for a guest) until the
+        // order arrives, so the greeting does not change mid-animation.
+        customerName: function () {
+            const address = (this.successOrder.id && (this.orderAddress || [])[0]) || {};
+            const user = this.$store.getters.authInfo || {};
+
+            return address.full_name || user.name || "";
+        },
         showGuestClaim: function () {
             const user = this.$store.getters.authInfo;
             return !!user && parseInt(user.is_guest, 10) === askEnum.YES;
@@ -401,7 +403,12 @@ export default {
         // left the whole cart — the spent coupon included — in localStorage,
         // and every later order was rejected for reusing it. Clear it here,
         // whatever the customer does next.
-        if (this.route.query.status === 'success') {
+        // Kept apart from justOrdered, which the success screen's close button
+        // clears: a customer who dismissed it before the order had loaded
+        // used to cost the shop its Purchase event.
+        const placedNow = this.route.query.status === 'success';
+
+        if (placedNow) {
             this.justOrdered = true;
 
             const paymentMethod = this.paymentMethod || {};
@@ -411,6 +418,10 @@ export default {
             }
 
             this.$store.dispatch("frontendCart/resetCart").then().catch();
+
+            // Celebrated once: without this, reloading the page or sharing
+            // its link replayed the whole success screen.
+            this.$router.replace({ query: {} }).catch(() => {});
         }
 
         if (this.$route.params.id) {
@@ -422,7 +433,7 @@ export default {
                 // reloaded or reopened from the order list, and every reload
                 // would otherwise be counted as another sale (pixelService
                 // keeps the ids it has already sent).
-                if (this.justOrdered) {
+                if (placedNow) {
                     pixelService.purchase(res.data.data);
                 }
             }).catch((error) => {

@@ -1,6 +1,8 @@
 <template>
-    <div class="relative overflow-hidden bg-gray-100" :style="{ aspectRatio: `${width} / ${height}` }">
+    <div class="pi relative overflow-hidden bg-gray-100" :class="{ 'pi-waiting': !loaded && !eager }"
+         :style="{ aspectRatio: `${width} / ${height}` }">
         <img
+            ref="img"
             :src="currentSrc"
             :alt="alt"
             :width="width"
@@ -8,7 +10,8 @@
             :loading="eager ? 'eager' : 'lazy'"
             :fetchpriority="eager ? 'high' : 'auto'"
             decoding="async"
-            :class="imgClass"
+            :class="[imgClass, eager ? '' : 'pi-img', loaded ? 'pi-loaded' : '']"
+            @load="loaded = true"
             @error="useFallback"
         >
     </div>
@@ -22,6 +25,8 @@ export default {
         alt: { type: String, required: true },
         width: { type: Number, default: 800 },
         height: { type: Number, default: 800 },
+        // Above the fold: loaded at once, at high priority, and never faded -
+        // a fade would push back the largest paint it is meant to be.
         eager: { type: Boolean, default: false },
         imgClass: { type: String, default: "w-full h-full object-cover" },
     },
@@ -29,17 +34,27 @@ export default {
         return {
             currentSrc: this.src,
             fallbackUsed: false,
+            loaded: false,
         };
+    },
+    mounted() {
+        // Already in the browser cache: load may have fired before Vue listened.
+        const img = this.$refs.img;
+        if (img && img.complete && img.naturalWidth > 0) {
+            this.loaded = true;
+        }
     },
     watch: {
         src(value) {
             this.currentSrc = value;
             this.fallbackUsed = false;
+            this.loaded = false;
         },
     },
     methods: {
         useFallback() {
             if (this.fallbackUsed) {
+                this.loaded = true;
                 return;
             }
 
@@ -49,3 +64,38 @@ export default {
     },
 };
 </script>
+
+<style scoped>
+/* A soft sweep while the photo is on its way, then the photo fades in over it.
+   Opacity and a background-position animation only: no layout, and the box
+   already has its final size from aspect-ratio, so nothing shifts. */
+.pi-waiting {
+    background: linear-gradient(100deg, #f1f2f6 30%, #f8f8fb 50%, #f1f2f6 70%);
+    background-size: 220% 100%;
+    animation: pi-shimmer 1.3s ease-in-out infinite;
+}
+
+.pi-img {
+    opacity: 0;
+    transition: opacity 0.45s ease, transform 0.5s ease;
+}
+
+.pi-img.pi-loaded {
+    opacity: 1;
+}
+
+@keyframes pi-shimmer {
+    from { background-position: 120% 0; }
+    to { background-position: -120% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pi-waiting {
+        animation: none;
+    }
+
+    .pi-img {
+        opacity: 1;
+    }
+}
+</style>

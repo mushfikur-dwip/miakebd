@@ -30,7 +30,8 @@
  * TikTok: every event above except PageView also goes to the TikTok Pixel
  * (master.blade.php), under the same name and event id, with the same
  * content ids. TikTok's pixel counts single-page-app screens by itself, so it
- * is never sent a PageView from here. It has no server-side copy yet.
+ * is never sent a PageView from here. The server mirror below feeds TikTok's
+ * Events API too (TikTokEventsService), deduplicated on the same event id.
  *
  * Every entry point is guarded: with no pixel configured, or with fbevents.js
  * blocked (common), each call is a no-op. Tracking must never be able to break
@@ -123,16 +124,16 @@ function contentId(product) {
 
 /**
  * Sends the same event to the shop's own server, which forwards it to Meta's
- * Conversions API.
+ * Conversions API and TikTok's Events API.
  *
- * This is the copy that survives an ad blocker or iOS: facebook.net may be
- * unreachable, this site is not. Both copies carry the same event_id, so Meta
- * counts one. Prices are not sent - the server reads them from the database -
- * and a failure here is ignored, because tracking must never surface an error
- * to a customer.
+ * This is the copy that survives an ad blocker or iOS: facebook.net and
+ * tiktok.com may be unreachable, this site is not. Both copies carry the same
+ * event_id, so each platform counts one. Prices are not sent - the server
+ * reads them from the database - and a failure here is ignored, because
+ * tracking must never surface an error to a customer.
  */
 function mirrorToServer(event, eventId, body) {
-    if (!config()?.id) {
+    if (!config()?.id && !tiktokReady()) {
         return;
     }
 

@@ -17,11 +17,11 @@
                 <SwiperSlide v-for="(slider, index) in sliders">
                     <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl aspect-[4/3] sm:aspect-[3/1] isolate">
                         <a v-if="safeLink(slider.link)" :href="safeLink(slider.link)" class="block w-full h-full">
-                            <img class="w-full h-full object-cover" :src="slider.image" :alt="slider.title"
+                            <img class="w-full h-full object-cover" :src="slider.image" :alt="slider.title || 'Suglow'"
                                 :loading="index === 0 ? 'eager' : 'lazy'"
                                 :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async">
                         </a>
-                        <img v-else class="w-full h-full object-cover" :src="slider.image" :alt="slider.title"
+                        <img v-else class="w-full h-full object-cover" :src="slider.image" :alt="slider.title || 'Suglow'"
                             :loading="index === 0 ? 'eager' : 'lazy'"
                             :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async">
 

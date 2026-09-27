@@ -18,5 +18,8 @@ Schedule::command('sitemap:generate')->dailyAt('02:00')->withoutOverlapping();
 // one batch a minute. See App\Services\MetaConversionsService.
 Schedule::command('meta:send-events')->everyMinute()->withoutOverlapping(5);
 
+// The same for TikTok's Events API. See App\Services\TikTokEventsService.
+Schedule::command('tiktok:send-events')->everyMinute()->withoutOverlapping(5);
+
 // The catalogue for Meta product ads and Google's free Shopping listings.
 Schedule::command('feeds:products')->hourly()->withoutOverlapping();

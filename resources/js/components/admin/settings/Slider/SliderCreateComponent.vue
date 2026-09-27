@@ -13,7 +13,7 @@
                 <form @submit.prevent="save">
                     <div class="form-row">
                         <div class="form-col-12">
-                            <label for="name" class="db-field-title required">{{
+                            <label for="name" class="db-field-title">{{
                                 $t("label.title")
                                 }}</label>
                             <input v-model="props.form.title" v-bind:class="errors.title ? 'invalid' : ''" type="text"
@@ -196,11 +196,13 @@ export default {
         save: function () {
             try {
                 const fd = new FormData();
-                fd.append("title", this.props.form.title);
+                // FormData turns null into the text "null", which would be
+                // saved; an untitled slider being edited has a null title.
+                fd.append("title", this.props.form.title ?? "");
                 fd.append("link", this.props.form.link);
                 fd.append("position", this.props.form.position);
                 fd.append("status", this.props.form.status);
-                fd.append("description", this.props.form.description);
+                fd.append("description", this.props.form.description ?? "");
                 if (this.image) {
                     fd.append("image", this.image);
                 }

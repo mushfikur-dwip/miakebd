@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\TrackEventRequest;
 use App\Models\Product;
 use App\Services\MetaConversionsService;
+use App\Services\TikTokEventsService;
 use App\Support\MetaPixel;
 use Illuminate\Http\Response;
 
 /**
  * The storefront's own endpoint for mirroring pixel events to Meta's
- * Conversions API.
+ * Conversions API and TikTok's Events API.
  *
  * A blocked browser cannot reach facebook.net, but it can still reach this
  * site - so the event survives. Each one carries the same event_id as the
@@ -23,15 +24,15 @@ use Illuminate\Http\Response;
  */
 class TrackingController extends Controller
 {
-    public function __construct(private MetaConversionsService $meta)
+    public function __construct(private MetaConversionsService $meta, private TikTokEventsService $tiktok)
     {
     }
 
     public function store(TrackEventRequest $request): Response
     {
-        // No token configured: the browser pixel is on its own, which is
+        // No token configured: the browser pixels are on their own, which is
         // exactly the behaviour before this endpoint existed.
-        if (!$this->meta->enabled()) {
+        if (!$this->meta->enabled() && !$this->tiktok->enabled()) {
             return response()->noContent();
         }
 
@@ -46,13 +47,12 @@ class TrackingController extends Controller
                 return response()->noContent();
             }
 
-            $this->meta->queue(
-                $event,
-                $request->validated('event_id'),
-                $this->meta->userData(auth('sanctum')->user(), $request, $this->address()),
-                $data,
-                $this->sourceUrl($request->validated('source_url'))
-            );
+            $user = auth('sanctum')->user();
+            $url  = $this->sourceUrl($request->validated('source_url'));
+
+            // Each is a no-op when its own token is missing.
+            $this->meta->queue($event, $request->validated('event_id'), $this->meta->userData($user, $request, $this->address()), $data, $url);
+            $this->tiktok->queue($event, $request->validated('event_id'), $this->tiktok->userData($user, $request), $this->tiktok->properties($data), $url);
         } catch (\Throwable $e) {
             // Tracking is never worth a visible error.
         }

@@ -7,14 +7,14 @@
             <div v-if="grid.length > 0" class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <BannerLinkComponent v-for="banner in grid" :key="banner.id" :link="banner.link">
                     <img class="w-full h-full object-cover rounded-2xl aspect-[540/336]" :src="banner.tile"
-                        :alt="banner.title" loading="lazy" decoding="async">
+                        :alt="banner.title || 'Suglow'" loading="lazy" decoding="async">
                 </BannerLinkComponent>
             </div>
 
             <div v-if="wide.length > 0" class="flex flex-col gap-4 sm:gap-6"
                 :class="grid.length > 0 ? 'mt-4 sm:mt-6' : ''">
                 <BannerLinkComponent v-for="banner in wide" :key="banner.id" :link="banner.link">
-                    <img class="w-full rounded-2xl" :src="banner.image" :alt="banner.title" loading="lazy"
+                    <img class="w-full rounded-2xl" :src="banner.image" :alt="banner.title || 'Suglow'" loading="lazy"
                         decoding="async">
                 </BannerLinkComponent>
             </div>

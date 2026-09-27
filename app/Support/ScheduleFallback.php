@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Services\MetaConversionsService;
+use App\Services\TikTokEventsService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +38,9 @@ class ScheduleFallback
     /** Shared with `meta:send-events`, so the two never post the same rows. */
     public const META_LOCK = 'meta:sending';
 
+    /** Shared with `tiktok:send-events`. */
+    public const TIKTOK_LOCK = 'tiktok:sending';
+
     public static function heartbeat(): void
     {
         Cache::put(self::HEARTBEAT_KEY, time(), self::HEARTBEAT_GRACE * 4);
@@ -58,6 +62,7 @@ class ScheduleFallback
     {
         return [
             'meta-events' => [60, fn () => self::sendMetaEvents()],
+            'tiktok-events' => [60, fn () => self::sendTikTokEvents()],
             'product-feed' => [3600, fn () => Artisan::call('feeds:products')],
             'sitemap' => [86400, fn () => Artisan::call('sitemap:generate')],
         ];
@@ -112,6 +117,26 @@ class ScheduleFallback
             $meta = app(MetaConversionsService::class);
             $sent = $meta->sendPending();
             $meta->prune();
+
+            return $sent;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /** The same for TikTok's Events API, under its own lock. */
+    public static function sendTikTokEvents(): int
+    {
+        $lock = Cache::lock(self::TIKTOK_LOCK, 120);
+
+        if (!$lock->get()) {
+            return 0;
+        }
+
+        try {
+            $tiktok = app(TikTokEventsService::class);
+            $sent = $tiktok->sendPending();
+            $tiktok->prune();
 
             return $sent;
         } finally {

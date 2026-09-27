@@ -8,6 +8,7 @@ use App\Libraries\AppLibrary;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\ClientIp;
 use App\Support\MetaPixel;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
@@ -85,7 +86,7 @@ class MetaConversionsService
         ]);
 
         // Unhashed by design - these are Meta's own identifiers, not personal data.
-        $data['client_ip_address'] = $this->clientIp($request);
+        $data['client_ip_address'] = ClientIp::of($request);
         $data['client_user_agent'] = $request?->userAgent();
 
         if ($fbp = $this->metaCookie($request, '_fbp')) {
@@ -382,34 +383,6 @@ class MetaConversionsService
         }
 
         return strtok((string) $url, '?#') ?: null;
-    }
-
-    /**
-     * The shopper's own address, for Meta's matching.
-     *
-     * The site sits behind Hostinger's CDN and TrustProxies trusts no proxy,
-     * so $request->ip() may be the CDN edge the request came through - the
-     * same address for thousands of shoppers, which Meta can match to nobody.
-     * The CDN names the visitor first in X-Forwarded-For. Trusting that header
-     * app-wide would let anyone dodge the per-IP rate limits by writing it
-     * themselves; here the worst a forged value can do is spoil the match of
-     * the forger's own event, so it is read for this one purpose only.
-     */
-    private function clientIp(?Request $request): ?string
-    {
-        if (!$request) {
-            return null;
-        }
-
-        foreach (explode(',', (string) $request->headers->get('X-Forwarded-For', '')) as $candidate) {
-            $candidate = trim($candidate);
-
-            if (filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                return $candidate;
-            }
-        }
-
-        return $request->ip();
     }
 
     /**

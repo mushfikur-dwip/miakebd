@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\WalletSetting;
 use App\Services\CashLedgerService;
 use App\Services\MetaConversionsService;
+use App\Services\TikTokEventsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +24,7 @@ class OrderObserver
      */
     public function created(Order $order): void
     {
-        $this->reportPurchaseToMeta($order);
+        $this->reportPurchase($order);
         $this->syncCashDrawer($order);
     }
 
@@ -55,7 +56,7 @@ class OrderObserver
      * The browser's copy is lost whenever an ad blocker, iOS or a closed tab
      * gets in the way, and a missing Purchase is a sale the ad never gets
      * credit for. Both copies carry the same event_id - "order-{id}" - so Meta
-     * keeps one and discards the duplicate.
+     * and TikTok each keep one and discard the duplicate.
      *
      * Deferred until the order's transaction commits: the order row is
      * inserted first and its product lines and delivery address after it, so
@@ -67,7 +68,7 @@ class OrderObserver
      * updated(). Till orders are excluded: nobody clicked an ad to reach the
      * counter, and reporting them would flatter every campaign.
      */
-    private function reportPurchaseToMeta(Order $order): void
+    private function reportPurchase(Order $order): void
     {
         if ($this->isTillOrder($order)) {
             return;
@@ -75,15 +76,20 @@ class OrderObserver
 
         DB::afterCommit(function () use ($order) {
             try {
-                $meta = app(MetaConversionsService::class);
+                $meta   = app(MetaConversionsService::class);
+                $tiktok = app(TikTokEventsService::class);
 
-                if (!$meta->enabled()) {
+                if (!$meta->enabled() && !$tiktok->enabled()) {
                     return;
                 }
 
                 $order   = $order->fresh(['orderProducts', 'user']);
                 $address = optional($order->address()->where('address_type', AddressType::SHIPPING)->first());
+                $data    = $meta->orderCustomData($order);
+                $url     = url('/account/order-details/' . $order->id);
+                $isSale  = $meta->orderIsSale($order);
 
+                // Each is a no-op when its own token is missing.
                 $meta->queue(
                     'Purchase',
                     'order-' . $order->id,
@@ -93,13 +99,14 @@ class OrderObserver
                         'zip_code' => $address->zip_code,
                         'country'  => $address->country,
                     ]),
-                    $meta->orderCustomData($order),
-                    url('/account/order-details/' . $order->id),
-                    $meta->orderIsSale($order)
+                    $data,
+                    $url,
+                    $isSale
                 );
+                $tiktok->queue('Purchase', 'order-' . $order->id, $tiktok->userData($order->user, request()), $tiktok->properties($data), $url, $isSale);
             } catch (\Throwable $e) {
                 // An ad platform must never be able to break an order.
-                Log::warning('Could not queue the Meta Purchase event: ' . $e->getMessage());
+                Log::warning('Could not queue the Purchase event: ' . $e->getMessage());
             }
         });
     }
@@ -123,12 +130,14 @@ class OrderObserver
         }
 
         // The online payment went through: the Purchase stored when the order
-        // was placed can go to Meta now. A no-op for anything already sent.
+        // was placed can go to Meta and TikTok now. A no-op for anything
+        // already sent.
         if ($order->isDirty('payment_status') && (int) $order->payment_status === PaymentStatus::PAID && !$this->isTillOrder($order)) {
             try {
                 app(MetaConversionsService::class)->release('order-' . $order->id);
+                app(TikTokEventsService::class)->release('order-' . $order->id);
             } catch (\Throwable $e) {
-                Log::warning('Could not release the Meta Purchase event: ' . $e->getMessage());
+                Log::warning('Could not release the Purchase event: ' . $e->getMessage());
             }
         }
     }

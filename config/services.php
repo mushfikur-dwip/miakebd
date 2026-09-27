@@ -60,6 +60,12 @@ return [
     // settings above for currency and content ids, so both catalogues match.
     'tiktok_pixel' => [
         'id' => env('TIKTOK_PIXEL_ID'),
+
+        // Events API. With no token the server sends nothing and the browser
+        // pixel carries on alone, so this is safe to leave empty.
+        'token'     => env('TIKTOK_EVENTS_TOKEN'),
+        // Set while checking Events Manager -> Test events, then remove.
+        'test_code' => env('TIKTOK_EVENTS_TEST_CODE'),
     ],
 
 ];

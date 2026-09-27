@@ -39,8 +39,9 @@ class SliderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // Optional: a banner's words are usually in the picture itself.
             'title'        => [
-                'required',
+                'nullable',
                 'string',
                 'max:190',
                 Rule::unique("sliders", "title")->ignore($this->route('slider.id'))

@@ -8,6 +8,7 @@ use App\Enums\Status;
 use App\Enums\VideoOrientation;
 use App\Enums\VideoProvider;
 use App\Models\Product;
+use App\Models\ProductVideo;
 use App\Models\User;
 use App\Support\FacebookVideoLink;
 use App\Support\VideoEmbed;
@@ -140,6 +141,32 @@ class ProductVideoTest extends TestCase
         $this->saveFacebook('https://www.facebook.com/reel/333333333333333/')
             ->assertSuccessful()
             ->assertJsonPath('warning', trans('all.message.facebook_video_not_playable'));
+    }
+
+    // Videos saved before the form stored reel addresses: the command
+    // rewrites them and says which ones Facebook will not play.
+    public function test_the_fix_command_rewrites_saved_share_links_to_their_reel(): void
+    {
+        Http::fake(['www.facebook.com/share/r/*' => Http::response('', 302, ['Location' => 'https://www.facebook.com/reel/222222222222222/'])]);
+
+        $shared = ProductVideo::create(['product_id' => $this->product->id, 'video_provider' => VideoProvider::FACEBOOK, 'link' => 'https://www.facebook.com/share/r/1AbCdEfGhI/']);
+        $tracked = ProductVideo::create(['product_id' => $this->product->id, 'video_provider' => VideoProvider::FACEBOOK, 'link' => 'https://www.facebook.com/suglowbd/videos/111111111111111?mibextid=x']);
+        $youtube = ProductVideo::create(['product_id' => $this->product->id, 'video_provider' => VideoProvider::YOUTUBE, 'link' => 'https://www.youtube.com/watch?v=abcdefghijk']);
+
+        $this->artisan('videos:fix-facebook')->assertSuccessful();
+
+        $this->assertSame('https://www.facebook.com/reel/222222222222222/', $shared->fresh()->link);
+        $this->assertSame('https://www.facebook.com/reel/111111111111111/', $tracked->fresh()->link);
+        $this->assertSame('https://www.youtube.com/watch?v=abcdefghijk', $youtube->fresh()->link, 'other providers untouched');
+    }
+
+    public function test_the_fix_command_changes_nothing_on_a_dry_run(): void
+    {
+        $video = ProductVideo::create(['product_id' => $this->product->id, 'video_provider' => VideoProvider::FACEBOOK, 'link' => 'https://www.facebook.com/suglowbd/videos/111111111111111?mibextid=x']);
+
+        $this->artisan('videos:fix-facebook', ['--dry-run' => true])->assertSuccessful();
+
+        $this->assertSame('https://www.facebook.com/suglowbd/videos/111111111111111?mibextid=x', $video->fresh()->link);
     }
 
     public function test_the_video_id_is_read_from_every_address_form(): void

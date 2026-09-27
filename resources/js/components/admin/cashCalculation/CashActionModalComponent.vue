@@ -105,7 +105,7 @@
                     <template v-if="action.type === 'count'">
                         <p class="text-xs text-gray-500">{{ isSim ? tr('sim_count_help') : tr('blind_count_help') }}</p>
                         <div v-if="isSim">
-                            <label class="db-field-title required">{{ tr('sim_balance') }}</label>
+                            <label class="db-field-title required">{{ [ACCOUNT.POS_CARD, ACCOUNT.POS_MFS].includes(form.account) ? tr('balance') : tr('sim_balance') }}</label>
                             <input v-model="form.counted" type="number" min="0" step="0.01" class="db-field-control" />
                             <small class="db-field-alert" v-if="errors.counted">{{ errors.counted }}</small>
                         </div>
@@ -181,9 +181,32 @@
                     </div>
                 </div>
 
-                <div v-if="result" class="mt-4 rounded-md p-3 text-sm font-medium"
-                    :class="result.variance < 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'">
-                    {{ tr('count_result', { e: money(result.expected), c: money(result.counted), d: money(result.variance) }) }}
+                <!-- The count as saved: the notes, the total and - for a balance
+                     viewer only, so a cashier's count stays blind - what was
+                     expected and the difference. -->
+                <div v-if="result" class="mt-4 rounded-lg border overflow-hidden text-sm">
+                    <div class="px-3 py-2 bg-gray-50 font-semibold">{{ tr('count_saved') }}</div>
+                    <table v-if="result.denominations && result.denominations.length" class="w-full">
+                        <tbody>
+                            <tr v-for="line in result.denominations" :key="line.note" class="border-t border-gray-100">
+                                <td class="px-3 py-1.5">{{ line.note }} × {{ line.pieces }}</td>
+                                <td class="px-3 py-1.5 text-right">{{ money(line.amount) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="flex justify-between px-3 py-2 border-t font-semibold">
+                        <span>{{ tr('counted_total') }}</span><span>{{ money(result.counted) }}</span>
+                    </div>
+                    <template v-if="result.expected !== undefined">
+                        <div class="flex justify-between px-3 py-2 border-t">
+                            <span>{{ tr('expected') }}</span><span>{{ money(result.expected) }}</span>
+                        </div>
+                        <div class="flex justify-between px-3 py-2 border-t font-bold"
+                            :class="result.variance < 0 ? 'bg-red-50 text-red-700' : result.variance > 0 ? 'bg-amber-50 text-amber-800' : 'bg-green-50 text-green-700'">
+                            <span>{{ tr('difference') }}</span>
+                            <span>{{ money(result.variance, true) }} · {{ result.variance < 0 ? tr('short') : result.variance > 0 ? tr('over') : tr('exact') }}</span>
+                        </div>
+                    </template>
                 </div>
 
                 <small class="db-field-alert d-block mt-3" v-if="message">{{ message }}</small>
@@ -206,7 +229,7 @@
 <script>
 import axios from "axios";
 import alertService from "../../../services/alertService";
-import { tr, ACCOUNT, ALL_ACCOUNTS, SIM_ACCOUNTS } from "./cashCalculationText";
+import { tr, ACCOUNT, ALL_ACCOUNTS, BASE_ACCOUNTS, NOTE_ACCOUNTS } from "./cashCalculationText";
 
 export default {
     name: "CashActionModalComponent",
@@ -219,6 +242,7 @@ export default {
     emits: ["close", "saved"],
     data() {
         return {
+            ACCOUNT: ACCOUNT,
             busy: false,
             message: "",
             section: "",
@@ -243,13 +267,15 @@ export default {
     },
     computed: {
         accounts: function () {
-            return this.outlet.mfs_enabled ? ALL_ACCOUNTS : [ACCOUNT.DRAWER];
+            return this.outlet.mfs_enabled ? ALL_ACCOUNTS : BASE_ACCOUNTS;
         },
         needsPin: function () {
             return ["withdraw", "transfer", "reverse"].includes(this.action.type);
         },
+        // E-money (a SIM, the till's card or MFS) is counted by typing the
+        // balance; only notes are counted note by note.
         isSim: function () {
-            return SIM_ACCOUNTS.includes(this.form.account);
+            return !NOTE_ACCOUNTS.includes(this.form.account);
         },
         countedTotal: function () {
             return this.denominations.reduce((sum, note) => sum + note * (parseInt(this.form.pieces[note], 10) || 0), 0);
@@ -321,8 +347,8 @@ export default {
             const [url, data] = this.payload();
             this.send(url, data, "", (res) => {
                 if (this.action.type === "count" && res.data.data) {
-                    // Owners see the result before the modal closes; the page
-                    // refreshes behind it.
+                    // The count stays on screen - its notes, and for a balance
+                    // viewer the difference - while the page refreshes behind it.
                     this.result = res.data.data;
                     this.$emit("saved", false);
                     return;

@@ -12,7 +12,25 @@ const text = {
         title: "Cash Calculation",
         settings: "Settings",
         today: "Today",
-        shop_cash: "Shop cash",
+        shop_cash: "Cash drawer (notes)",
+        drawer_help: "Notes and coins only: POS cash sales and money added.",
+        emoney_title: "POS e-money (card & MFS)",
+        emoney_help: "Till sales paid by card or by bKash/Nagad at the counter. Never in the drawer.",
+        card_col: "Card",
+        mfs_col: "MFS",
+        pos_sales: "POS sales",
+        total_card_mfs: "Card + MFS",
+        count_card: "Count card",
+        count_mfs: "Count MFS",
+        counts_title: "Counts on this day",
+        no_counts: "No counts on this day.",
+        notes_counted: "Notes counted",
+        expected: "Expected",
+        difference: "Difference",
+        counted_word: "Counted",
+        typed_balance: "typed balance",
+        acc_8: "Card (POS)",
+        acc_9: "MFS payment (POS)",
         available_cash: "Available cash",
         closing_balance: "Closing balance",
         opening_balance: "Opening balance",
@@ -32,7 +50,7 @@ const text = {
         non_cash_info: "Not in the drawer (for information)",
         card_sales: "Card",
         mfs_sales: "MFS payment",
-        other_sales: "Other",
+        other_sales: "Other payment",
         bkash_agent: "bKash agent",
         nagad_agent: "Nagad agent",
         recharge_agent: "Recharge",
@@ -47,8 +65,8 @@ const text = {
         total_sim_cash: "Total (SIM + cash)",
         closing: "Closing",
         grand_total: "Grand total",
-        notes_total: "Notes (shop + bKash + Nagad + Recharge cash)",
-        emoney_total: "E-money (bKash + Nagad SIM + Recharge balance)",
+        notes_total: "Notes (drawer + bKash / Nagad / Recharge cash)",
+        emoney_total: "E-money (POS card & MFS + SIM balances)",
         total_branch_money: "Total branch money",
         add_money: "Add money",
         withdraw: "Withdraw",
@@ -104,7 +122,7 @@ const text = {
         save: "Save",
         close: "Close",
         blind_count_help: "Count what is physically there. The expected amount is not shown.",
-        sim_count_help: "Type the balance shown on the agent phone.",
+        sim_count_help: "Type the balance shown on the phone or statement.",
         denomination: "Note / coin",
         pieces: "Pieces",
         counted_total: "Counted total",
@@ -127,7 +145,7 @@ const text = {
         mfs_quick_help_recharge: "Recharge: balance -, cash +.",
         mfs_off_title: "bKash / Nagad / Recharge is off for this branch",
         mfs_off_help: "Turn it on to keep separate bKash (In, Out), Nagad (In, Out) and Recharge calculations. Needs the branch PIN.",
-        acc_1: "Shop cash",
+        acc_1: "Cash drawer",
         acc_2: "bKash SIM",
         acc_3: "bKash cash",
         acc_4: "Nagad SIM",
@@ -150,7 +168,25 @@ const text = {
         title: "ক্যাশ হিসাব",
         settings: "সেটিংস",
         today: "আজ",
-        shop_cash: "দোকানের ক্যাশ",
+        shop_cash: "ক্যাশ ড্রয়ার (নোট)",
+        drawer_help: "শুধু নোট ও কয়েন: POS ক্যাশ বিক্রি ও যোগ করা টাকা।",
+        emoney_title: "POS ই-মানি (কার্ড ও MFS)",
+        emoney_help: "কাউন্টারে কার্ড বা বিকাশ/নগদ দিয়ে পরিশোধ করা বিক্রি। কখনো ড্রয়ারে থাকে না।",
+        card_col: "কার্ড",
+        mfs_col: "MFS",
+        pos_sales: "POS বিক্রি",
+        total_card_mfs: "কার্ড + MFS",
+        count_card: "কার্ড গণনা",
+        count_mfs: "MFS গণনা",
+        counts_title: "এই দিনের গণনা",
+        no_counts: "এই দিনে কোনো গণনা হয়নি।",
+        notes_counted: "গোনা নোট",
+        expected: "প্রত্যাশিত",
+        difference: "পার্থক্য",
+        counted_word: "গণনা",
+        typed_balance: "লেখা ব্যালেন্স",
+        acc_8: "কার্ড (POS)",
+        acc_9: "MFS পেমেন্ট (POS)",
         available_cash: "বর্তমান ক্যাশ",
         closing_balance: "শেষ ব্যালেন্স",
         opening_balance: "শুরুর ব্যালেন্স",
@@ -170,7 +206,7 @@ const text = {
         non_cash_info: "ড্রয়ারে নেই (শুধু তথ্য)",
         card_sales: "কার্ড",
         mfs_sales: "MFS পেমেন্ট",
-        other_sales: "অন্যান্য",
+        other_sales: "অন্যান্য পেমেন্ট",
         bkash_agent: "বিকাশ এজেন্ট",
         nagad_agent: "নগদ এজেন্ট",
         recharge_agent: "রিচার্জ",
@@ -185,8 +221,8 @@ const text = {
         total_sim_cash: "মোট (সিম + ক্যাশ)",
         closing: "শেষ",
         grand_total: "সর্বমোট",
-        notes_total: "নগদ টাকা (দোকান + বিকাশ + নগদ + রিচার্জ ক্যাশ)",
-        emoney_total: "ই-মানি (বিকাশ + নগদ সিম + রিচার্জ ব্যালেন্স)",
+        notes_total: "নগদ নোট (ড্রয়ার + বিকাশ / নগদ / রিচার্জ ক্যাশ)",
+        emoney_total: "ই-মানি (POS কার্ড ও MFS + সিম ব্যালেন্স)",
         total_branch_money: "শাখার মোট টাকা",
         add_money: "টাকা যোগ",
         withdraw: "উত্তোলন",
@@ -242,7 +278,7 @@ const text = {
         save: "সংরক্ষণ",
         close: "বন্ধ",
         blind_count_help: "বাস্তবে যা আছে তা গুনুন। প্রত্যাশিত পরিমাণ দেখানো হবে না।",
-        sim_count_help: "এজেন্ট ফোনে দেখানো ব্যালেন্স লিখুন।",
+        sim_count_help: "ফোন বা স্টেটমেন্টে দেখানো ব্যালেন্স লিখুন।",
         denomination: "নোট / কয়েন",
         pieces: "সংখ্যা",
         counted_total: "গণনার মোট",
@@ -265,7 +301,7 @@ const text = {
         mfs_quick_help_recharge: "রিচার্জ: ব্যালেন্স -, ক্যাশ +।",
         mfs_off_title: "এই শাখায় বিকাশ / নগদ / রিচার্জ বন্ধ আছে",
         mfs_off_help: "চালু করলে বিকাশ (ইন, আউট), নগদ (ইন, আউট) ও রিচার্জের আলাদা হিসাব থাকবে। শাখার পিন লাগবে।",
-        acc_1: "দোকানের ক্যাশ",
+        acc_1: "ক্যাশ ড্রয়ার",
         acc_2: "বিকাশ সিম",
         acc_3: "বিকাশ ক্যাশ",
         acc_4: "নগদ সিম",
@@ -297,9 +333,17 @@ export function tr(key, params = {}) {
     return value;
 }
 
-export const ACCOUNT = { DRAWER: 1, BKASH_SIM: 2, BKASH_CASH: 3, NAGAD_SIM: 4, NAGAD_CASH: 5, RECHARGE_SIM: 6, RECHARGE_CASH: 7 };
+export const ACCOUNT = { DRAWER: 1, BKASH_SIM: 2, BKASH_CASH: 3, NAGAD_SIM: 4, NAGAD_CASH: 5, RECHARGE_SIM: 6, RECHARGE_CASH: 7, POS_CARD: 8, POS_MFS: 9 };
 
-export const ALL_ACCOUNTS = [1, 2, 3, 4, 5, 6, 7];
+export const ALL_ACCOUNTS = [1, 8, 9, 2, 3, 4, 5, 6, 7];
+
+// Always there: the drawer and the till's card / MFS e-money. The agent
+// accounts join them while the branch has agent service on.
+export const BASE_ACCOUNTS = [1, 8, 9];
+
+// Held as notes and coins, so counted note by note. The rest is e-money and
+// counted by typing the balance.
+export const NOTE_ACCOUNTS = [1, 3, 5, 7];
 
 // Recharge is a service of its own, next to bKash and Nagad - not something
 // either of them does.

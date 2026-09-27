@@ -21,7 +21,7 @@ class CashMovementRequest extends FormRequest
     public function rules(): array
     {
         $outlet  = ['required', 'integer', Rule::exists('outlets', 'id')];
-        $account = ['required', 'integer', 'between:1,7'];
+        $account = ['required', 'integer', 'between:1,9'];
         $amount  = ['required', 'numeric', 'gt:0', 'max:999999999'];
         $pin     = ['required', 'string', 'max:8'];
         $note    = ['required', 'string', 'max:500'];

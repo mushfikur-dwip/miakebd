@@ -19,7 +19,7 @@ class CashQueryRequest extends FormRequest
             'date'      => ['nullable', 'date_format:Y-m-d'],
             'from'      => ['nullable', 'date_format:Y-m-d'],
             'to'        => ['nullable', 'date_format:Y-m-d'],
-            'account'   => ['nullable', 'integer', 'between:1,7'],
+            'account'   => ['nullable', 'integer', 'between:1,9'],
             'type'      => ['nullable', 'integer', 'between:1,11'],
             'page'      => ['nullable', 'integer', 'min:1'],
             'per_page'  => ['nullable', 'integer', 'between:1,100'],

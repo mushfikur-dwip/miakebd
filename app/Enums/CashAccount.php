@@ -17,4 +17,8 @@ interface CashAccount
     const NAGAD_CASH    = 5;
     const RECHARGE_SIM  = 6;
     const RECHARGE_CASH = 7;
+    // E-money from till sales: paid by card, or by bKash/Nagad at the counter.
+    // Never in the drawer; always there, whatever the agent-service switch.
+    const POS_CARD      = 8;
+    const POS_MFS       = 9;
 }

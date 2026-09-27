@@ -72,6 +72,10 @@ class CashCalculationController extends AdminController implements HasMiddleware
                 'outlet'             => ['id' => $outlet->id, 'name' => $outlet->name, 'mfs_enabled' => (bool) $outlet->mfs_enabled],
                 'date'               => $date->format('Y-m-d'),
                 'is_today'           => $date->isToday(),
+                // The shop's today, from the server - the page must not trust
+                // the device clock, or a phone set to the wrong day shows the
+                // wrong statement and hides the buttons.
+                'today'              => today()->format('Y-m-d'),
                 'can_see_balance'    => $full,
                 'pin_locked_minutes' => $this->pins->lockedMinutes($outlet->id),
                 'denominations'      => CashLedgerService::DENOMINATIONS,
@@ -131,7 +135,8 @@ class CashCalculationController extends AdminController implements HasMiddleware
 
     /**
      * A blind count. Notes and coins are totalled here rather than trusting
-     * a total sent by the browser; a SIM balance is typed as one figure.
+     * a total sent by the browser; an e-money balance (a SIM, card or MFS
+     * account) is typed as one figure.
      */
     public function count(CashMovementRequest $request)
     {
@@ -140,7 +145,7 @@ class CashCalculationController extends AdminController implements HasMiddleware
             $denominations = null;
             $counted       = (float) $request->counted;
 
-            if ($request->filled('denominations') && !in_array($account, CashLedgerService::SIM_ACCOUNTS, true)) {
+            if ($request->filled('denominations') && in_array($account, CashLedgerService::NOTE_ACCOUNTS, true)) {
                 $denominations = collect($request->denominations)
                     ->only(array_map('strval', CashLedgerService::DENOMINATIONS))
                     ->map(fn($quantity) => (int) $quantity)
@@ -151,13 +156,19 @@ class CashCalculationController extends AdminController implements HasMiddleware
 
             $count = $this->ledger->count($this->outlet($request), $account, $counted, $denominations);
 
-            // The counter learns the result only if they may see balances at
-            // all; otherwise the next count would not be blind.
-            return response(['status' => true, 'data' => $this->ledger->canSeeBalance() ? [
-                'expected' => $count->expected,
-                'counted'  => $count->counted,
-                'variance' => $count->variance,
-            ] : null]);
+            // Everyone sees the notes they counted and their total. Only a
+            // balance viewer sees what was expected and the difference -
+            // otherwise the next count would not be blind.
+            $data = [
+                'account'       => $count->account,
+                'counted'       => $count->counted,
+                'denominations' => $this->ledger->denominationLines($count->denominations),
+            ];
+            if ($this->ledger->canSeeBalance()) {
+                $data += ['expected' => $count->expected, 'variance' => $count->variance];
+            }
+
+            return response(['status' => true, 'data' => $data]);
         });
     }
 

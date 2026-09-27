@@ -27,6 +27,11 @@
  *     server, hashed there; handing them to the pixel meant calling
  *     fbq('init') a second time, which Meta reports as a duplicate pixel.
  *
+ * TikTok: every event above except PageView also goes to the TikTok Pixel
+ * (master.blade.php), under the same name and event id, with the same
+ * content ids. TikTok's pixel counts single-page-app screens by itself, so it
+ * is never sent a PageView from here. It has no server-side copy yet.
+ *
  * Every entry point is guarded: with no pixel configured, or with fbevents.js
  * blocked (common), each call is a no-op. Tracking must never be able to break
  * a page.
@@ -45,8 +50,30 @@ function config() {
     return (typeof window !== "undefined" && window.__BOOT_PIXEL__) || null;
 }
 
-function ready() {
+function metaReady() {
     return typeof window !== "undefined" && typeof window.fbq === "function";
+}
+
+function tiktokReady() {
+    return typeof window !== "undefined" && typeof window.ttq?.track === "function";
+}
+
+/**
+ * Meta's parameters in TikTok's shape: `contents` items are
+ * { content_id, content_type, quantity, price } there. Events that only
+ * carry content_ids (a product page, a wishlist heart) become one item each.
+ */
+function tiktokParams(params) {
+    const contents = params.contents
+        ? params.contents.map((c) => ({ content_id: c.id, content_type: "product", quantity: c.quantity, price: c.item_price }))
+        : (params.content_ids || []).map((id) => ({ content_id: id, content_type: "product", quantity: 1, price: params.value }));
+
+    return {
+        contents,
+        content_type: "product",
+        value: params.value,
+        currency: params.currency,
+    };
 }
 
 function currency() {
@@ -123,19 +150,34 @@ export default {
      * Meta keeps whichever arrives first and drops the other.
      */
     track(event, params = {}, eventId = null) {
-        if (!ready()) {
+        if (metaReady()) {
+            try {
+                window.fbq("track", event, params, eventId ? { eventID: eventId } : undefined);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        if (tiktokReady()) {
+            try {
+                window.ttq.track(event, tiktokParams(params), eventId ? { event_id: eventId } : undefined);
+            } catch (e) {
+                // ignore
+            }
+        }
+    },
+
+    /** Meta only: TikTok's pixel sees the URL change and counts the screen itself. */
+    pageView() {
+        if (!metaReady()) {
             return;
         }
 
         try {
-            window.fbq("track", event, params, eventId ? { eventID: eventId } : undefined);
+            window.fbq("track", "PageView");
         } catch (e) {
             // ignore
         }
-    },
-
-    pageView() {
-        this.track("PageView");
     },
 
     /** The product page a visitor lands on from an ad. */
@@ -284,7 +326,7 @@ export default {
      */
     purchase(order) {
         const orderId = order?.id;
-        if (!ready() || !orderId) {
+        if ((!metaReady() && !tiktokReady()) || !orderId) {
             return;
         }
 

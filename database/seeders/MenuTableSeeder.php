@@ -123,6 +123,16 @@ class MenuTableSeeder extends Seeder
                         'updated_at' => now()
                     ],
                     [
+                        'name'       => 'Cash Calculation',
+                        'language'   => 'cash_calculation',
+                        'url'        => 'cash-calculation',
+                        'icon'       => 'lab lab-line-transactions',
+                        'priority'   => 100,
+                        'status'     => 1,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ],
+                    [
                         'name'       => 'Online Orders',
                         'language'   => 'online_orders',
                         'url'        => 'online-orders',

@@ -121,6 +121,18 @@ class BrandPageTest extends TestCase
         }
     }
 
+    // Both used to fall through to the generic site title.
+    public function test_most_popular_and_login_have_their_own_titles(): void
+    {
+        $popular = $this->get('/most-popular')->assertOk()->getContent();
+        $this->assertSame('Most Popular Cosmetics & Skincare in Bangladesh | Suglow', html_entity_decode($this->title($popular)));
+
+        $login = $this->get('/login')->assertOk()->getContent();
+        $this->assertSame('Log In to Your Account | Suglow', html_entity_decode($this->title($login)));
+        // An account page has nothing to rank for.
+        $this->assertMatchesRegularExpression('~<meta name="robots" content="noindex~', $login);
+    }
+
     public function test_the_shop_listing_lists_a_brand_by_its_slug(): void
     {
         $cream = $this->product('CeraVe Cream');

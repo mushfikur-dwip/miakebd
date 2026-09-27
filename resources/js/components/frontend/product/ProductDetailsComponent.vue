@@ -101,15 +101,17 @@
                     <dl class="flex flex-wrap items-center gap-x-6 gap-y-3 mb-8">
                         <dt class="capitalize text-lg font-semibold">{{ $t('label.quantity') }}:</dt>
                         <dd class="flex items-center gap-6">
-                            <div class="flex items-center gap-1 w-20 p-1 rounded-full bg-[#F7F7FC]">
-                                <button @click.prevent="quantityDecrement" type="button"
+                            <!-- Thumb-sized: the - and + were 18px targets. -->
+                            <div class="flex items-center gap-1 w-32 p-1 rounded-full bg-[#F7F7FC]">
+                                <button @click.prevent="quantityDecrement" type="button" :aria-label="$t('label.quantity') + ' -'"
                                     :class="temp.quantity === 1 ? 'cursor-not-allowed' : ''"
-                                    class="lab-fill-circle-minus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
-                                <input type="number" v-model="temp.quantity" v-on:keypress="onlyNumber($event)"
-                                    v-on:keyup="quantityUp" class="text-center w-full h-5 text-sm font-medium">
-                                <button @click.prevent="quantityIncrement" type="button"
+                                    class="lab-fill-circle-minus w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-full text-xl leading-none transition-all duration-300 hover:text-primary"></button>
+                                <input type="number" v-model.number="temp.quantity" v-on:keypress="onlyNumber($event)"
+                                    v-on:keyup="quantityUp" v-on:blur="quantityUp" :aria-label="$t('label.quantity')"
+                                    class="text-center w-full min-w-0 h-9 text-base font-medium bg-transparent">
+                                <button @click.prevent="quantityIncrement" type="button" :aria-label="$t('label.quantity') + ' +'"
                                     :class="temp.stock === temp.quantity ? 'cursor-not-allowed' : temp.quantity === temp.maximum_purchase_quantity ? 'cursor-not-allowed' : ''"
-                                    class="lab-fill-circle-plus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
+                                    class="lab-fill-circle-plus w-9 h-9 shrink-0 inline-flex items-center justify-center rounded-full text-xl leading-none transition-all duration-300 hover:text-primary"></button>
                             </div>
                             <div v-if="!initialVariations.length || selectedVariation != null">
                                 <p v-if="temp.stock > 0" class="capitalize">
@@ -134,7 +136,7 @@
                         </dd>
                     </dl>
 
-                    <div class="flex flex-wrap items-center gap-8 mb-10">
+                    <div :ref="watchCartButtons" class="flex flex-wrap items-center gap-8 mb-10">
                         <button @click.prevent="addToCart" :disabled="enableAddToCardButton" type="button"
                             :class="enableAddToCardButton === false ? 'shadow-btn-primary !bg-primary' : ''"
                             class="flex items-center gap-3 px-8 h-12 leading-12 rounded-full transition-all duration-500 bg-slate-400 text-white">
@@ -155,6 +157,34 @@
                          link, so a customer who will not fill a checkout form
                          still reaches us with everything we need. -->
                     <OrderHelpComponent bare :product="orderHelpProduct" />
+
+                    <!-- Phone only: on a phone the gallery fills the first screen,
+                         so the price and Add to Cart sat out of sight. This bar
+                         carries them while the real buttons are off screen, just
+                         above the bottom menu. Teleported so no transformed
+                         ancestor can pin it anywhere but the viewport. -->
+                    <Teleport to="body">
+                        <div v-if="productReady && !cartButtonsVisible"
+                            class="lg:hidden fixed left-0 right-0 bottom-[60px] z-[9] flex items-center gap-3 px-4 pt-2 pb-3 bg-white shadow-[0_-6px_16px_rgba(0,0,0,0.08)]">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs text-text truncate">{{ product.name }}</p>
+                                <p class="flex items-baseline gap-2">
+                                    <span class="text-lg font-bold">
+                                        {{ currencyFormat(temp.price, setting.site_digit_after_decimal_point, setting.site_default_currency_symbol, setting.site_currency_position) }}
+                                    </span>
+                                    <del v-if="product.is_offer" class="text-sm font-semibold text-shopperz-red">
+                                        {{ currencyFormat(temp.oldPrice, setting.site_digit_after_decimal_point, setting.site_default_currency_symbol, setting.site_currency_position) }}
+                                    </del>
+                                </p>
+                            </div>
+                            <button type="button" @click.prevent="enableAddToCardButton ? scrollToCartButtons() : addToCart()"
+                                :class="enableAddToCardButton ? 'bg-slate-400' : 'shadow-btn-primary bg-primary'"
+                                class="shrink-0 flex items-center gap-2 px-5 h-11 rounded-full text-white transition-all duration-300">
+                                <i class="lab-line-bag text-lg"></i>
+                                <span class="whitespace-nowrap font-bold">{{ $t("button.add_to_cart") }}</span>
+                            </button>
+                        </div>
+                    </Teleport>
                 </div>
                 </template>
             </div>
@@ -203,9 +233,21 @@
                             <h3 class="capitalize text-2xl sm:text-3xl font-bold mb-4">
                                 {{ $t('label.product_videos') }}
                             </h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <iframe v-for="video in videos" :src="video.link"
-                                    class="w-full h-40 sm:h-64 rounded-2xl"></iframe>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                <!-- embed_url is the provider's player; a pasted watch
+                                     link (Facebook, YouTube) refuses to be framed. The
+                                     player fills whatever frame it gets, so the frame
+                                     takes the video's own shape: a reel is 9:16 and
+                                     phone-width, anything else 16:9 across the column. -->
+                                <div v-for="video in videos" :key="video.id"
+                                    :class="video.portrait ? 'w-full max-w-[340px] mx-auto aspect-[9/16]' : 'w-full aspect-video'"
+                                    class="rounded-2xl overflow-hidden bg-black">
+                                    <iframe :src="video.embed_url || video.link"
+                                        :title="product.name + ' - ' + video.provider_name" loading="lazy"
+                                        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                                        allowfullscreen scrolling="no"
+                                        class="w-full h-full border-0"></iframe>
+                                </div>
                             </div>
                         </div>
 
@@ -359,6 +401,11 @@ export default {
                 }
             },
             enableAddToCardButton: true,
+            // Whether the page's own Add to Cart row is on screen; the phone's
+            // sticky bar shows while it is not. Starts true so the bar never
+            // flashes up before the row has been measured.
+            cartButtonsVisible: true,
+            cartButtonsObserver: null,
             selectedVariation: null,
             productArray: {},
             variationComponent: false,
@@ -443,7 +490,38 @@ export default {
         this.show();
         this.showRelatedProduct();
     },
+    beforeUnmount() {
+        if (this.cartButtonsObserver) {
+            this.cartButtonsObserver.disconnect();
+        }
+    },
     methods: {
+        // Function ref: the row only exists once the product has loaded, and
+        // is re-rendered when another product is opened.
+        watchCartButtons: function (el) {
+            if (!el || typeof IntersectionObserver === "undefined") {
+                return;
+            }
+            if (!this.cartButtonsObserver) {
+                this.cartButtonsObserver = new IntersectionObserver((entries) => {
+                    this.cartButtonsVisible = entries[entries.length - 1].isIntersecting;
+                });
+            }
+            if (this.cartButtonsElement !== el) {
+                if (this.cartButtonsElement) {
+                    this.cartButtonsObserver.unobserve(this.cartButtonsElement);
+                }
+                this.cartButtonsElement = el;
+                this.cartButtonsObserver.observe(el);
+            }
+        },
+        // A product with variations cannot be added until one is picked, so
+        // the bar takes the customer up to the choices instead.
+        scrollToCartButtons: function () {
+            if (this.cartButtonsElement) {
+                this.cartButtonsElement.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        },
         onlyNumber: function (e) {
             return appService.onlyNumber(e);
         },
@@ -647,10 +725,15 @@ export default {
                 }
             }
         },
-        quantityUp: function () {
-            if (this.temp.quantity === 0) {
-                this.temp.quantity = 1;
+        quantityUp: function (event) {
+            // While the box is being typed in, an empty box is allowed; on
+            // leaving it, anything that is not a whole number above 0 is 1.
+            const typing = event && event.type === "keyup";
+            if (typing && this.temp.quantity === "") {
+                return;
             }
+            const quantity = parseInt(this.temp.quantity, 10);
+            this.temp.quantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
             if (this.temp.quantity > this.temp.stock) {
                 this.temp.quantity = this.temp.stock
             }

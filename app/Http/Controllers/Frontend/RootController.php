@@ -15,6 +15,7 @@ use App\Support\BrandMetaResolver;
 use App\Support\CategoryMetaResolver;
 use App\Support\MediaUrl;
 use App\Support\MetaPixel;
+use App\Support\TikTokPixel;
 use App\Support\SeoSchema;
 use App\Services\SettingService;
 use Illuminate\Support\Facades\Log;
@@ -280,6 +281,43 @@ class RootController extends Controller
     }
 
     /**
+     * /most-popular — the best sellers. Fell through to the generic title.
+     */
+    public function mostPopular(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        return $this->shell([
+            'seo' => [
+                'title'       => 'Most Popular Cosmetics & Skincare in Bangladesh | Suglow',
+                'description' => 'The skincare, makeup and beauty products Suglow customers buy most. 100% authentic, cash on delivery across Bangladesh.',
+                'keywords'    => null,
+                'canonical'   => rtrim((string) config('app.url'), '/') . '/most-popular',
+                'image'       => null,
+                'type'        => 'website',
+                'robots'      => 'index, follow, max-image-preview:large',
+            ],
+        ]);
+    }
+
+    /**
+     * /login — its own title for the browser tab and bookmarks, and kept out
+     * of search results: an account page has nothing to rank for.
+     */
+    public function login(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        return $this->shell([
+            'seo' => [
+                'title'       => 'Log In to Your Account | Suglow',
+                'description' => 'Log in to your Suglow account to track orders, use your wallet balance and check out faster.',
+                'keywords'    => null,
+                'canonical'   => rtrim((string) config('app.url'), '/') . '/login',
+                'image'       => null,
+                'type'        => 'website',
+                'robots'      => 'noindex, follow',
+            ],
+        ]);
+    }
+
+    /**
      * /blog — the magazine landing page.
      */
     public function blogIndex(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
@@ -361,6 +399,7 @@ class RootController extends Controller
             // base code (it must not when the shop already pasted the snippet
             // into Analytics). See App\Support\MetaPixel.
             'metaPixel' => MetaPixel::resolve($analytics),
+            'tiktokPixel' => TikTokPixel::resolve($analytics),
         ]);
     }
 

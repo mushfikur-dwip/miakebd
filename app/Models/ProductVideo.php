@@ -9,11 +9,12 @@ class ProductVideo extends Model
 {
     use HasFactory;
     protected $table = "product_videos";
-    protected $fillable = ['product_id', 'video_provider', 'link'];
+    protected $fillable = ['product_id', 'video_provider', 'link', 'orientation'];
     protected $casts = [
         'id'             => 'integer',
         'product_id'     => 'integer',
         'video_provider' => 'integer',
         'link'           => 'string',
+        'orientation'    => 'integer',
     ];
 }

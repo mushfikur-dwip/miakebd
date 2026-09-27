@@ -9,9 +9,11 @@
                     <img class="w-28 sm:w-32" :src="setting.theme_logo" alt="logo">
                 </router-link>
 
-                <button type="button">
-                    <i @click.prevent="hideTarget('mobile-sidebar-canvas', 'canvas-active')"
-                        class="lab-line-circle-cross text-xl text-danger"></i>
+                <!-- The click sat on the 20px icon, so a tap on the rest of the
+                     button did nothing. -->
+                <button type="button" aria-label="Close" @click.prevent="hideTarget('mobile-sidebar-canvas', 'canvas-active')"
+                    class="w-10 h-10 -m-2.5 inline-flex items-center justify-center rounded-full">
+                    <i class="lab-line-circle-cross text-xl text-danger"></i>
                 </button>
             </div>
 

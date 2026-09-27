@@ -82,6 +82,7 @@ export default {
                 form: {
                     video_provider: null,
                     link: '',
+                    orientation: 0,
                 },
                 search: {
                     paginate: 1,
@@ -130,6 +131,7 @@ export default {
             this.props.form = {
                 video_provider: productVideo.video_provider,
                 link: productVideo.link,
+                orientation: productVideo.orientation || 0,
             };
             this.loading.isActive = false;
         },

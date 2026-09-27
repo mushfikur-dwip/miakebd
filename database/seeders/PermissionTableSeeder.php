@@ -183,6 +183,24 @@ class PermissionTableSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
+                'title'      => 'Cash Calculation',
+                'name'       => 'cash-calculation',
+                'guard_name' => 'sanctum',
+                'url'        => 'cash-calculation',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'children'   => [
+                    [
+                        'title'      => 'Cash Calculation Balance',
+                        'name'       => 'cash-calculation_balance',
+                        'guard_name' => 'sanctum',
+                        'url'        => 'cash-calculation/balance',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                ]
+            ],
+            [
                 'title'      => 'Online Orders',
                 'name'       => 'online-orders',
                 'guard_name' => 'sanctum',

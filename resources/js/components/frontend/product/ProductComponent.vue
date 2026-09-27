@@ -40,7 +40,7 @@
                                 class="md:hidden flex items-center justify-between py-5 px-4 border-b border-slate-100">
                                 <h3 class="text-[22px] font-bold capitalize">{{ $t('label.filter_and_sorting') }}</h3>
                                 <button @click.prevent="hideTarget('filter-canvas', 'canvas-active')" type="button"
-                                    class="lab-line-circle-cross text-lg text-[#E93C3C]"></button>
+                                    class="lab-line-circle-cross text-lg text-[#E93C3C] w-10 h-10 -m-2.5 inline-flex items-center justify-center rounded-full" aria-label="Close"></button>
                             </div>
 
                             <div class="filter-group border-b border-gray-100">

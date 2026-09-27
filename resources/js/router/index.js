@@ -38,6 +38,7 @@ import reviewRoutes from "./modules/reviewRoutes";
 import salesReportRoutes from "./modules/salesReportRoutes";
 import settingRoutes from "./modules/settingRoutes";
 import stockRoutes from "./modules/stockRoutes";
+import cashCalculationRoutes from "./modules/cashCalculationRoutes";
 import storeSalesReportRoutes from "./modules/storeSalesReportRoutes";
 import subscriberRoutes from "./modules/subscriberRoutes";
 import transactionRoutes from "./modules/transactionRoutes";
@@ -97,6 +98,7 @@ const routes = baseRoutes.concat(
     ProductSectionRoutes,
     purchaseRoutes,
     stockRoutes,
+    cashCalculationRoutes,
     returnOrderRoutes,
     damageRoutes,
     onlineOrderRoutes,

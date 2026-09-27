@@ -31,16 +31,16 @@
                         </div>
 
                         <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-center gap-1 w-20 p-1 rounded-full bg-[#F7F7FC]">
+                            <div class="flex items-center gap-1 w-28 p-1 rounded-full bg-[#F7F7FC]">
                                 <button @click.prevent="quantityDecrement(index, cart)" type="button"
                                         :class="cart.quantity === 1 ? 'cursor-not-allowed': ''"
-                                        class="lab-fill-circle-minus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
-                                <input v-on:keypress="onlyNumber($event)" v-on:keyup="quantityUp(index, cart, $event)"
+                                        aria-label="-" class="lab-fill-circle-minus w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-full text-lg leading-none transition-all duration-300 hover:text-primary"></button>
+                                <input v-on:keypress="onlyNumber($event)" v-on:keyup="quantityUp(index, cart, $event)" v-on:blur="quantityUp(index, cart, $event)"
                                        type="number" :value="cart.quantity"
-                                       class="text-center w-full h-5 text-sm font-medium">
+                                       class="text-center w-full min-w-0 h-8 text-sm font-medium bg-transparent">
                                 <button :class="cart.quantity >= cart.stock ? 'cursor-not-allowed': ''"
                                         @click.prevent="quantityIncrement(index, cart)" type="button"
-                                        class="lab-fill-circle-plus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
+                                        aria-label="+" class="lab-fill-circle-plus w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-full text-lg leading-none transition-all duration-300 hover:text-primary"></button>
                             </div>
                             <button @click.prevent="removeProduct(index)"
                                     class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF4F4] text-[#E93C3C] transition-all duration-300 hover:bg-[#E93C3C] hover:text-white">
@@ -90,6 +90,7 @@
 
 <script>
 import appService from "../../../../services/appService";
+import alertService from "../../../../services/alertService";
 import ExtraComponent from "../ExtraComponent.vue";
 import SummeryComponent from "../SummeryComponent.vue";
 
@@ -129,6 +130,9 @@ export default {
         },
         quantityUp: function (id, product, e) {
             let quantity = e.target.value;
+            if (e.type === "keyup" && quantity === "") {
+                return;
+            }
 
             if (quantity === 0) {
                 quantity = 1;
@@ -136,19 +140,19 @@ export default {
             if (quantity > product.stock) {
                 quantity = product.stock
             }
+            // The side cart already said so; the cart page let it through.
+            // The store caps the figure either way.
+            if (Number(quantity) > product.maximum_purchase_quantity) {
+                alertService.error(this.$t('message.purchase_limit_exceeded'));
+            }
             this.$store.dispatch('frontendCart/quantity', {id: id, status: quantity}).then().catch();
         },
         quantityIncrement: function (id, product) {
-            let quantity = product.quantity;
-            quantity++;
-            if (quantity <= 0) {
-                quantity = 1;
+            if (product.quantity >= product.maximum_purchase_quantity) {
+                alertService.error(this.$t('message.purchase_limit_exceeded'));
+                return;
             }
-
-            if (quantity > product.stock) {
-                quantity--;
-            }
-            this.$store.dispatch('frontendCart/quantity', {id: id, status: quantity}).then().catch();
+            this.$store.dispatch('frontendCart/quantity', {id: id, status: 'increment'}).then().catch();
         },
         quantityDecrement: function (id, product) {
             let quantity = product.quantity;

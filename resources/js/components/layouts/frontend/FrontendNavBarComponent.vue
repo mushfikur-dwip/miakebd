@@ -10,7 +10,7 @@
             <div class="flex items-center justify-between gap-5">
                 <!--  Logo & Mobile Responsive Start -->
                 <div class="flex items-center flex-shrink-0 gap-5">
-                    <button type="button" class="leading-none block lg:hidden"
+                    <button type="button" class="leading-none flex lg:hidden w-10 h-10 -m-2.5 items-center justify-center rounded-full" aria-label="Menu"
                         @click.prevent="showTarget('mobile-sidebar-canvas', 'canvas-active')">
                         <i class="lab-line-humburger text-xl"></i>
                     </button>
@@ -25,7 +25,7 @@
                     </router-link>
                 </div>
 
-                <button type="button" class="leading-none block lg:hidden"
+                <button type="button" class="leading-none flex lg:hidden w-10 h-10 -m-2.5 items-center justify-center rounded-full" aria-label="Search"
                     @click.prevent="showTarget('search', 'search-active')">
                     <i class="lab-line-search text-xl"></i>
                 </button>

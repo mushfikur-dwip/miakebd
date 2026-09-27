@@ -86,6 +86,13 @@ Route::get('/brand/{slug}', [RootController::class, 'brand'])
 Route::get('/offers', [RootController::class, 'offers'])
     ->middleware(['installed'])
     ->name('offers');
+Route::get('/most-popular', [RootController::class, 'mostPopular'])
+    ->middleware(['installed'])
+    ->name('most-popular');
+// Not named 'login': the API's unauthenticated redirect already uses that name.
+Route::get('/login', [RootController::class, 'login'])
+    ->middleware(['installed'])
+    ->name('spa.login');
 // Blog. Server-rendered metadata for the same reason the product and category
 // routes exist: Vue writes the head only after JS runs, and an article that
 // serves generic HTML to crawlers cannot rank for what it was written for.

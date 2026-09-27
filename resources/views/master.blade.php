@@ -329,6 +329,32 @@
     @endif
     {{-- ==================== END META PIXEL ==================== --}}
 
+    {{-- ==================== TIKTOK PIXEL ====================
+         TikTok's base code with the same one change as Meta's above: events.js
+         is fetched once the page has loaded (or after 3.5s), not while it is
+         still drawing. `ttq` queues every call until the script arrives.
+
+         ttq.page() counts the landing screen only. TikTok's pixel counts the
+         later screens of a single-page app by itself (it watches the URL), so
+         pixelService never sends it a page view - that would count every
+         screen twice. The rest of the funnel is sent from pixelService,
+         beside Meta's. Nothing is printed when no id is set (TIKTOK_PIXEL_ID),
+         or when the snippet is already pasted in Admin -> Analytics. See
+         App\Support\TikTokPixel. --}}
+    @if ($tiktokPixel['render_base'] ?? false)
+        <script>
+            !function (w, d, t) {
+              w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(
+              var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};
+              var u=r+"?sdkid="+e+"&lib="+t,f=0,l=function(){if(f)return;f=1;var s=d.createElement("script");s.type="text/javascript",s.async=!0,s.src=u;var x=d.getElementsByTagName("script")[0];x.parentNode.insertBefore(s,x)};
+              if(d.readyState==='complete'){l()}else{w.addEventListener('load',l);setTimeout(l,3500)}};
+              ttq.load("{{ $tiktokPixel['id'] }}");
+              ttq.page();
+            }(window, document, 'ttq');
+        </script>
+    @endif
+    {{-- ==================== END TIKTOK PIXEL ==================== --}}
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @if (!blank($analytics))

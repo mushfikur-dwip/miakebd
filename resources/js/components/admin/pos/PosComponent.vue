@@ -270,6 +270,7 @@ export default {
   },
   data() {
     return {
+      submitting: false,
       loading: {
         isActive: false,
       },
@@ -599,6 +600,12 @@ export default {
       }
     },
     orderSubmit: function (data) {
+      // A second tap while the first sale is still on its way would ring the
+      // same basket up twice.
+      if (this.submitting) {
+        return;
+      }
+      this.submitting = true;
       this.loading.isActive = true;
       this.form = {
         customer_id: this.checkoutProps.form.customer_id,
@@ -617,6 +624,7 @@ export default {
         products: JSON.stringify(this.posCartProducts)
       }
       this.$store.dispatch('posOrder/save', this.form).then(orderResponse => {
+        this.submitting = false;
         this.$store.dispatch('posCart/resetCart').then(res => {
           this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
           this.checkoutProps.form.pos_payment_note = "";
@@ -639,10 +647,17 @@ export default {
         appService.modalShow('#posReceiptModal');
       }).catch((err) => {
         this.loading.isActive = false;
-        if (typeof err.response.data.errors === 'object') {
-          forEach(err.response.data.errors, (error) => {
+        this.submitting = false;
+        const body = (err && err.response && err.response.data) || {};
+        if (body.errors && typeof body.errors === 'object') {
+          forEach(body.errors, (error) => {
             alertService.error(error[0]);
           });
+        } else {
+          // A sale refused for any other reason - out of stock, a database
+          // hiccup, a dropped connection - showed nothing at all: the spinner
+          // went away and the till looked frozen. Say what happened.
+          alertService.error(body.message || this.$t('message.something_wrong'));
         }
       });
     },

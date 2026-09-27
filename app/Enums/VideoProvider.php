@@ -7,4 +7,5 @@ interface VideoProvider
     const YOUTUBE     = 5;
     const DAILYMOTION = 10;
     const VIMEO       = 15;
+    const FACEBOOK    = 20;
 }

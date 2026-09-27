@@ -6,5 +6,6 @@ return [
     VideoProvider::YOUTUBE     => 'ইউটিউব',
     VideoProvider::DAILYMOTION => 'ডেইলিমোশন',
     VideoProvider::VIMEO       => 'ভিমিও',
+    VideoProvider::FACEBOOK    => 'ফেসবুক',
 
 ];

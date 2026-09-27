@@ -88,6 +88,16 @@ class OrderTotals
             $quantity = (int) $line->quantity;
             $product  = Product::withTrashed()->with('taxes.tax')->find((int) $line->product_id);
 
+            // The product page and side cart stop at this limit, but the cart
+            // page never did and the server never checked. 0 means no limit.
+            $limit = (int) ($product?->maximum_purchase_quantity ?? 0);
+            if ($limit > 0 && $quantity > $limit) {
+                throw new Exception(trans('all.message.purchase_limit_exceeded', [
+                    'max'  => $limit,
+                    'name' => $product->name,
+                ]), 422);
+            }
+
             [$lineTax, $lineTaxes] = self::lineTax($product, $price, $quantity);
 
             $subtotal += $price * $quantity;

@@ -11,6 +11,18 @@
 
             <!--  Header Route Close -->
 
+            <!-- An empty cart used to throw the shopper to the home page with
+                 no word of why; now the cart page says so and offers a way on. -->
+            <div v-if="cartEmpty" class="flex flex-col items-center text-center gap-4 py-16 px-6 mb-12 rounded-2xl bg-primary-slate">
+                <i class="lab-line-bag text-5xl text-primary" aria-hidden="true"></i>
+                <p class="text-base sm:text-lg font-semibold max-w-md">{{ $t('message.empty_cart') }}</p>
+                <router-link :to="{ name: 'frontend.product' }"
+                    class="inline-flex items-center h-11 px-6 rounded-full font-bold text-white bg-primary shadow-btn-primary">
+                    {{ $t('button.continue_shopping') }}
+                </router-link>
+            </div>
+
+            <template v-else>
             <!--  Checkbox Start -->
             <ul class="multi-step w-full max-w-lg mx-auto my-12 pt-2 pb-5 px-4 flex items-center justify-center">
                 <li class="list-none w-full flex after:content-[''] after:w-full after:h-1 last:after:hidden last:w-fit"
@@ -59,6 +71,7 @@
             <!-- Default Router -->
             <router-view />
             <!-- Default Router -->
+            </template>
 
             <!-- Sits in the wrapper, not in a step, so the WhatsApp and call
                  buttons are there whether the customer stalls on the cart,
@@ -90,22 +103,32 @@ export default {
         isList: function () {
             return this.$store.getters['frontendCart/isList'];
         },
+        cartEmpty: function () {
+            return this.$store.getters['frontendCart/lists'].length === 0;
+        },
     },
     mounted() {
         this.currentRoute = this.$route.path;
         this.$store.dispatch('frontendCart/listChecker').then(res => {
             if (!res.status) {
-                this.$router.push({ name: 'frontend.home' });
+                this.toEmptyCart();
             }
         }).catch((err) => {
             if (!err.status) {
-                this.$router.push({ name: 'frontend.home' });
+                this.toEmptyCart();
             }
         })
     },
     methods: {
         goBack: function () {
             router.go(-1)
+        },
+        // Checkout and payment cannot go on without a cart, so they fall back
+        // to the cart step, which explains itself; the cart step stays put.
+        toEmptyCart: function () {
+            if (this.$route.name !== 'frontend.checkout.cartList') {
+                this.$router.push({ name: 'frontend.checkout.cartList' });
+            }
         }
     },
     watch: {
@@ -116,7 +139,7 @@ export default {
             deep: true,
             handler(isListObject) {
                 if (!isListObject) {
-                    this.$router.push({ name: 'frontend.home' });
+                    this.toEmptyCart();
                 }
             }
         }

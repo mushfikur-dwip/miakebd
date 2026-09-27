@@ -67,7 +67,7 @@
             <div class="flex items-center justify-between gap-2 py-4 px-4 border-b border-slate-100">
                 <h3 class="text-lg font-bold capitalize"> {{ $t('label.coupon_code') }}</h3>
                 <button @click.prevent="hideTarget(modalId, 'modal-active')" type="button"
-                    class="lab-line-circle-cross text-lg text-[#E93C3C]"></button>
+                    class="lab-line-circle-cross text-lg text-[#E93C3C] w-10 h-10 -m-2.5 inline-flex items-center justify-center rounded-full" aria-label="Close"></button>
             </div>
             <form @submit.prevent="couponChecking" class="w-full flex items-center px-4 mt-4">
                 <input :class="error ? 'invalid' : ''" type="text" v-model="code"

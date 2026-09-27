@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletSetting;
+use App\Services\CashLedgerService;
 use App\Services\MetaConversionsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,29 @@ class OrderObserver
     public function created(Order $order): void
     {
         $this->reportPurchaseToMeta($order);
+        $this->syncCashDrawer($order);
+    }
+
+    /**
+     * Keeps the branch drawer on the Cash Calculation page in step with a till
+     * sale: posted as the sale is made, and reversed - in the name of whoever
+     * did it - when it is cancelled, rejected, marked unpaid or deleted.
+     *
+     * `created` runs inside posOrderStore's transaction, so a sale that rolls
+     * back takes its drawer row with it. A failure in the ledger itself is
+     * logged, never thrown: the cash page must not be able to stop a sale.
+     */
+    private function syncCashDrawer(Order $order, bool $deleted = false): void
+    {
+        if (!$this->isTillOrder($order)) {
+            return;
+        }
+
+        try {
+            app(CashLedgerService::class)->syncOrder($order, $deleted);
+        } catch (\Throwable $e) {
+            Log::error('Cash ledger could not follow order ' . $order->id . ': ' . $e->getMessage());
+        }
     }
 
     /**
@@ -92,6 +116,10 @@ class OrderObserver
     {
         if ($order->isDirty('status') && $order->status == OrderStatus::DELIVERED) {
             $this->handleCashback($order);
+        }
+
+        if ($order->wasChanged(['status', 'payment_status', 'pos_payment_method', 'total', 'outlet_id'])) {
+            $this->syncCashDrawer($order);
         }
 
         // The online payment went through: the Purchase stored when the order
@@ -183,7 +211,7 @@ class OrderObserver
      */
     public function deleted(Order $order): void
     {
-        //
+        $this->syncCashDrawer($order, true);
     }
 
     /**

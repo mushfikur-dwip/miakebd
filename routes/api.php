@@ -73,6 +73,7 @@ use App\Http\Controllers\Admin\SocialMediaController;
 use App\Http\Controllers\Admin\StateController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\StockAdjustmentController;
+use App\Http\Controllers\Admin\CashCalculationController;
 use App\Http\Controllers\Admin\StoreSalesReportController;
 use App\Http\Controllers\Admin\SubscriberController;
 use App\Http\Controllers\Admin\SupplierController;
@@ -799,6 +800,21 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle
             Route::get('/show/{stockAdjustment}', [StockAdjustmentController::class, 'show']);
             Route::delete('/{stockAdjustment}', [StockAdjustmentController::class, 'destroy']);
         });
+    });
+
+    Route::prefix('cash-calculation')->group(function () {
+        Route::get('/outlets', [CashCalculationController::class, 'outlets']);
+        Route::get('/summary', [CashCalculationController::class, 'summary']);
+        Route::get('/entries', [CashCalculationController::class, 'entries']);
+        Route::get('/alerts', [CashCalculationController::class, 'alerts']);
+        Route::post('/add', [CashCalculationController::class, 'add']);
+        Route::post('/mfs', [CashCalculationController::class, 'mfs']);
+        Route::post('/count', [CashCalculationController::class, 'count']);
+        Route::post('/withdraw', [CashCalculationController::class, 'withdraw']);
+        Route::post('/transfer', [CashCalculationController::class, 'transfer']);
+        Route::post('/reverse/{cashEntry}', [CashCalculationController::class, 'reverse']);
+        Route::post('/mfs-toggle', [CashCalculationController::class, 'mfsToggle']);
+        Route::post('/pin', [CashCalculationController::class, 'changePin']);
     });
 
     Route::prefix('reviews')->group(function () {

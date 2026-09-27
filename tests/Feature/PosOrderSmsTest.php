@@ -203,9 +203,13 @@ class PosOrderSmsTest extends TestCase
         $order = app(OrderService::class)->posOrderStore($request);
 
         Event::assertNotDispatched(SendPosOrderSms::class);
+        // Telegram too: its API is given up to 8s, and the till sat on the
+        // spinner for all of it whenever Telegram was slow to answer.
+        Event::assertNotDispatched(SendPosOrderTelegram::class);
 
         $this->app->terminate();
 
         Event::assertDispatched(SendPosOrderSms::class, fn($event) => $event->info['order_id'] === $order->id);
+        Event::assertDispatched(SendPosOrderTelegram::class, fn($event) => $event->info['order_id'] === $order->id);
     }
 }

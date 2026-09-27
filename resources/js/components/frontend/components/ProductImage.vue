@@ -1,5 +1,14 @@
 <template>
-    <div class="pi relative overflow-hidden bg-gray-100" :class="{ 'pi-waiting': !loaded && !eager }"
+    <!-- No photo uploaded yet: the server's stock "No Image Available" picture
+         is swapped for the shop's own logo on its soft brand colour, so a
+         missing photo reads as on-brand rather than broken. -->
+    <div v-if="isPlaceholder" class="pi relative overflow-hidden flex items-center justify-center bg-primary-slate"
+         :style="{ aspectRatio: `${width} / ${height}` }" role="img" :aria-label="alt">
+        <img v-if="logo" :src="logo" alt="" aria-hidden="true" loading="lazy" decoding="async"
+             class="w-1/2 max-w-[160px] opacity-40 grayscale-[30%] object-contain">
+        <i v-else class="lab-line-bag text-4xl text-primary/40" aria-hidden="true"></i>
+    </div>
+    <div v-else class="pi relative overflow-hidden bg-gray-100" :class="{ 'pi-waiting': !loaded && !eager }"
          :style="{ aspectRatio: `${width} / ${height}` }">
         <img
             ref="img"
@@ -36,6 +45,17 @@ export default {
             fallbackUsed: false,
             loaded: false,
         };
+    },
+    computed: {
+        // The server hands out /images/default/... for a product without a
+        // photo, and the error fallback below points there too.
+        isPlaceholder: function () {
+            return !this.currentSrc || this.currentSrc.includes("/images/default/");
+        },
+        logo: function () {
+            const setting = this.$store && this.$store.getters["frontendSetting/lists"];
+            return setting && setting.theme_logo ? setting.theme_logo : "";
+        },
     },
     mounted() {
         // Already in the browser cache: load may have fired before Vue listened.

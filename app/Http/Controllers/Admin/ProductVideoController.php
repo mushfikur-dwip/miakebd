@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 
 use Exception;
+use App\Enums\VideoProvider;
+use App\Support\FacebookVideoLink;
 use App\Models\Product;
 use App\Models\ProductVideo;
 use App\Services\ProductVideoService;
@@ -55,10 +57,26 @@ class ProductVideoController extends AdminController implements HasMiddleware
     public function store(ProductVideoRequest $request, Product $product): ProductVideoResource | \Illuminate\Http\Response
     {
         try {
-            return new ProductVideoResource($this->productVideoService->store($request, $product));
+            return $this->withPlayabilityWarning(new ProductVideoResource($this->productVideoService->store($request, $product)));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }
+    }
+
+    /**
+     * Facebook only plays a reel on other websites when its audience is
+     * Public; otherwise customers see "Video unavailable" in its place. The
+     * admin hears it now rather than from a customer. Saved regardless: the
+     * answer comes from Facebook's view of this server, which can be wrong.
+     */
+    private function withPlayabilityWarning(ProductVideoResource $resource): ProductVideoResource
+    {
+        $video = $resource->resource;
+        if ((int) $video->video_provider === VideoProvider::FACEBOOK && FacebookVideoLink::playable($video->link) === false) {
+            $resource->additional(['warning' => trans('all.message.facebook_video_not_playable')]);
+        }
+
+        return $resource;
     }
 
     /**
@@ -71,7 +89,7 @@ class ProductVideoController extends AdminController implements HasMiddleware
     public function update(ProductVideoRequest $request, Product $product, ProductVideo $productVideo): ProductVideoResource | \Illuminate\Http\Response
     {
         try {
-            return new ProductVideoResource($this->productVideoService->update($request, $product, $productVideo));
+            return $this->withPlayabilityWarning(new ProductVideoResource($this->productVideoService->update($request, $product, $productVideo)));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

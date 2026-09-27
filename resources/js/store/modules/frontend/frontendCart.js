@@ -4,6 +4,8 @@ import orderTypeEnum from "../../../enums/modules/orderTypeEnum";
 import shippingMethodEnum from "../../../enums/modules/shippingMethodEnum";
 import ShippingTypeEnum from "../../../enums/modules/shippingTypeEnum";
 import AskEnum from "../../../enums/modules/askEnum";
+import alertService from "../../../services/alertService";
+import i18n from "../../../i18n";
 
 /**
  * Price source of a cart line that came from the normal catalogue. Campaign
@@ -11,6 +13,30 @@ import AskEnum from "../../../enums/modules/askEnum";
  * campaign page and from the listing stays two lines at two prices.
  */
 const CATALOGUE_SOURCE = "catalogue";
+
+/**
+ * A whole quantity between 1 and what the line may hold: its stock and its
+ * product's purchase limit. Typed quantities arrive as strings - "0", "" or
+ * "2.5" used to go into the cart as they were, leaving a line the server
+ * refuses. A limit of 0 means none.
+ */
+function clampQuantity(line, value) {
+    let quantity = parseInt(value, 10);
+    if (!Number.isFinite(quantity) || quantity < 1) {
+        quantity = 1;
+    }
+    if (Number(line.stock) > 0 && quantity > Number(line.stock)) {
+        quantity = Number(line.stock);
+    }
+    if (Number(line.maximum_purchase_quantity) > 0 && quantity > Number(line.maximum_purchase_quantity)) {
+        quantity = Number(line.maximum_purchase_quantity);
+    }
+    return quantity;
+}
+
+// Only the newest coupon re-quote may land; an older one answering late would
+// otherwise put back a discount for a cart that has since changed.
+let couponQuote = 0;
 
 export const frontendCart = {
     namespaced: true,
@@ -100,9 +126,13 @@ export const frontendCart = {
         },
         lists: function (context, payload) {
             return new Promise((resolve, reject) => {
+                let changed = false;
                 if (Object.keys(payload).length > 0) {
                     let isNew = false;
                     let productMatch = false;
+                    // A quantity typed on the product page arrives as text, and
+                    // `1 + "2"` merged into an existing line as "12".
+                    payload = { ...payload, quantity: parseInt(payload.quantity, 10) || 1 };
                     if (context.state.lists.length === 0) {
                         isNew = true;
                     } else {
@@ -132,6 +162,7 @@ export const frontendCart = {
                                 if ((payload.quantity + list.quantity) <= list.stock) {
                                     if ((payload.quantity + list.quantity) <= list.maximum_purchase_quantity) {
                                         context.state.lists[listKey].quantity += payload.quantity;
+                                        changed = true;
                                     } else {
                                         reject({
                                             message: "maximum_quantity",
@@ -164,7 +195,7 @@ export const frontendCart = {
                             stock: payload.stock,
                             taxes: payload.taxes,
                             shipping: payload.shipping,
-                            quantity: payload.quantity,
+                            quantity: clampQuantity(payload, payload.quantity),
                             discount: payload.discount,
                             price: payload.price,
                             old_price: payload.old_price,
@@ -177,6 +208,7 @@ export const frontendCart = {
                             campaign_id: payload.campaign_id || null
                         });
                         isNew = false;
+                        changed = true;
                     }
                 }
                 context.commit("taxCalculation");
@@ -186,10 +218,15 @@ export const frontendCart = {
                 });
                 context.commit("subtotal");
                 context.dispatch('listChecker').then().catch();
+                if (changed) {
+                    context.dispatch('linesChanged').then().catch();
+                }
                 resolve({ data: context.state.lists, status: true });
             });
         },
         quantity: function (context, payload) {
+            const line = context.state.lists[payload.id];
+            const before = line ? line.quantity : null;
             context.commit("quantity", payload);
             context.commit("taxCalculation");
             context.commit("shippingCharge", {
@@ -197,6 +234,11 @@ export const frontendCart = {
                 area: context.rootState.frontendOrderArea.lists
             });
             context.commit("subtotal");
+            // A click that hits a limit changes nothing, and must not cost the
+            // customer their wallet payment.
+            if (line && line.quantity !== before) {
+                context.dispatch('linesChanged').then().catch();
+            }
         },
         remove: function (context, payload) {
             context.commit("remove", payload);
@@ -207,6 +249,56 @@ export const frontendCart = {
             });
             context.commit("subtotal");
             context.dispatch('listChecker').then().catch();
+            context.dispatch('linesChanged').then().catch();
+        },
+        /**
+         * After any change to the lines, the money taken off them has to be
+         * worked out again, or checkout sends a total the server refuses as
+         * "price changed" and the customer cannot order.
+         *
+         * A wallet payment must cover the whole total exactly, so it is
+         * dropped and the customer told to apply it again. A coupon is quoted
+         * afresh for the new subtotal - a percentage coupon is worth a
+         * different amount now - and dropped, with the reason, if it no
+         * longer applies (e.g. the cart fell under its minimum order).
+         */
+        linesChanged: function (context) {
+            if (context.state.walletDiscount > 0) {
+                context.commit('walletDiscount', 0);
+                context.commit('appliedWalletAmount', 0);
+                context.commit("subtotal");
+                alertService.warning(i18n.global.t('message.wallet_removed_cart_changed'));
+            }
+            if (Object.keys(context.state.coupon).length > 0) {
+                return context.dispatch('requoteCoupon');
+            }
+            return Promise.resolve();
+        },
+        requoteCoupon: function (context) {
+            const code = context.state.coupon && context.state.coupon.code;
+            if (!code) {
+                return Promise.resolve();
+            }
+            const ticket = ++couponQuote;
+
+            return context.dispatch('frontendCoupon/checking', {
+                total: context.state.subtotal,
+                code: code
+            }, { root: true }).then((res) => {
+                if (ticket !== couponQuote || Object.keys(context.state.coupon).length === 0) {
+                    return;
+                }
+                context.commit("coupon", res.data.data);
+                context.commit("subtotal");
+            }).catch((err) => {
+                if (ticket !== couponQuote) {
+                    return;
+                }
+                context.commit("coupon", {});
+                context.commit("subtotal");
+                const reason = err && err.response && err.response.data && err.response.data.message;
+                alertService.warning(i18n.global.t('message.coupon_remove') + (reason ? ": " + reason : ""));
+            });
         },
         coupon: function (context, payload) {
             context.commit("coupon", payload);
@@ -327,17 +419,20 @@ export const frontendCart = {
             }
         },
         quantity: function (state, payload) {
-            if (payload.status === "increment") {
-                state.lists[payload.id].quantity++;
-            } else if (payload.status === "decrement") {
-                if (state.lists[payload.id].quantity !== 1) {
-                    state.lists[payload.id].quantity--;
-                }
-            } else {
-                state.lists[payload.id].quantity = payload.status;
+            const line = state.lists[payload.id];
+            if (!line) {
+                return;
             }
 
-            state.lists[payload.id].total_price = state.lists[payload.id].price * state.lists[payload.id].quantity;
+            let quantity = payload.status;
+            if (payload.status === "increment") {
+                quantity = line.quantity + 1;
+            } else if (payload.status === "decrement") {
+                quantity = line.quantity - 1;
+            }
+
+            line.quantity = clampQuantity(line, quantity);
+            line.total_price = line.price * line.quantity;
         },
         remove: function (state, payload) {
             state.lists.splice(payload.id, 1);

@@ -11,5 +11,9 @@ const videoProviderEnum = Object.freeze([
         id: 15,
         name: "Vimeo"
     },
+    {
+        id: 20,
+        name: "Facebook"
+    },
 ]);
 export default videoProviderEnum;

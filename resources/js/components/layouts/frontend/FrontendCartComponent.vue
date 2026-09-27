@@ -4,7 +4,7 @@
             class="w-full max-w-md h-dvh overflow-x-hidden overflow-y-auto bg-white duration-500 transition-all ms-auto ltr:translate-x-full rtl:-translate-x-full">
             <div class="py-5 flex items-center justify-between px-4 border-b border-slate-100">
                 <h3 class="text-[22px] font-bold capitalize">{{ $t('label.shopping_cart') }}</h3>
-                <button type="button" class="lab-line-circle-cross text-lg text-danger"
+                <button type="button" class="lab-line-circle-cross text-lg text-danger w-10 h-10 -m-2.5 inline-flex items-center justify-center rounded-full" aria-label="Close"
                     @click.prevent="closeCanvas('cart-canvas')"></button>
             </div>
             
@@ -36,17 +36,17 @@
                         </div>
 
                         <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-center gap-1 w-20 p-1 rounded-full bg-[#F7F7FC]">
+                            <div class="flex items-center gap-1 w-28 p-1 rounded-full bg-[#F7F7FC]">
                                 <button @click.prevent="quantityDecrement(index, cart)" type="button"
                                     :class="cart.quantity === 1 ? 'cursor-not-allowed' : ''"
-                                    class="lab-fill-circle-minus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
-                                <input v-on:keypress="onlyNumber($event)" v-on:keyup="quantityUp(index, cart, $event)"
+                                    aria-label="-" class="lab-fill-circle-minus w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-full text-lg leading-none transition-all duration-300 hover:text-primary"></button>
+                                <input v-on:keypress="onlyNumber($event)" v-on:keyup="quantityUp(index, cart, $event)" v-on:blur="quantityUp(index, cart, $event)"
                                     type="number" v-model="cart.quantity"
-                                    class="text-center w-full h-5 text-sm font-medium">
+                                    class="text-center w-full min-w-0 h-8 text-sm font-medium bg-transparent">
                                 <button
                                     :class="cart.quantity >= cart.stock ? 'cursor-not-allowed' : cart.quantity >= cart.maximum_purchase_quantity ? 'cursor-not-allowed' : ''"
                                     @click.prevent="quantityIncrement(index, cart)" type="button"
-                                    class="lab-fill-circle-plus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
+                                    aria-label="+" class="lab-fill-circle-plus w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-full text-lg leading-none transition-all duration-300 hover:text-primary"></button>
                             </div>
                             <button @click.prevent="removeProduct(index)"
                                 class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF4F4] text-[#E93C3C] transition-all duration-300 hover:bg-[#E93C3C] hover:text-white">
@@ -123,6 +123,9 @@ export default {
         },
         quantityUp: function (id, product, e) {
             let quantity = e.target.value;
+            if (e.type === "keyup" && quantity === "") {
+                return;
+            }
 
             if (quantity === 0) {
                 quantity = 1;
@@ -159,12 +162,10 @@ export default {
             }
             this.$store.dispatch('frontendCart/quantity', { id: id, status: quantity }).then().catch();
         },
+        // The coupon is re-quoted for the smaller cart by the store (see
+        // frontendCart linesChanged), and only dropped if it no longer applies.
         removeProduct: function (id) {
             this.$store.dispatch('frontendCart/remove', { id: id }).then().catch();
-            if (Object.keys(this.cartCoupon).length !== 0) {
-                this.$store.dispatch("frontendCart/destroyCoupon").then().catch();
-                alertService.warning(this.$t('message.coupon_remove'));
-            }
         }
     }
 }

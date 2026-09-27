@@ -22,13 +22,35 @@
                             </small>
                         </div>
 
+                        <!-- The frame on the product page takes this shape. Auto plays
+                             Facebook videos and Shorts/reels vertical, the rest wide. -->
+                        <div class="form-col-12">
+                            <label for="orientation" class="db-field-title">{{ $t("label.video_orientation") }}</label>
+                            <vue-select class="db-field-control f-b-custom-select" id="orientation"
+                                v-bind:class="errors.orientation ? 'invalid' : ''" v-model="props.form.orientation"
+                                :options="enums.videoOrientationEnum" label-by="name" value-by="id" :closeOnSelect="true"
+                                :searchable="false" placeholder="--" />
+                            <small class="db-field-alert" v-if="errors.orientation">
+                                {{ errors.orientation[0] }}
+                            </small>
+                        </div>
+
                         <div class="form-col-12">
                             <label for="link" class="db-field-title required">{{ $t("label.link") }}</label>
+                            <!-- The ordinary link is fine - the storefront turns it into the
+                                 provider's player. For Facebook the server also takes a
+                                 Share link or the Embed code and stores the reel address. -->
                             <textarea v-model="props.form.link" v-bind:class="errors.link ? 'invalid' : ''" id="link"
+                                :placeholder="props.form.video_provider === 20
+                                    ? 'https://www.facebook.com/reel/...'
+                                    : 'https://www.youtube.com/watch?v=...'"
                                 class="db-field-control"></textarea>
                             <small class="db-field-alert" v-if="errors.link">
                                 {{ errors.link[0] }}
                             </small>
+                            <p v-else-if="props.form.video_provider === 20" class="text-xs text-gray-500 mt-1.5">
+                                {{ $t('message.facebook_video_help') }}
+                            </p>
                         </div>
 
                         <div class="form-col-12">
@@ -56,6 +78,7 @@ import LoadingComponent from "../../components/LoadingComponent";
 import alertService from "../../../../services/alertService";
 import appService from "../../../../services/appService";
 import videoProviderEnum from "../../../../enums/modules/videoProviderEnum";
+import videoOrientationEnum from "../../../../enums/modules/videoOrientationEnum";
 
 export default {
     name: "ProductVideoCreateComponent",
@@ -69,6 +92,7 @@ export default {
             errors: {},
             enums: {
                 videoProviderEnum: videoProviderEnum,
+                videoOrientationEnum: videoOrientationEnum,
             },
         }
     },
@@ -89,6 +113,7 @@ export default {
             this.$props.props.form = {
                 video_provider: null,
                 link: "",
+                orientation: 0,
             }
         },
         save: function () {
@@ -99,9 +124,15 @@ export default {
                     appService.modalHide('#variationModal');
                     this.loading.isActive = false;
                     alertService.successFlip((res.config.method === 'put' ?? 0), this.$t('label.product_video'));
+                    // Facebook refused to play the reel on other websites (its
+                    // audience is not Public) - say so now, not after a customer does.
+                    if (res.data && res.data.warning) {
+                        alertService.warning(res.data.warning);
+                    }
                     this.props.form = {
                         video_provider: null,
                         link: "",
+                        orientation: 0,
                     }
                     this.errors = {}
                 }).catch((err) => {

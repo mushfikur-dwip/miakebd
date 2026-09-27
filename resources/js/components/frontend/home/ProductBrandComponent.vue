@@ -25,7 +25,13 @@
                     :to="brand.slug ? { name: 'frontend.brand', params: { brandSlug: brand.slug } } : { name: 'frontend.product', query: { brand: brand.id } }"
                     class="group rounded-2xl border border-gray-100 bg-white shadow-xs transition-all duration-300 hover:border-primary hover:shadow-card">
                     <figure class="w-full h-20 sm:h-24 flex items-center justify-center p-3">
-                        <img :src="brand.cover" :alt="brand.name" loading="lazy" decoding="async"
+                        <!-- A brand without a logo gets the server's grey "No Image
+                             Available"; its initials read far better. -->
+                        <span v-if="!hasLogo(brand)" aria-hidden="true"
+                            class="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-lg sm:text-xl font-bold uppercase tracking-wide bg-primary-slate text-primary transition-all duration-300 group-hover:bg-primary group-hover:text-white">
+                            {{ initials(brand.name) }}
+                        </span>
+                        <img v-else :src="brand.cover" :alt="brand.name" loading="lazy" decoding="async"
                             class="max-h-full max-w-full object-contain">
                     </figure>
                     <span
@@ -62,6 +68,22 @@ export default {
         },
         visibleBrands: function () {
             return this.brands.slice(0, this.visibleLimit);
+        },
+    },
+    methods: {
+        hasLogo: function (brand) {
+            return !!brand.cover && !brand.cover.includes("/images/default/");
+        },
+        // "Dot & Key" -> "DK", "CeraVe" -> "CE", "L.A. GIRL" -> "LG".
+        initials: function (name) {
+            const words = String(name || "").replace(/[^\p{L}\p{N}\s]/gu, " ").trim().split(/\s+/).filter(Boolean);
+            if (words.length === 0) {
+                return "?";
+            }
+            if (words.length === 1) {
+                return words[0].slice(0, 2);
+            }
+            return words[0][0] + words[1][0];
         },
     },
     mounted() {

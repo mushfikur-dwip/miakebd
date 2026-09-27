@@ -69,6 +69,8 @@ class OrderTotalsTest extends TestCase
         $this->product = Product::create([
             'name' => 'Serum', 'slug' => 'serum', 'sku' => 'SERUM1', 'status' => Status::ACTIVE, 'can_purchasable' => Ask::YES,
             'buying_price' => 100, 'selling_price' => 500, 'variation_price' => 500,
+            // The live catalogue's usual limit; the column's own default is 1.
+            'maximum_purchase_quantity' => 100,
         ]);
     }
 
@@ -243,5 +245,23 @@ class OrderTotalsTest extends TestCase
         $this->address->update(['state' => 'Sylhet']);
 
         $this->order(['shipping_charge' => 120, 'total' => 1120])->assertCreated();
+    }
+
+    // The product page and side cart stop at a product's purchase limit, but
+    // the cart page did not, and the server never checked it at all.
+    public function test_a_line_above_the_purchase_limit_is_refused(): void
+    {
+        $this->product->update(['maximum_purchase_quantity' => 1]);
+
+        $this->order()->assertStatus(422)->assertJsonPath('message', 'You can buy at most 1 of Serum in one order.');
+
+        $this->assertSame(0, Order::count());
+    }
+
+    public function test_a_line_at_the_purchase_limit_goes_through(): void
+    {
+        $this->product->update(['maximum_purchase_quantity' => 2]);
+
+        $this->order()->assertCreated();
     }
 }

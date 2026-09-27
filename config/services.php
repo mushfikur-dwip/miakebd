@@ -55,4 +55,11 @@ return [
         'content_id'  => env('META_CONTENT_ID', 'id'),
     ],
 
+    // TikTok Pixel. Optional: App\Support\TikTokPixel also reads the id out of
+    // a snippet pasted into Admin -> Analytics. Its events reuse the Meta
+    // settings above for currency and content ids, so both catalogues match.
+    'tiktok_pixel' => [
+        'id' => env('TIKTOK_PIXEL_ID'),
+    ],
+
 ];

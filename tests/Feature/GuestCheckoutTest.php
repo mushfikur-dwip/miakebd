@@ -67,6 +67,8 @@ class GuestCheckoutTest extends TestCase
         $this->product = Product::create([
             'name' => 'Serum', 'slug' => 'serum', 'sku' => 'SERUM1', 'status' => Status::ACTIVE, 'can_purchasable' => Ask::YES,
             'buying_price' => 100, 'selling_price' => 500, 'variation_price' => 500,
+            // The live catalogue's usual limit; the column's own default is 1.
+            'maximum_purchase_quantity' => 100,
         ]);
     }
 

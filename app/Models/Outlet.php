@@ -23,5 +23,8 @@ class Outlet extends Model
         'zip_code'     => 'string',
         'address'      => 'string',
         'status'       => 'integer',
+        // Deliberately not fillable: only the PIN-guarded switch on the Cash
+        // Calculation page turns bKash / Nagad agent service on or off.
+        'mfs_enabled'  => 'boolean',
     ];
 }

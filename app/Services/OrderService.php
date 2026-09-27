@@ -248,11 +248,12 @@ class OrderService
                 $this->order->order_serial_no = date('dmy') . $this->order->id;
                 $this->order->save();
             });
-            SendPosOrderTelegram::dispatch(['order_id' => $this->order->id]);
-            // Sent after the response. The queue runs sync, so a listener runs
-            // inside this request, and the SMS gateway can wait up to 30s on a
-            // bad connection - the till would sit on the order for all of it.
+            // Both sent after the response. The queue runs sync, so a listener
+            // runs inside this request: the SMS gateway can wait up to 30s on a
+            // bad connection and the Telegram API up to 8s, and the till sat
+            // on the spinner for all of it.
             $orderId = $this->order->id;
+            app()->terminating(fn() => SendPosOrderTelegram::dispatch(['order_id' => $orderId]));
             app()->terminating(fn() => SendPosOrderSms::dispatch(['order_id' => $orderId]));
             return $this->order;
         } catch (Exception $exception) {

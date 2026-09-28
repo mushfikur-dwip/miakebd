@@ -15,4 +15,6 @@ interface CashEntryType
     const MFS_RECHARGE      = 9;
     const COUNT_VARIANCE    = 10;
     const REVERSAL          = 11;
+    // Settings -> Reset: takes an account to zero, as a recorded entry.
+    const RESET             = 12;
 }

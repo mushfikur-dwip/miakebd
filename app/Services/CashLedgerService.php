@@ -82,7 +82,8 @@ class CashLedgerService
 
     // The entries an owner may reverse. POS rows follow their order - fix the
     // order and the drawer follows - and a reversal is never itself reversed:
-    // the right entry is simply posted again.
+    // the right entry is simply posted again. (Counts are no longer entries;
+    // see count().)
     public const REVERSIBLE = [
         CashEntryType::ADD,
         CashEntryType::WITHDRAW,
@@ -91,7 +92,6 @@ class CashLedgerService
         CashEntryType::MFS_CASH_IN,
         CashEntryType::MFS_CASH_OUT,
         CashEntryType::MFS_RECHARGE,
-        CashEntryType::COUNT_VARIANCE,
     ];
 
     public function __construct(private readonly CashPinService $pins)
@@ -247,39 +247,38 @@ class CashLedgerService
     }
 
     /**
-     * A blind count. The expected figure is read under the lock, the
-     * difference is posted as a variance row in the counter's name, and the
-     * account then matches what is physically there.
+     * A count checks the calculation; it is never an entry. What was counted
+     * - with how many of each note - is kept on record against what the
+     * account should hold, in the counter's name, and the balance is left
+     * exactly as it was. A mismatch means count again, not that the money
+     * moved.
      *
      * @throws CashException
      */
-    public function count(Outlet $outlet, int $account, float $counted, ?array $denominations): CashCount
+    public function count(Outlet $outlet, int $account, float $counted, ?array $denominations, ?int $countedBy = null): CashCount
     {
         $this->assertActive($outlet, $account);
 
-        return DB::transaction(function () use ($outlet, $account, $counted, $denominations) {
+        // The balance is read under the branch lock, so a sale landing at the
+        // same moment cannot leave the count compared with half a figure.
+        return DB::transaction(function () use ($outlet, $account, $counted, $denominations, $countedBy) {
             Outlet::whereKey($outlet->id)->lockForUpdate()->first();
 
-            $expected = $this->balance($outlet->id, $account);
-            $variance = round($counted - $expected, 2);
-            $entry    = null;
-
-            if (abs($variance) >= 0.01) {
-                $entry = $this->post($outlet->id, [[
-                    'account' => $account,
-                    'type'    => CashEntryType::COUNT_VARIANCE,
-                    'amount'  => $variance,
-                ]], ['note' => $variance < 0 ? 'Count short' : 'Count over'])->first();
-            }
+            // Every note is kept in the one drawer - the shop's and the bKash,
+            // Nagad and Recharge cash alike - so a drawer count is checked
+            // against all of them together.
+            $expected = $account === CashAccount::DRAWER
+                ? round(array_sum(array_map(fn(int $pot) => $this->balance($outlet->id, $pot), self::NOTE_ACCOUNTS)), 2)
+                : $this->balance($outlet->id, $account);
 
             return CashCount::create([
                 'outlet_id'     => $outlet->id,
                 'account'       => $account,
                 'expected'      => $expected,
                 'counted'       => $counted,
-                'variance'      => $variance,
+                'variance'      => round($counted - $expected, 2),
                 'denominations' => $denominations,
-                'entry_id'      => $entry?->id,
+                'counted_by_id' => $countedBy,
                 'created_by'    => Auth::id(),
             ]);
         });
@@ -392,6 +391,39 @@ class CashLedgerService
         return $outlet;
     }
 
+    /**
+     * Settings -> Reset: every account of the branch back to zero, with its
+     * PIN. Each account that holds anything gets a "Reset to zero" row for
+     * exactly its balance, all posted together under the branch lock - so
+     * nothing is deleted, the history still reads true, and it shows who reset
+     * and when. Other branches are not touched. Returns how many accounts
+     * were reset.
+     *
+     * @throws CashException
+     */
+    public function reset(Outlet $outlet, ?string $pin): int
+    {
+        $this->pins->verify($outlet->id, $pin, 'reset');
+
+        return DB::transaction(function () use ($outlet) {
+            Outlet::whereKey($outlet->id)->lockForUpdate()->first();
+
+            $lines = [];
+            foreach (array_keys(self::ACCOUNT_NAMES) as $account) {
+                $balance = $this->balance($outlet->id, $account);
+                if (abs($balance) >= 0.01) {
+                    $lines[] = ['account' => $account, 'type' => CashEntryType::RESET, 'amount' => -$balance];
+                }
+            }
+
+            if ($lines) {
+                $this->post($outlet->id, $lines, ['note' => 'Reset to zero']);
+            }
+
+            return count($lines);
+        });
+    }
+
     // ------------------------------------------------------------ reading
 
     /**
@@ -414,7 +446,7 @@ class CashLedgerService
             ->toBase()
             ->get();
 
-        $counts = CashCount::with('creator:id,name')
+        $counts = CashCount::with(['creator:id,name', 'countedBy:id,name'])
             ->where('outlet_id', $outlet->id)
             ->where('created_at', '<', $end)
             ->whereIn('id', CashCount::where('outlet_id', $outlet->id)
@@ -444,6 +476,7 @@ class CashLedgerService
                 'transfer_out'  => $sum(CashEntryType::TRANSFER_OUT),
                 'variance'      => $sum(CashEntryType::COUNT_VARIANCE),
                 'reversals'     => $sum(CashEntryType::REVERSAL),
+                'reset'         => $sum(CashEntryType::RESET),
                 'closing'       => round($opening + (float) $rows->sum('total'), 2),
                 'last_count'    => $count ? $this->countRow($count) : null,
             ];
@@ -489,30 +522,54 @@ class CashLedgerService
                 'total'  => round($notes + $emoney, 2),
             ],
             'pos_other'   => $this->otherSales($outlet, $start, $end),
-            'counts'      => CashCount::with('creator:id,name')
-                ->where('outlet_id', $outlet->id)
-                ->where('created_at', '>=', $start)
-                ->where('created_at', '<', $end)
-                ->orderByDesc('id')
-                ->get()
-                ->map(fn(CashCount $count) => $this->countRow($count))
-                ->values(),
+            'counts'      => $this->counts($outlet, $start),
         ];
     }
 
     /** One count as the page shows it: the notes counted and how it compared. */
-    public function countRow(CashCount $count): array
+    public function countRow(CashCount $count, bool $withFigures = true): array
     {
-        return [
+        $row = [
             'id'            => $count->id,
             'account'       => $count->account,
             'counted'       => $count->counted,
-            'expected'      => $count->expected,
-            'variance'      => $count->variance,
+            'matched'       => abs((float) $count->variance) < 0.01,
             'denominations' => $this->denominationLines($count->denominations),
-            'by'            => $count->creator?->name,
+            // The employee who counted; older counts, and counts with nobody
+            // picked, fall back to whoever entered them.
+            'by'            => $count->countedBy?->name ?? $count->creator?->name,
+            'entered_by'    => $count->creator?->name,
             'at'            => AppLibrary::datetime($count->created_at),
         ];
+
+        // What was expected, and so the difference, only for a balance viewer:
+        // a cashier who could read it would no longer be counting blind.
+        if ($withFigures) {
+            $row['expected'] = $count->expected;
+            $row['variance'] = $count->variance;
+        }
+
+        return $row;
+    }
+
+    /**
+     * The counts of one day, newest first. A cashier's own list comes
+     * without the figures; see countRow().
+     */
+    public function counts(Outlet $outlet, Carbon $date, ?int $onlyBy = null): array
+    {
+        $start = $date->copy()->startOfDay();
+
+        return CashCount::with(['creator:id,name', 'countedBy:id,name'])
+            ->where('outlet_id', $outlet->id)
+            ->where('created_at', '>=', $start)
+            ->where('created_at', '<', $start->copy()->addDay())
+            ->when($onlyBy !== null, fn($query) => $query->where('created_by', $onlyBy))
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn(CashCount $count) => $this->countRow($count, $onlyBy === null))
+            ->values()
+            ->all();
     }
 
     /**
@@ -549,12 +606,14 @@ class CashLedgerService
 
     /**
      * What a balance viewer should look at: till sales taken back, wrong PIN
-     * tries and short counts over the last week, and a default PIN still in
-     * use.
+     * tries and counts that did not match - today, or over the last 7 days -
+     * and a default PIN still in use.
      */
-    public function alerts(Outlet $outlet): array
+    public function alerts(Outlet $outlet, string $period = 'week'): array
     {
-        $since = now()->subDays(7);
+        // "today": since midnight. "week": today and the six days before it,
+        // whole days, so a morning look covers the same days as an evening one.
+        $since = $period === 'today' ? today() : today()->subDays(6);
 
         $reversals = CashEntry::with('creator:id,name')
             ->where('outlet_id', $outlet->id)
@@ -571,6 +630,7 @@ class CashLedgerService
             ->pluck('sold_at', 'order_id');
 
         return [
+            'period'        => $period === 'today' ? 'today' : 'week',
             'default_pin'   => $this->pins->usesDefault($outlet->id),
             'pos_reversals' => $reversals->map(fn(CashEntry $entry) => [
                 'id'                 => $entry->id,
@@ -594,9 +654,10 @@ class CashLedgerService
                     'count'   => $failures->count(),
                     'last_at' => AppLibrary::datetime($failures->first()->created_at),
                 ])->values(),
-            'shortages'     => CashCount::with('creator:id,name')
+            // Counts that did not match the calculation, short or over.
+            'shortages'     => CashCount::with(['creator:id,name', 'countedBy:id,name'])
                 ->where('outlet_id', $outlet->id)
-                ->where('variance', '<', 0)
+                ->where(fn($query) => $query->where('variance', '<=', -0.01)->orWhere('variance', '>=', 0.01))
                 ->where('created_at', '>=', $since)
                 ->orderByDesc('id')
                 ->limit(50)
@@ -604,7 +665,7 @@ class CashLedgerService
                 ->map(fn(CashCount $count) => [
                     'account'  => $count->account,
                     'variance' => $count->variance,
-                    'by'       => $count->creator?->name,
+                    'by'       => $count->countedBy?->name ?? $count->creator?->name,
                     'at'       => AppLibrary::datetime($count->created_at),
                 ])->values(),
         ];

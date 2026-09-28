@@ -16,6 +16,7 @@ class CashCount extends Model
         'variance',
         'denominations',
         'entry_id',
+        'counted_by_id',
         'created_by',
     ];
 
@@ -28,6 +29,7 @@ class CashCount extends Model
         'variance'      => 'float',
         'denominations' => 'array',
         'entry_id'      => 'integer',
+        'counted_by_id' => 'integer',
         'created_by'    => 'integer',
         'created_at'    => 'datetime',
     ];
@@ -35,5 +37,11 @@ class CashCount extends Model
     public function creator(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
+    }
+
+    // The employee who counted the notes, as picked on the count form.
+    public function countedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'counted_by_id', 'id');
     }
 }

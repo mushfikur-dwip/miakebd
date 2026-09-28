@@ -184,6 +184,7 @@ return [
         'cash_already_reversed'            => 'This entry has already been reversed.',
         'cash_mfs_not_empty'               => 'bKash / Nagad / Recharge still hold money. Withdraw or transfer it before turning the service off.',
         'cash_kind_not_allowed'            => 'That transaction is not available for this service.',
+        'request_in_progress'              => 'This is still being saved. Wait a moment, then check the list before trying again.',
         'language_file_invalid'           => 'That is not a language file.',
         'supplier_invalid'                 => 'The supplier is invalid.',
         'status_invalid'                   => 'The status is invalid.',

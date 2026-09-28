@@ -570,7 +570,8 @@ export default {
             }
 
             this.loading.isActive = false;
-            this.$store.dispatch('frontendLanguage/lists', this.languageProps).then().catch();
+            // .catch() with no handler still leaves the rejection unhandled.
+            this.$store.dispatch('frontendLanguage/lists', this.languageProps).catch(() => {});
             this.$store.dispatch('frontendLanguage/show', this.defaultLanguage).then(res => {
                 loadLocale(res.data.data.code);
                 this.$store.dispatch("globalState/init", {

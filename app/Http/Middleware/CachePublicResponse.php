@@ -19,9 +19,15 @@ use Symfony\Component\HttpFoundation\Response;
  * builds one and the rest, for a minute or two, are read from the cache
  * without touching the database at all.
  *
- * Only anonymous requests share a copy. A signed-in customer's product lists
- * carry their own wishlist flags, so any request with a bearer token goes
- * straight through and is never stored.
+ * By default only anonymous requests share a copy: a signed-in customer's
+ * product lists carry their own wishlist flags, so a request with a bearer
+ * token goes straight through and is never stored. Routes whose answer is the
+ * same for everyone - menus, categories, languages - say so with a second
+ * argument, `cache.public:300,shared`, and then signed-in visitors read the
+ * same copy. Without that, each of their page loads opened some twenty MySQL
+ * connections at once, enough on its own to reach the host's limit. Anything
+ * that embeds products must never be marked shared (PublicResponseCacheTest
+ * checks the routes).
  *
  * Anything an admin changes clears every copy at once (FlushPublicResponses on
  * the admin routes bumps the version in the key), so a new price or banner is
@@ -33,9 +39,9 @@ class CachePublicResponse
 {
     public const VERSION_KEY = 'public-api:version';
 
-    public function handle(Request $request, Closure $next, int $seconds = 120): Response
+    public function handle(Request $request, Closure $next, int $seconds = 120, string $scope = 'anonymous'): Response
     {
-        if (!$this->cacheable($request)) {
+        if (!$this->cacheable($request, $scope === 'shared')) {
             return $next($request);
         }
 
@@ -83,7 +89,7 @@ class CachePublicResponse
         }
     }
 
-    private function cacheable(Request $request): bool
+    private function cacheable(Request $request, bool $sameForEveryone): bool
     {
         // POST only for the listing endpoints that read with it
         // (category-wise-products); the route decides which those are.
@@ -91,7 +97,7 @@ class CachePublicResponse
             return false;
         }
 
-        return blank($request->bearerToken());
+        return $sameForEveryone || blank($request->bearerToken());
     }
 
     private function key(Request $request): string

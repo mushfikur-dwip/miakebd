@@ -190,7 +190,10 @@ export default {
                     this.errors = {};
                 }).catch((err) => {
                     this.loading.isActive = false;
-                    this.errors = err.response.data.errors;
+                    this.errors = err.response?.data?.errors ?? {};
+                    // Without this a failed save looked exactly like a
+                    // successful one that showed no message.
+                    alertService.error(err.response?.data?.message ?? this.$t("message.something_went_wrong"));
                 });
             } catch (err) {
                 this.loading.isActive = false;

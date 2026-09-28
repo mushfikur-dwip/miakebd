@@ -803,17 +803,24 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle
     });
 
     Route::prefix('cash-calculation')->group(function () {
+        // Everything the page shows in one answer - one round trip on a slow line.
+        Route::get('/page', [CashCalculationController::class, 'page']);
         Route::get('/outlets', [CashCalculationController::class, 'outlets']);
+        Route::get('/employees', [CashCalculationController::class, 'employees']);
         Route::get('/summary', [CashCalculationController::class, 'summary']);
         Route::get('/entries', [CashCalculationController::class, 'entries']);
         Route::get('/alerts', [CashCalculationController::class, 'alerts']);
-        Route::post('/add', [CashCalculationController::class, 'add']);
-        Route::post('/mfs', [CashCalculationController::class, 'mfs']);
-        Route::post('/count', [CashCalculationController::class, 'count']);
-        Route::post('/withdraw', [CashCalculationController::class, 'withdraw']);
-        Route::post('/transfer', [CashCalculationController::class, 'transfer']);
-        Route::post('/reverse/{cashEntry}', [CashCalculationController::class, 'reverse']);
-        Route::post('/mfs-toggle', [CashCalculationController::class, 'mfsToggle']);
+        // Saves are idempotent: a copy resent after a lost answer is not saved twice.
+        Route::middleware('idempotent')->group(function () {
+            Route::post('/add', [CashCalculationController::class, 'add']);
+            Route::post('/mfs', [CashCalculationController::class, 'mfs']);
+            Route::post('/count', [CashCalculationController::class, 'count']);
+            Route::post('/withdraw', [CashCalculationController::class, 'withdraw']);
+            Route::post('/transfer', [CashCalculationController::class, 'transfer']);
+            Route::post('/reverse/{cashEntry}', [CashCalculationController::class, 'reverse']);
+            Route::post('/mfs-toggle', [CashCalculationController::class, 'mfsToggle']);
+            Route::post('/reset', [CashCalculationController::class, 'reset']);
+        });
         Route::post('/pin', [CashCalculationController::class, 'changePin']);
     });
 
@@ -909,11 +916,11 @@ Route::group(['prefix' => 'frontend'], function () {
     Route::get('language/{code}', [FrontendLanguageController::class, 'language']);
     Route::get('overview', [OverviewController::class, 'index']);
 
-    Route::prefix('setting')->middleware('cache.public:300')->group(function () {
+    Route::prefix('setting')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendSettingController::class, 'index']);
     });
 
-    Route::prefix('country-code')->middleware('cache.public:3600')->group(function () {
+    Route::prefix('country-code')->middleware('cache.public:3600,shared')->group(function () {
         Route::get('/', [FrontendCountryCodeController::class, 'index']);
         Route::get('/show/{country}', [FrontendCountryCodeController::class, 'show']);
         Route::get('/calling-code/{callingCode}', [FrontendCountryCodeController::class, 'callingCode']);
@@ -927,20 +934,20 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::delete('/{address}', [FrontendAddressController::class, 'destroy']);
     });
 
-    Route::prefix('language')->middleware('cache.public:300')->group(function () {
+    Route::prefix('language')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendLanguageController::class, 'index']);
         Route::get('/show/{language}', [FrontendLanguageController::class, 'show']);
     });
 
-    Route::prefix('slider')->middleware('cache.public:300')->group(function () {
+    Route::prefix('slider')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendSliderController::class, 'index']);
     });
     
-    Route::prefix('mobile-section')->middleware('cache.public:300')->group(function () {
+    Route::prefix('mobile-section')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\MobileSectionController::class, 'index']);
     });
 
-    Route::prefix('product-category')->middleware('cache.public:300')->group(function () {
+    Route::prefix('product-category')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendProductCategoryController::class, 'index']);
         Route::get('/ancestors-and-self/{productCategory:slug}', [FrontendProductCategoryController::class, 'ancestorsAndSelf']);
         Route::get('/tree', [FrontendProductCategoryController::class, 'tree']);
@@ -963,13 +970,13 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::get('/show-with-trashed/{product:slug}', [FrontendProductController::class, 'showWithTrashed'])->withTrashed();
     });
 
-    Route::prefix('page')->middleware('cache.public:300')->group(function () {
+    Route::prefix('page')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendPageController::class, 'index']);
         Route::get('/show/{page:slug}', [FrontendPageController::class, 'show']);
         Route::get('/page-info/{page}', [FrontendPageController::class, 'show']);
     });
 
-    Route::prefix('blog')->middleware('cache.public:300')->group(function () {
+    Route::prefix('blog')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendBlogController::class, 'index']);
         // Declared before /show/{slug} so neither literal path can be captured
         // as a post slug.
@@ -1002,11 +1009,11 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::get('/products/{productSection:slug}', [FrontendProductSectionProductController::class, 'index']);
     });
 
-    Route::prefix('product-brand')->middleware('cache.public:300')->group(function () {
+    Route::prefix('product-brand')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendProductBrandController::class, 'index']);
     });
 
-    Route::prefix('benefit')->middleware('cache.public:300')->group(function () {
+    Route::prefix('benefit')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendBenefitController::class, 'index']);
     });
 
@@ -1021,11 +1028,11 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::post('/coupon-checking', [FrontendCouponController::class, 'couponChecking'])->middleware('throttle:10,1');
     });
 
-    Route::prefix('payment-gateway')->middleware('cache.public:300')->group(function () {
+    Route::prefix('payment-gateway')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendPaymentGatewayController::class, 'index']);
     });
 
-    Route::prefix('order-area')->middleware('cache.public:300')->group(function () {
+    Route::prefix('order-area')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendOrderAreaController::class, 'index']);
     });
 
@@ -1092,7 +1099,7 @@ Route::group(['prefix' => 'frontend'], function () {
         Route::get('/cities/{state}', [FrontendCountryStateCityController::class, 'citiesByState']);
     });
 
-    Route::prefix('outlet')->middleware('cache.public:300')->group(function () {
+    Route::prefix('outlet')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendOutletController::class, 'index']);
     });
 });

@@ -8,8 +8,12 @@
                     :placeholder="tr('amount')" class="db-field-control h-9 min-w-0 flex-1" />
                 <input v-model="rows[kind].party" type="text" inputmode="tel" :placeholder="tr('customer_number_short')"
                     class="db-field-control h-9 min-w-0 w-28 hidden sm:block" />
-                <button type="submit" class="db-btn h-9 px-3 text-white shrink-0" :class="theme.button" :disabled="rows[kind].busy">
-                    {{ tr('add') }}
+                <!-- Turns into a green tick for a moment once saved, right where
+                     the employee is looking. -->
+                <button type="submit" class="db-btn h-9 px-3 text-white shrink-0 transition-all duration-300"
+                    :class="rows[kind].done ? 'bg-green-600 mfs-done' : theme.button" :disabled="rows[kind].busy || rows[kind].done">
+                    <span v-if="rows[kind].done" aria-hidden="true">✓</span>
+                    {{ rows[kind].done ? tr('saved_tick') : tr('add') }}
                 </button>
             </div>
             <small class="db-field-alert d-block ml-[5.5rem]" v-if="rows[kind].error">{{ rows[kind].error }}</small>
@@ -19,11 +23,10 @@
 </template>
 
 <script>
-import axios from "axios";
-import alertService from "../../../services/alertService";
 import { tr, KINDS, THEME } from "./cashCalculationText";
+import { save, failure } from "./cashHttp";
 
-const blank = () => ({ amount: "", party: "", error: "", busy: false });
+const blank = () => ({ amount: "", party: "", error: "", busy: false, done: false });
 
 /**
  * Agent entry straight on the page - In and Out for bKash and Nagad, Recharge
@@ -41,6 +44,11 @@ export default {
         const rows = {};
         (KINDS[this.provider] || []).forEach((kind) => { rows[kind] = blank(); });
         return { rows };
+    },
+    created() {
+        // One resend memo per row; not reactive, nothing shows it.
+        this.resend = {};
+        (KINDS[this.provider] || []).forEach((kind) => { this.resend[kind] = {}; });
     },
     computed: {
         kinds: function () {
@@ -60,20 +68,26 @@ export default {
                 return;
             }
             row.busy = true;
-            axios.post("admin/cash-calculation/mfs", {
+            save("admin/cash-calculation/mfs", {
                 outlet_id: this.outletId,
                 provider: this.provider,
                 kind: kind,
                 amount: row.amount,
                 party: row.party || null,
-            }).then(() => {
-                this.rows[kind] = blank();
-                alertService.success(tr(this.provider + "_agent") + " · " + tr(kind) + " · " + tr("saved"));
-                this.$emit("saved");
+            }, this.resend[kind]).then(() => {
+                const amount = Number(row.amount);
+                this.rows[kind] = { ...blank(), done: true };
+                setTimeout(() => {
+                    if (this.rows[kind] && this.rows[kind].done) {
+                        this.rows[kind].done = false;
+                    }
+                }, 1400);
+                // The page shows the big tick and lights up this service's card.
+                this.$emit("saved", { kind, provider: this.provider, amount });
             }).catch((err) => {
                 row.busy = false;
                 const body = err.response?.data || {};
-                row.error = body.errors ? Object.values(body.errors)[0][0] : (body.message || tr("something_wrong"));
+                row.error = body.errors ? Object.values(body.errors)[0][0] : failure(err);
             });
         },
     },

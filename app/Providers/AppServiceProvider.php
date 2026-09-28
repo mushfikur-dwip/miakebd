@@ -13,7 +13,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Retries the host's momentary "[2002] Operation not permitted"
+        // refusals instead of showing them to shoppers. See the class.
+        $this->app->bind('db.connector.mysql', \App\Database\RetryingMySqlConnector::class);
     }
 
     /**

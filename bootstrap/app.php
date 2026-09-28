@@ -3,6 +3,7 @@
 use App\Http\Middleware\ApiKeyMiddleware;
 use App\Http\Middleware\CachePublicResponse;
 use App\Http\Middleware\FlushPublicResponses;
+use App\Http\Middleware\Idempotent;
 use App\Http\Middleware\CaptureMetaClickIds;
 use App\Http\Middleware\CaptureTikTokClickId;
 use App\Http\Middleware\EnsureStaff;
@@ -90,6 +91,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'staff' => EnsureStaff::class,
             'cache.public' => CachePublicResponse::class,
             'flush.public' => FlushPublicResponses::class,
+            'idempotent' => Idempotent::class,
 
         ]);
     })

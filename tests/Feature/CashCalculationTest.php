@@ -17,6 +17,7 @@ use App\Events\SendOrderPush;
 use App\Events\SendOrderSms;
 use App\Events\SendPosOrderSms;
 use App\Events\SendPosOrderTelegram;
+use App\Models\CashCount;
 use App\Models\CashEntry;
 use App\Models\CashPinFailure;
 use App\Models\Order;
@@ -599,13 +600,14 @@ class CashCalculationTest extends TestCase
         $this->assertEquals(-60, $this->balanceOf(CashAccount::RECHARGE_SIM));
         $this->assertEquals(60, $this->balanceOf(CashAccount::RECHARGE_CASH));
 
-        // The next SIM count puts the figure right, in the counter's name.
+        // A SIM count shows the mismatch; it is a check, so the figure stays
+        // until the owner corrects it with an entry of their own.
         $this->postJson('/api/admin/cash-calculation/count', [
             'outlet_id' => $this->outlet->id,
             'account'   => CashAccount::BKASH_SIM,
             'counted'   => 4900,
-        ])->assertSuccessful()->assertJsonPath('data.variance', 5000);
-        $this->assertEquals(4900, $this->balanceOf(CashAccount::BKASH_SIM));
+        ])->assertSuccessful()->assertJsonPath('data.variance', 5000)->assertJsonPath('data.matched', false);
+        $this->assertEquals(-100, $this->balanceOf(CashAccount::BKASH_SIM));
     }
 
     public function test_a_cash_out_larger_than_the_cash_box_is_refused(): void
@@ -711,7 +713,67 @@ class CashCalculationTest extends TestCase
 
     // -------------------------------------------------------------- counts
 
-    public function test_a_cashiers_count_is_blind_and_posts_the_shortage_in_their_name(): void
+    // A count is a check of the calculation, never an entry: whatever was
+    // counted, the balances stay exactly as they were.
+    public function test_a_count_never_changes_a_balance(): void
+    {
+        $this->add(1000)->assertSuccessful();
+
+        $this->postJson('/api/admin/cash-calculation/count', [
+            'outlet_id' => $this->outlet->id,
+            'account'   => CashAccount::DRAWER,
+            'counted'   => 1050,
+        ])->assertSuccessful()
+            ->assertJsonPath('data.matched', false)
+            ->assertJsonPath('data.expected', 1000)
+            ->assertJsonPath('data.variance', 50);
+
+        $this->assertEquals(1000, $this->drawer(), 'the count moved no money');
+        $this->assertSame(1, CashEntry::count(), 'only the add is in the ledger');
+        $this->assertNull(CashCount::sole()->entry_id);
+    }
+
+    // All the notes live in one drawer - the shop's and the bKash, Nagad and
+    // Recharge cash alike - so one count of the drawer is checked against all
+    // of them together.
+    public function test_a_drawer_count_checks_all_the_cash_in_the_drawer(): void
+    {
+        $this->add(1000)->assertSuccessful();
+        $this->enableMfs();
+        $this->add(5000, CashAccount::BKASH_SIM)->assertSuccessful();
+        $this->add(500, CashAccount::RECHARGE_SIM)->assertSuccessful();
+        $this->mfs('cash_in', 700)->assertSuccessful();               // bKash cash +700
+        $this->mfs('recharge', 50, 'recharge')->assertSuccessful();   // Recharge cash +50
+        $this->mfs('cash_out', 200)->assertSuccessful();              // bKash cash -200
+
+        $this->postJson('/api/admin/cash-calculation/count', [
+            'outlet_id'     => $this->outlet->id,
+            'account'       => CashAccount::DRAWER,
+            'denominations' => ['1000' => 1, '500' => 1, '50' => 1],
+        ])->assertSuccessful()
+            ->assertJsonPath('data.expected', 1550)
+            ->assertJsonPath('data.counted', 1550)
+            ->assertJsonPath('data.matched', true);
+
+        $this->assertEquals(1000, $this->drawer(), 'the shop cash itself is unchanged');
+    }
+
+    public function test_a_count_that_matches_says_the_calculation_is_correct(): void
+    {
+        $this->add(1000)->assertSuccessful();
+
+        $this->postJson('/api/admin/cash-calculation/count', [
+            'outlet_id'     => $this->outlet->id,
+            'account'       => CashAccount::DRAWER,
+            'denominations' => ['500' => 2],
+        ])->assertSuccessful()
+            ->assertJsonPath('data.matched', true)
+            ->assertJsonPath('data.variance', 0);
+    }
+
+    // The cashier hears whether the count matches - count again if not - but
+    // never the amount expected or the difference, so the count stays blind.
+    public function test_a_cashier_learns_only_whether_the_count_matches(): void
     {
         $this->add(1000)->assertSuccessful();
         Sanctum::actingAs($this->cashier);
@@ -722,39 +784,40 @@ class CashCalculationTest extends TestCase
             'denominations' => ['500' => 1, '100' => 4, '20' => 2],
         ])->assertSuccessful();
 
-        // They see the notes they counted and the total, never what was
-        // expected or the difference.
+        $this->assertFalse($response->json('data.matched'));
         $this->assertEquals(940, $response->json('data.counted'));
         $this->assertSame([
             ['note' => 500, 'pieces' => 1, 'amount' => 500],
             ['note' => 100, 'pieces' => 4, 'amount' => 400],
             ['note' => 20, 'pieces' => 2, 'amount' => 40],
         ], $response->json('data.denominations'));
-        $this->assertArrayNotHasKey('expected', $response->json('data'), 'the cashier is not told the result');
+        $this->assertArrayNotHasKey('expected', $response->json('data'));
         $this->assertArrayNotHasKey('variance', $response->json('data'));
 
-        $variance = CashEntry::where('type', CashEntryType::COUNT_VARIANCE)->sole();
-        $this->assertEquals(-60, $variance->amount);
-        $this->assertSame($this->cashier->id, $variance->created_by);
-        $this->assertEquals(940, $this->drawer());
-
-        $mine = $this->getJson('/api/admin/cash-calculation/entries?outlet_id=' . $this->outlet->id)->json('data');
-        $this->assertSame([], $mine, 'their own list does not show the difference either');
+        $this->assertEquals(1000, $this->drawer());
+        $count = CashCount::sole();
+        $this->assertSame($this->cashier->id, $count->created_by, 'kept on record in their name');
+        $this->assertSame(['500' => 1, '100' => 4, '20' => 2], $count->denominations, 'with how many of each note');
     }
 
-    public function test_an_owners_count_shows_the_result(): void
+    public function test_a_cashier_sees_their_own_counts_of_the_day_without_the_figures(): void
     {
         $this->add(1000)->assertSuccessful();
-
+        Sanctum::actingAs($this->cashier);
         $this->postJson('/api/admin/cash-calculation/count', [
-            'outlet_id' => $this->outlet->id,
-            'account'   => CashAccount::DRAWER,
-            'counted'   => 1050,
-        ])->assertSuccessful()
-            ->assertJsonPath('data.expected', 1000)
-            ->assertJsonPath('data.variance', 50);
+            'outlet_id'     => $this->outlet->id,
+            'account'       => CashAccount::DRAWER,
+            'denominations' => ['1000' => 1],
+        ])->assertSuccessful();
 
-        $this->assertEquals(1050, $this->drawer());
+        $counts = $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id)->json('data.counts');
+
+        $this->assertCount(1, $counts);
+        $this->assertTrue($counts[0]['matched']);
+        $this->assertEquals(1000, $counts[0]['counted']);
+        $this->assertSame(1000, $counts[0]['denominations'][0]['note']);
+        $this->assertArrayNotHasKey('expected', $counts[0]);
+        $this->assertArrayNotHasKey('variance', $counts[0]);
     }
 
     // The owner sees each count of the day: the notes, the total, what was
@@ -777,6 +840,7 @@ class CashCalculationTest extends TestCase
         $this->assertCount(1, $counts);
         $this->assertSame(CashAccount::DRAWER, $counts[0]['account']);
         $this->assertEquals(-50, $counts[0]['variance']);
+        $this->assertFalse($counts[0]['matched']);
         $this->assertSame('Owner', $counts[0]['by']);
         $this->assertSame([1000, 500, 200, 10], array_column($counts[0]['denominations'], 'note'));
         $this->assertEquals(5000, $counts[0]['denominations'][0]['amount']);
@@ -793,19 +857,56 @@ class CashCalculationTest extends TestCase
             'counted'       => 280,
             'denominations' => ['100' => 9],
         ])->assertSuccessful()->assertJsonPath('data.variance', -20)->assertJsonPath('data.denominations', []);
+
+        $this->assertEquals(300, $this->balanceOf(CashAccount::POS_CARD));
     }
 
-    public function test_an_exact_count_posts_nothing(): void
+    // The history is the chosen day's: change the date, see that day's
+    // transactions and nothing else.
+    public function test_the_history_shows_the_chosen_days_transactions(): void
+    {
+        Carbon::setTestNow('2026-09-27 18:00:00');
+        $this->add(500)->assertSuccessful();
+        Carbon::setTestNow('2026-09-28 10:00:00');
+        $this->add(200)->assertSuccessful();
+        $this->add(300)->assertSuccessful();
+
+        $day = fn(string $date) => $this->getJson('/api/admin/cash-calculation/entries?outlet_id=' . $this->outlet->id . '&from=' . $date . '&to=' . $date)->json('data');
+
+        $this->assertEquals([500], array_column($day('2026-09-27'), 'amount'));
+        $this->assertEquals([300, 200], array_column($day('2026-09-28'), 'amount'));
+        $this->assertSame([], $day('2026-09-26'));
+    }
+
+    // Counts made before this change moved balances. The migration takes
+    // those adjustments out and rebuilds the running balances around them.
+    public function test_old_count_adjustments_are_taken_out_of_the_balances(): void
     {
         $this->add(1000)->assertSuccessful();
 
-        $this->postJson('/api/admin/cash-calculation/count', [
-            'outlet_id' => $this->outlet->id,
-            'account'   => CashAccount::DRAWER,
-            'counted'   => 1000,
-        ])->assertSuccessful();
+        // A count adjustment as the earlier version posted it, then a later sale.
+        $variance = CashEntry::create([
+            'outlet_id' => $this->outlet->id, 'account' => CashAccount::DRAWER, 'type' => CashEntryType::COUNT_VARIANCE,
+            'amount' => -60, 'balance_after' => 940, 'note' => 'Count short', 'created_by' => $this->cashier->id,
+        ]);
+        $count = CashCount::create([
+            'outlet_id' => $this->outlet->id, 'account' => CashAccount::DRAWER, 'expected' => 1000, 'counted' => 940,
+            'variance' => -60, 'denominations' => ['500' => 1, '100' => 4, '20' => 2], 'entry_id' => $variance->id,
+            'created_by' => $this->cashier->id,
+        ]);
+        $this->ringUp(PosPaymentMethod::CASH, 150); // posted on top: balance_after 1090
 
-        $this->assertSame(1, CashEntry::count());
+        $migration = require database_path('migrations/2026_09_29_000001_counts_no_longer_change_balances.php');
+        $migration->up();
+
+        $this->assertSame(0, CashEntry::where('type', CashEntryType::COUNT_VARIANCE)->count());
+        $this->assertEquals(1150, $this->drawer());
+        $this->assertEquals(1150, CashEntry::where('account', CashAccount::DRAWER)->orderByDesc('id')->value('balance_after'), 'running balance rebuilt');
+        $this->assertNull($count->fresh()->entry_id);
+        $this->assertSame(['500' => 1, '100' => 4, '20' => 2], $count->fresh()->denominations, 'the count record itself is kept');
+
+        $migration->up();
+        $this->assertEquals(1150, $this->drawer(), 'running it again changes nothing');
     }
 
     // ----------------------------------------------------------- reversals
@@ -918,5 +1019,219 @@ class CashCalculationTest extends TestCase
         $this->assertSame('Owner', $alerts['pos_reversals'][0]['by']);
         $this->assertSame('Cashier', $alerts['pin_failures'][0]['by']);
         $this->assertSame(1, $alerts['pin_failures'][0]['count']);
+    }
+
+    // ------------------------------------------------ counted by, and reset
+
+    // A count is credited to the employee who counted the notes, picked from
+    // the employee list - not to whoever typed it in.
+    public function test_a_count_is_credited_to_the_employee_who_counted(): void
+    {
+        $rahim = $this->user('Rahim', EnumRole::STUFF);
+        $this->add(1000)->assertSuccessful();
+
+        $this->postJson('/api/admin/cash-calculation/count', [
+            'outlet_id'     => $this->outlet->id,
+            'account'       => CashAccount::DRAWER,
+            'counted_by_id' => $rahim->id,
+            'denominations' => ['500' => 2],
+        ])->assertSuccessful()->assertJsonPath('data.by', 'Rahim');
+
+        $count = $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id)->json('data.counts.0');
+        $this->assertSame('Rahim', $count['by']);
+        $this->assertSame('Owner', $count['entered_by']);
+        $this->assertSame($rahim->id, CashCount::sole()->counted_by_id);
+    }
+
+    public function test_only_an_active_employee_can_be_named_as_the_counter(): void
+    {
+        $this->add(1000)->assertSuccessful();
+        $shopper = $this->user('Shopper', EnumRole::CUSTOMER);
+
+        $this->postJson('/api/admin/cash-calculation/count', [
+            'outlet_id'     => $this->outlet->id,
+            'account'       => CashAccount::DRAWER,
+            'counted_by_id' => $shopper->id,
+            'counted'       => 1000,
+        ])->assertStatus(422)->assertJsonValidationErrors('counted_by_id');
+
+        $this->assertSame(0, CashCount::count());
+    }
+
+    public function test_the_counter_list_is_the_active_employees(): void
+    {
+        $this->user('Rahim', EnumRole::STUFF);
+        $this->user('Gone', EnumRole::STUFF)->update(['status' => Status::INACTIVE]);
+        $this->user('Shopper', EnumRole::CUSTOMER);
+
+        $names = array_column($this->getJson('/api/admin/cash-calculation/employees')->assertSuccessful()->json('data'), 'name');
+
+        $this->assertSame(['Cashier', 'Owner', 'Rahim'], $names);
+    }
+
+    // Settings -> Reset: every balance of the branch to zero, with the PIN.
+    // Done as recorded entries, so the history stays and shows who did it.
+    public function test_reset_sets_every_balance_of_the_branch_to_zero_with_the_pin(): void
+    {
+        $other = $this->outlet('Second');
+        $this->enableMfs();
+        $this->add(1000)->assertSuccessful();
+        $this->add(500, CashAccount::BKASH_SIM)->assertSuccessful();
+        $this->ringUp(PosPaymentMethod::CARD, 300);
+        $this->add(700, CashAccount::DRAWER, $other)->assertSuccessful();
+
+        $reset = fn(string $pin) => $this->postJson('/api/admin/cash-calculation/reset', ['outlet_id' => $this->outlet->id, 'pin' => $pin]);
+
+        $reset('00000')->assertStatus(422);
+        $this->assertEquals(1000, $this->drawer(), 'a wrong PIN changes nothing');
+
+        $reset('51920')->assertSuccessful();
+
+        foreach ([CashAccount::DRAWER, CashAccount::BKASH_SIM, CashAccount::POS_CARD] as $account) {
+            $this->assertEquals(0, $this->balanceOf($account), 'account ' . $account);
+        }
+        $this->assertEquals(700, $this->drawer($other), 'other branches untouched');
+        $this->assertSame(3, CashEntry::where('type', CashEntryType::RESET)->count());
+        $this->assertTrue(CashEntry::where('type', CashEntryType::ADD)->exists(), 'history kept');
+
+        $drawer = $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id)->json('data.drawer');
+        $this->assertEquals(-1000, $drawer['reset']);
+        $this->assertEquals(0, $drawer['closing']);
+    }
+
+    public function test_resetting_a_branch_already_at_zero_posts_nothing(): void
+    {
+        $this->postJson('/api/admin/cash-calculation/reset', ['outlet_id' => $this->outlet->id, 'pin' => '51920'])->assertSuccessful();
+
+        $this->assertSame(0, CashEntry::count());
+    }
+
+    // ------------------------------------------------ slow connections
+
+    // Everything the page shows, in one request: on a slow line each round
+    // trip costs seconds, and the page used to make three or four in a row.
+    public function test_the_whole_page_comes_in_one_request(): void
+    {
+        $this->user('Rahim', EnumRole::STUFF);
+        $this->add(1000)->assertSuccessful();
+        $this->ringUp(PosPaymentMethod::CARD, 300);
+
+        $data = $this->getJson('/api/admin/cash-calculation/page')->assertSuccessful()->json('data');
+
+        $this->assertSame([$this->outlet->id], array_column($data['outlets'], 'id'));
+        $this->assertContains('Rahim', array_column($data['employees'], 'name'));
+        $this->assertSame($this->outlet->id, $data['summary']['outlet']['id'], 'no branch asked for: the first one');
+        $this->assertEquals(1000, $data['summary']['drawer']['closing']);
+        $this->assertEquals(300, $data['summary']['emoney']['card']['closing']);
+        $this->assertCount(2, $data['entries']['data'], 'the day\'s transactions');
+        $this->assertArrayHasKey('meta', $data['entries'], 'with their pages');
+        $this->assertSame('today', $data['alerts']['period']);
+    }
+
+    public function test_a_cashiers_page_carries_no_figures(): void
+    {
+        $this->add(1000)->assertSuccessful();
+        Sanctum::actingAs($this->cashier);
+
+        $data = $this->getJson('/api/admin/cash-calculation/page?outlet_id=' . $this->outlet->id)->assertSuccessful()->json('data');
+
+        $this->assertFalse($data['summary']['can_see_balance']);
+        $this->assertArrayNotHasKey('drawer', $data['summary']);
+        $this->assertNull($data['alerts']);
+        $this->assertSame([], $data['entries']['data'], 'only their own entries');
+    }
+
+    // A tap repeated because the line was slow - same one-time key - is saved
+    // once, and answered exactly as the first time.
+    public function test_a_repeated_submission_is_saved_only_once(): void
+    {
+        $send = fn(string $key) => $this->withHeaders(['X-Idempotency-Key' => $key])
+            ->postJson('/api/admin/cash-calculation/add', [
+                'outlet_id' => $this->outlet->id,
+                'account'   => CashAccount::DRAWER,
+                'amount'    => 500,
+                'note'      => 'Opening balance',
+            ]);
+
+        $first  = $send('tap-1')->assertSuccessful();
+        $repeat = $send('tap-1')->assertSuccessful()->assertHeader('X-Idempotent-Replay', '1');
+
+        $this->assertSame($first->json(), $repeat->json());
+        $this->assertSame(1, CashEntry::count());
+        $this->assertEquals(500, $this->drawer());
+
+        $send('tap-2')->assertSuccessful();
+        $this->assertEquals(1000, $this->drawer(), 'a new key is a new entry');
+    }
+
+    public function test_a_repeated_count_is_recorded_only_once(): void
+    {
+        $this->add(1000)->assertSuccessful();
+        $send = fn() => $this->withHeaders(['X-Idempotency-Key' => 'count-1'])
+            ->postJson('/api/admin/cash-calculation/count', [
+                'outlet_id' => $this->outlet->id,
+                'account'   => CashAccount::DRAWER,
+                'counted'   => 1000,
+            ])->assertSuccessful();
+
+        $send();
+        $send();
+
+        $this->assertSame(1, CashCount::count());
+    }
+
+    public function test_a_refused_submission_is_not_remembered(): void
+    {
+        $send = fn(string $pin) => $this->withHeaders(['X-Idempotency-Key' => 'withdraw-1'])
+            ->postJson('/api/admin/cash-calculation/withdraw', [
+                'outlet_id' => $this->outlet->id, 'account' => CashAccount::DRAWER, 'amount' => 100,
+                'party' => 'Owner', 'note' => 'Bank', 'pin' => $pin,
+            ]);
+        $this->add(500)->assertSuccessful();
+
+        $send('00000')->assertStatus(422);
+        $send('51920')->assertSuccessful(); // same key, now with the right PIN
+
+        $this->assertEquals(400, $this->drawer());
+    }
+
+    // Two views of the watch list: just today, or today and the six days
+    // before it. Nothing older than that in either.
+    public function test_the_watch_list_shows_today_or_the_last_seven_days(): void
+    {
+        $count = fn(int $counted) => $this->postJson('/api/admin/cash-calculation/count', [
+            'outlet_id' => $this->outlet->id,
+            'account'   => CashAccount::DRAWER,
+            'counted'   => $counted,
+        ])->assertSuccessful();
+
+        Carbon::setTestNow('2026-09-20 12:00:00');
+        $this->add(1000)->assertSuccessful();
+        $count(900);                                     // 9 days ago: in neither
+        Carbon::setTestNow('2026-09-23 09:00:00');
+        $count(800);                                     // 6 days ago: last 7 days only
+        Carbon::setTestNow('2026-09-29 08:00:00');
+        $count(700);                                     // today: both
+        Sanctum::actingAs($this->cashier);
+        $this->withdraw(10, '00000');                    // wrong PIN today
+        Sanctum::actingAs($this->owner);
+
+        $alerts = fn(string $period) => $this->getJson('/api/admin/cash-calculation/alerts?outlet_id=' . $this->outlet->id . '&period=' . $period)
+            ->assertSuccessful()->json('data');
+
+        $today = $alerts('today');
+        $this->assertSame('today', $today['period']);
+        $this->assertEquals([-300], array_column($today['shortages'], 'variance'));
+        $this->assertCount(1, $today['pin_failures']);
+
+        $week = $alerts('week');
+        $this->assertSame('week', $week['period']);
+        $this->assertEquals([-300, -200], array_column($week['shortages'], 'variance'));
+
+        // No period given: the last 7 days, as before.
+        $this->assertSame('week', $this->getJson('/api/admin/cash-calculation/alerts?outlet_id=' . $this->outlet->id)->json('data.period'));
+
+        $this->getJson('/api/admin/cash-calculation/alerts?outlet_id=' . $this->outlet->id . '&period=year')
+            ->assertStatus(422)->assertJsonValidationErrors('period');
     }
 }

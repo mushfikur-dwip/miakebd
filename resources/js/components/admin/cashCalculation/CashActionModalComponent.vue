@@ -31,12 +31,13 @@
                             {{ outlet.mfs_enabled ? tr('turn_off') : tr('turn_on') }}
                         </button>
                     </form>
-                    <small class="db-field-alert" v-if="errors.pin">{{ errors.pin }}</small>
+                    <small class="db-field-alert" v-if="section === 'mfs' && errors.pin">{{ errors.pin }}</small>
                     <small class="db-field-alert d-block" v-if="section === 'mfs' && message">{{ message }}</small>
                 </div>
 
                 <form class="rounded-lg border p-4" @submit.prevent="changePin">
                     <h4 class="font-semibold mb-3">{{ tr('change_pin') }}</h4>
+                    <p v-if="usesDefaultPin" class="default-pin-note mb-3 rounded-md bg-amber-50 text-amber-800 p-2 text-xs">{{ tr('default_pin_warning') }}</p>
                     <div class="space-y-3">
                         <div>
                             <label class="db-field-title">{{ tr('current_pin') }}</label>
@@ -60,6 +61,28 @@
                             <span>{{ tr('change_pin') }}</span>
                         </button>
                     </div>
+                </form>
+
+                <!-- Every balance of the branch to 0. The history keeps the
+                     reset as lines of its own, so nothing disappears. -->
+                <form class="cash-reset rounded-lg border border-red-200 p-4" @submit.prevent="reset">
+                    <h4 class="font-semibold text-red-700">{{ tr('reset_title') }}</h4>
+                    <p class="text-xs text-gray-500 mt-1 mb-3">{{ tr('reset_help') }}</p>
+                    <label class="flex items-start gap-2 text-sm mb-3 cursor-pointer">
+                        <input v-model="form.reset_ok" type="checkbox" class="mt-0.5" />
+                        <span>{{ tr('reset_confirm', { branch: outlet.name }) }}</span>
+                    </label>
+                    <div class="flex flex-wrap items-end gap-2">
+                        <div class="flex-1 min-w-[140px]">
+                            <label class="db-field-title">{{ tr('pin') }}</label>
+                            <input v-model="form.reset_pin" type="password" inputmode="numeric" autocomplete="off" class="db-field-control" />
+                        </div>
+                        <button type="submit" class="db-btn py-2 text-white bg-red-600 disabled:opacity-50" :disabled="busy || !form.reset_ok || !form.reset_pin">
+                            {{ tr('reset_button') }}
+                        </button>
+                    </div>
+                    <small class="db-field-alert" v-if="section === 'reset' && errors.pin">{{ errors.pin }}</small>
+                    <small class="db-field-alert d-block" v-if="section === 'reset' && message">{{ message }}</small>
                 </form>
             </div>
 
@@ -104,6 +127,14 @@
                     <!-- Blind count -->
                     <template v-if="action.type === 'count'">
                         <p class="text-xs text-gray-500">{{ isSim ? tr('sim_count_help') : tr('blind_count_help') }}</p>
+                        <div v-if="employees.length">
+                            <label class="db-field-title required">{{ tr('counted_by') }}</label>
+                            <select v-model="form.counted_by_id" class="db-field-control counted-by">
+                                <option value="">{{ tr('choose_counter') }}</option>
+                                <option v-for="employee in employees" :key="employee.id" :value="employee.id">{{ employee.name }}</option>
+                            </select>
+                            <small class="db-field-alert" v-if="errors.counted_by_id">{{ errors.counted_by_id }}</small>
+                        </div>
                         <div v-if="isSim">
                             <label class="db-field-title required">{{ [ACCOUNT.POS_CARD, ACCOUNT.POS_MFS].includes(form.account) ? tr('balance') : tr('sim_balance') }}</label>
                             <input v-model="form.counted" type="number" min="0" step="0.01" class="db-field-control" />
@@ -185,7 +216,17 @@
                      viewer only, so a cashier's count stays blind - what was
                      expected and the difference. -->
                 <div v-if="result" class="mt-4 rounded-lg border overflow-hidden text-sm">
-                    <div class="px-3 py-2 bg-gray-50 font-semibold">{{ tr('count_saved') }}</div>
+                    <!-- The point of a count: does it match the calculation? A
+                         count never moves money, so a mismatch means count again. -->
+                    <div class="count-verdict flex items-start gap-2 px-3 py-3 font-semibold"
+                        :class="result.matched ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'">
+                        <i :class="result.matched ? 'fa-solid fa-circle-check text-green-600' : 'fa-solid fa-triangle-exclamation text-amber-600'"
+                            class="text-lg leading-5" aria-hidden="true"></i>
+                        <span>{{ result.matched ? tr('count_correct') : tr('count_wrong') }}</span>
+                    </div>
+                    <div class="px-3 py-1.5 border-t bg-gray-50 text-xs text-gray-500">
+                        {{ tr('count_saved') }}<template v-if="result.by"> · {{ tr('counted_by') }}: <b>{{ result.by }}</b></template> · {{ tr('count_is_check') }}
+                    </div>
                     <table v-if="result.denominations && result.denominations.length" class="w-full">
                         <tbody>
                             <tr v-for="line in result.denominations" :key="line.note" class="border-t border-gray-100">
@@ -216,6 +257,11 @@
                         <i class="fa-solid fa-circle-check"></i>
                         <span>{{ tr('save') }}</span>
                     </button>
+                    <!-- Not matched: straight back to an empty count. -->
+                    <button v-if="result && !result.matched" type="button" class="modal-btn-fill" @click="countAgain">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>{{ tr('count_again') }}</span>
+                    </button>
                     <button type="button" class="modal-btn-outline" @click="$emit('close')">
                         <i class="fa-solid fa-circle-xmark"></i>
                         <span>{{ tr('close') }}</span>
@@ -227,9 +273,9 @@
 </template>
 
 <script>
-import axios from "axios";
 import alertService from "../../../services/alertService";
 import { tr, ACCOUNT, ALL_ACCOUNTS, BASE_ACCOUNTS, NOTE_ACCOUNTS } from "./cashCalculationText";
+import { save, failure } from "./cashHttp";
 
 export default {
     name: "CashActionModalComponent",
@@ -238,6 +284,9 @@ export default {
         outlet: { type: Object, required: true },
         denominations: { type: Array, default: () => [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1] },
         money: { type: Function, required: true },
+        // Who can be named under "Counted by".
+        employees: { type: Array, default: () => [] },
+        usesDefaultPin: { type: Boolean, default: false },
     },
     emits: ["close", "saved"],
     data() {
@@ -262,8 +311,15 @@ export default {
                 current_pin: "",
                 new_pin: "",
                 new_pin_confirmation: "",
+                counted_by_id: "",
+                reset_pin: "",
+                reset_ok: false,
             },
         };
+    },
+    created() {
+        // Lets a save whose answer was lost be sent again without saving twice.
+        this.resend = {};
     },
     computed: {
         accounts: function () {
@@ -320,10 +376,12 @@ export default {
                         ...base, provider: this.action.provider, kind: this.action.kind, amount: f.amount,
                         party: f.party, reference: f.reference, note: f.note,
                     }];
-                case "count":
+                case "count": {
+                    const by = f.counted_by_id ? { counted_by_id: f.counted_by_id } : {};
                     return ["admin/cash-calculation/count", this.isSim
-                        ? { ...base, account: f.account, counted: f.counted }
-                        : { ...base, account: f.account, denominations: this.pieces() }];
+                        ? { ...base, ...by, account: f.account, counted: f.counted }
+                        : { ...base, ...by, account: f.account, denominations: this.pieces() }];
+                }
                 case "reverse":
                     return ["admin/cash-calculation/reverse/" + this.action.entry.id, { note: f.note, pin: f.pin }];
             }
@@ -344,6 +402,10 @@ export default {
             return pieces;
         },
         submit: function () {
+            if (this.action.type === "count" && this.employees.length && !this.form.counted_by_id) {
+                this.errors = { counted_by_id: tr("choose_counter_first") };
+                return;
+            }
             const [url, data] = this.payload();
             this.send(url, data, "", (res) => {
                 if (this.action.type === "count" && res.data.data) {
@@ -353,9 +415,21 @@ export default {
                     this.$emit("saved", false);
                     return;
                 }
+                if (this.action.type === "add") {
+                    // The page shows the big green tick for this one.
+                    this.$emit("saved", true, { kind: "add", account: this.form.account, amount: Number(this.form.amount) });
+                    return;
+                }
                 alertService.success(this.action.type === "count" ? tr("count_saved") : tr("saved"));
                 this.$emit("saved", true);
             });
+        },
+        countAgain: function () {
+            this.result = null;
+            this.form.pieces = {};
+            this.form.counted = "";
+            this.message = "";
+            this.errors = {};
         },
         toggleMfs: function () {
             this.send("admin/cash-calculation/mfs-toggle", {
@@ -364,6 +438,16 @@ export default {
                 pin: this.form.pin,
             }, "mfs", () => {
                 alertService.success(tr("saved"));
+                this.$emit("saved", true);
+            });
+        },
+        reset: function () {
+            this.send("admin/cash-calculation/reset", {
+                outlet_id: this.outlet.id,
+                pin: this.form.reset_pin,
+            }, "reset", (res) => {
+                const n = res.data.data ? res.data.data.accounts_reset : 0;
+                alertService.success(n ? tr("reset_done", { n }) : tr("reset_nothing"));
                 this.$emit("saved", true);
             });
         },
@@ -383,7 +467,7 @@ export default {
             this.message = "";
             this.section = section;
             this.errors = {};
-            axios.post(url, data).then((res) => {
+            save(url, data, this.resend).then((res) => {
                 this.busy = false;
                 done(res);
             }).catch((err) => {
@@ -399,9 +483,14 @@ export default {
                         this.message = body.message;
                     }
                 } else {
-                    this.message = body.message || tr("something_wrong");
+                    this.message = failure(err);
                 }
-                this.form.pin = "";
+                // A refused PIN is typed again; a lost connection keeps it, so
+                // tapping again resends exactly the same save.
+                if (!err.isNetworkError) {
+                    this.form.pin = "";
+                    this.form.reset_pin = "";
+                }
             });
         },
     },

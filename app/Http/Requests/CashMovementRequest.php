@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Status;
+use App\Models\User;
 use App\Services\CashLedgerService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -45,6 +47,12 @@ class CashMovementRequest extends FormRequest
                 'counted'         => ['required_without:denominations', 'nullable', 'numeric', 'min:0', 'max:999999999'],
                 'denominations'   => ['nullable', 'array'],
                 'denominations.*' => ['integer', 'min:0', 'max:1000000'],
+                // Who counted the notes: an active employee, never a customer.
+                'counted_by_id'   => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                    if (!User::employees()->where('status', Status::ACTIVE)->whereKey($value)->exists()) {
+                        $fail(trans('validation.exists', ['attribute' => 'counted by']));
+                    }
+                }],
             ],
             'withdraw'  => [
                 'outlet_id' => $outlet,
@@ -64,6 +72,7 @@ class CashMovementRequest extends FormRequest
             ],
             'reverse'   => ['note' => $note, 'pin' => $pin],
             'mfsToggle' => ['outlet_id' => $outlet, 'enabled' => ['required', 'boolean'], 'pin' => $pin],
+            'reset'     => ['outlet_id' => $outlet, 'pin' => $pin],
             'changePin' => [
                 'outlet_id'   => $outlet,
                 'current_pin' => $pin,

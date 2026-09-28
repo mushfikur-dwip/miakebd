@@ -58,19 +58,21 @@
             <!-- Cashier: record only, no figures -->
             <div v-if="!canSeeBalance" class="db-card p-4 mb-6">
                 <p class="text-sm text-gray-500 mb-4">{{ tr('cashier_help') }}</p>
+                <!-- The one count: every note in the drawer, the shop's and the agent cash together. -->
+                <button type="button" class="cash-count-btn db-btn w-full sm:w-auto mb-4 justify-center py-3 text-base font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md ring-4 ring-emerald-100"
+                    @click="open({ type: 'count', account: ACCOUNT.DRAWER })">
+                    <i class="fa-solid fa-money-bill-wave" aria-hidden="true"></i>
+                    <span>{{ tr('count_all_cash') }}</span>
+                </button>
                 <h4 class="font-semibold mb-2">{{ tr('shop_cash') }}</h4>
                 <div class="flex flex-wrap gap-2 mb-5">
                     <button type="button" class="db-btn py-2 text-white bg-primary" @click="open({ type: 'add', account: ACCOUNT.DRAWER })">{{ tr('add_money') }}</button>
                     <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'withdraw', account: ACCOUNT.DRAWER })">🔒 {{ tr('withdraw') }}</button>
                     <button v-if="summary.outlet.mfs_enabled" type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'transfer' })">🔒 {{ tr('transfer') }}</button>
-                    <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'count', account: ACCOUNT.DRAWER })">{{ tr('count') }}</button>
                 </div>
                 <div v-if="summary.outlet.mfs_enabled" class="grid gap-4 lg:grid-cols-3">
                     <div v-for="provider in PROVIDERS" :key="provider">
                         <CashMfsQuickComponent :provider="provider" :outlet-id="summary.outlet.id" @saved="(detail) => saved(true, detail)" />
-                        <div class="flex flex-wrap gap-2 mt-2">
-                            <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'count', account: MFS[provider].cash })">{{ tr('count_cash') }}</button>
-                        </div>
                     </div>
                 </div>
 
@@ -128,17 +130,33 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <!-- With agent service on, the drawer also holds the bKash, Nagad
+                             and Recharge cash: this total is what a count should find. -->
+                        <div v-if="summary.outlet.mfs_enabled" class="cash-all-notes mt-3 flex items-center justify-between gap-3 rounded-md bg-emerald-50 px-3 py-2">
+                            <div>
+                                <div class="text-sm font-medium text-emerald-800">{{ tr('all_cash_in_drawer') }}</div>
+                                <div class="text-[11px] text-emerald-700">{{ tr('all_cash_help') }}</div>
+                            </div>
+                            <div class="text-lg font-bold text-emerald-800 whitespace-nowrap">{{ money(summary.grand_total.notes) }}</div>
+                        </div>
                         <p class="text-xs text-gray-500 mt-3">{{ tr('last_count') }}: {{ countText(summary.drawer.last_count) }}</p>
                         <!-- Card and MFS have their own card now; "Other" names no
                              place the money went, so it stays information only. -->
                         <div v-if="summary.pos_other && summary.pos_other.other > 0" class="mt-3 rounded-md bg-gray-50 p-2 text-xs text-gray-600">
                             {{ tr('non_cash_info') }}: {{ tr('other_sales') }} {{ money(summary.pos_other.other) }}
                         </div>
-                        <div class="flex flex-wrap gap-2 mt-auto pt-4" v-if="summary.is_today">
-                            <button type="button" class="db-btn py-2 text-white bg-primary" @click="open({ type: 'add', account: ACCOUNT.DRAWER })">{{ tr('add_money') }}</button>
-                            <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'withdraw', account: ACCOUNT.DRAWER })">🔒 {{ tr('withdraw') }}</button>
-                            <button v-if="summary.outlet.mfs_enabled" type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'transfer' })">🔒 {{ tr('transfer') }}</button>
-                            <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'count', account: ACCOUNT.DRAWER })">{{ tr('count') }}</button>
+                        <div class="mt-auto pt-4 space-y-3" v-if="summary.is_today">
+                            <!-- The one count: every note in the drawer, the shop's and the agent cash together. -->
+                            <button type="button" class="cash-count-btn db-btn w-full justify-center py-3 text-base font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md ring-4 ring-emerald-100"
+                                @click="open({ type: 'count', account: ACCOUNT.DRAWER })">
+                                <i class="fa-solid fa-money-bill-wave" aria-hidden="true"></i>
+                                <span>{{ tr('count_all_cash') }}</span>
+                            </button>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" class="db-btn py-2 text-white bg-primary" @click="open({ type: 'add', account: ACCOUNT.DRAWER })">{{ tr('add_money') }}</button>
+                                <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'withdraw', account: ACCOUNT.DRAWER })">🔒 {{ tr('withdraw') }}</button>
+                                <button v-if="summary.outlet.mfs_enabled" type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'transfer' })">🔒 {{ tr('transfer') }}</button>
+                            </div>
                         </div>
                     </div>
 
@@ -170,10 +188,6 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <p class="text-xs text-gray-500 mt-3">
-                            {{ tr('card_col') }}: {{ countText(summary.emoney.card.last_count) }}<br />
-                            {{ tr('mfs_col') }}: {{ countText(summary.emoney.mfs.last_count) }}
-                        </p>
                         <div class="flex flex-wrap gap-2 mt-auto pt-4" v-if="summary.is_today">
                             <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'withdraw', account: ACCOUNT.POS_CARD })">🔒 {{ tr('withdraw') }}</button>
                         </div>
@@ -204,17 +218,12 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <p class="text-xs text-gray-500 mt-3">
-                            {{ simLabel(provider) }}: {{ countText(pot.sim.last_count) }}<br />
-                            {{ tr('cash') }}: {{ countText(pot.cash.last_count) }}
-                        </p>
                         <div class="mt-auto pt-4" v-if="summary.is_today">
                             <CashMfsQuickComponent :provider="provider" :outlet-id="summary.outlet.id" @saved="(detail) => saved(true, detail)" />
                         </div>
                         <div class="flex flex-wrap gap-2 pt-3" v-if="summary.is_today">
                             <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'add', account: MFS[provider].sim })">{{ tr('add_money') }}</button>
                             <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'withdraw', account: MFS[provider].cash })">🔒 {{ tr('withdraw') }}</button>
-                            <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'count', account: MFS[provider].cash })">{{ tr('count_cash') }}</button>
                         </div>
                     </div>
 

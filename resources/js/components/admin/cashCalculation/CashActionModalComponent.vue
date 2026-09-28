@@ -126,7 +126,7 @@
 
                     <!-- Blind count -->
                     <template v-if="action.type === 'count'">
-                        <p class="text-xs text-gray-500">{{ isSim ? tr('sim_count_help') : tr('blind_count_help') }}</p>
+                        <p class="text-xs text-gray-500">{{ isSim ? tr('sim_count_help') : wholeDrawer && outlet.mfs_enabled ? tr('whole_drawer_help') : tr('blind_count_help') }}</p>
                         <div v-if="employees.length">
                             <label class="db-field-title required">{{ tr('counted_by') }}</label>
                             <select v-model="form.counted_by_id" class="db-field-control counted-by">
@@ -333,6 +333,10 @@ export default {
         isSim: function () {
             return !NOTE_ACCOUNTS.includes(this.form.account);
         },
+        // The drawer holds every note - the count checks them all together.
+        wholeDrawer: function () {
+            return this.form.account === ACCOUNT.DRAWER;
+        },
         countedTotal: function () {
             return this.denominations.reduce((sum, note) => sum + note * (parseInt(this.form.pieces[note], 10) || 0), 0);
         },
@@ -345,7 +349,7 @@ export default {
                 case "reverse": return tr("reverse");
                 case "settings": return tr("settings");
                 case "mfs": return provider + " · " + tr(this.action.kind);
-                case "count": return tr("count") + " · " + tr("acc_" + this.form.account);
+                case "count": return this.wholeDrawer ? tr("count_all_cash") : tr("count") + " · " + tr("acc_" + this.form.account);
                 default: return "";
             }
         },

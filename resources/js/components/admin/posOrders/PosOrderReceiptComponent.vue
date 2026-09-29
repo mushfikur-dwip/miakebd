@@ -1,134 +1,171 @@
 <template>
     <div id="receiptModal" class="modal">
-        <div class="modal-dialog max-w-[302px] rounded-none" id="print">
-            <div class="modal-body">
-                <div class="text-center pb-3.5 border-b border-dashed border-gray-400">
-                    <h3 class="font-bold mb-1">{{ company.company_name }}</h3>
-                    <h4 class="text-sm font-normal">{{ company.company_address }}</h4>
-                    <h5 class="text-sm font-normal">{{ $t('label.tel') }}: {{ company.company_calling_code }} {{
-                        company.company_phone
-                    }}</h5>
+        <div class="modal-dialog max-w-[302px] rounded-none receipt" id="print">
+            <div class="modal-body text-heading">
+                <div class="text-center">
+                    <h3 class="text-[26px] leading-none font-extrabold tracking-[0.3em] ps-[0.3em] text-heading">
+                        {{ company.company_name }}</h3>
+                    <div class="flex items-center justify-center gap-2 my-3" aria-hidden="true">
+                        <span class="w-10 border-t border-heading"></span>
+                        <span class="w-[5px] h-[5px] rotate-45 border border-heading"></span>
+                        <span class="w-10 border-t border-heading"></span>
+                    </div>
+                    <h4 class="mx-auto max-w-[270px] text-[10px] leading-[15px] font-semibold uppercase tracking-[0.14em] text-balance text-heading">
+                        {{ companyAddress }}</h4>
+                    <h5 class="mt-2.5 inline-flex items-center rounded-full border border-heading text-heading">
+                        <span class="ps-3 pe-2 py-[3px] text-[9px] font-bold uppercase tracking-[0.2em] border-e border-heading">{{ $t('label.support') }}</span>
+                        <span class="ps-2 pe-3 py-[3px] text-xs font-bold tracking-[0.06em]" dir="ltr">{{ company.company_calling_code }} {{ company.company_phone }}</span>
+                    </h5>
                 </div>
 
-                <table class="w-full my-1.5">
+                <div class="flex items-center gap-2.5 mt-4 mb-2">
+                    <span class="flex-1 border-t border-heading"></span>
+                    <span class="text-[10px] font-extrabold uppercase tracking-[0.28em] ps-[0.28em] text-heading">{{ $t('menu.order_receipt') }}</span>
+                    <span class="flex-1 border-t border-heading"></span>
+                </div>
+
+                <table class="w-full leading-4">
                     <tbody>
                         <tr v-if="order.branch_name">
-                            <td colspan="2" class="text-xs text-left py-0.5 text-heading">
-                                {{ $t('label.sold_from') }}: {{ order.branch_name }}
+                            <td class="py-[3px] pe-3 align-top whitespace-nowrap text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                {{ $t('label.sold_from') }}
                             </td>
+                            <td class="py-[3px] align-top text-end text-[11px] font-bold text-heading">{{ order.branch_name }}</td>
                         </tr>
                         <tr v-if="order.branch && order.branch.phone">
-                            <td colspan="2" class="text-xs text-left py-0.5 text-heading" dir="ltr">
-                                {{ $t('label.branch') }} {{ $t('label.phone') }}: {{ order.branch.country_code }}{{ order.branch.phone }}
+                            <td class="py-[3px] pe-3 align-top whitespace-nowrap text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                {{ $t('label.branch') }} {{ $t('label.phone') }}
+                            </td>
+                            <td class="py-[3px] align-top text-end text-[11px] font-bold text-heading" dir="ltr">
+                                {{ order.branch.country_code }}{{ order.branch.phone }}
                             </td>
                         </tr>
                         <tr v-if="order.branch && order.branch.address">
-                            <td colspan="2" class="text-xs text-left py-0.5 text-heading">
-                                {{ $t('label.branch') }} {{ $t('label.address') }}: {{ order.branch.address }}
+                            <td class="py-[3px] pe-3 align-top whitespace-nowrap text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                {{ $t('label.branch') }} {{ $t('label.address') }}
                             </td>
+                            <td class="py-[3px] align-top text-end text-[11px] font-bold text-heading">{{ order.branch.address }}</td>
                         </tr>
                         <tr>
-                            <td class="text-xs text-left py-0.5 text-heading">{{ $t('label.order_id') }}
-                                #{{ order.order_serial_no }}
+                            <td class="py-[3px] pe-3 align-top whitespace-nowrap text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                {{ $t('label.order_id') }}
                             </td>
+                            <td class="py-[3px] align-top text-end text-[11px] font-bold text-heading">#{{ order.order_serial_no }}</td>
                         </tr>
                         <tr>
-                            <td class="text-xs text-left py-0.5 text-heading">{{ order.order_date }}</td>
-                            <td class="text-xs text-right py-0.5 text-heading">{{ order.order_time }}</td>
+                            <td class="py-[3px] pe-3 align-top whitespace-nowrap text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                {{ $t('label.date') }}
+                            </td>
+                            <td class="py-[3px] align-top text-end text-[11px] font-bold text-heading">
+                                {{ order.order_date }}<span class="mx-1.5 text-paragraph">&middot;</span>{{ order.order_time }}
+                            </td>
                         </tr>
                     </tbody>
                 </table>
 
-                <table class="w-full">
-                    <thead class="border-t border-b border-dashed border-gray-400">
-                        <tr>
-                            <th scope="col" class="py-1 font-normal text-xs capitalize text-left text-heading w-8">
+                <table class="w-full leading-4 mt-3">
+                    <thead>
+                        <tr class="border-t border-b border-heading">
+                            <th scope="col" class="py-1.5 w-7 text-start text-[9px] font-bold uppercase tracking-[0.14em] text-heading">
                                 {{ $t('label.qty') }}
                             </th>
-                            <th scope="col"
-                                class="py-1 font-normal text-xs capitalize flex items-center justify-between text-heading">
-                                <span>{{ $t('label.product_description') }}</span>
-                                <span>{{ $t('label.price') }}</span>
+                            <th scope="col" class="py-1.5 text-start text-[9px] font-bold uppercase tracking-[0.14em] text-heading">
+                                {{ $t('label.product_description') }}
+                            </th>
+                            <th scope="col" class="py-1.5 text-end text-[9px] font-bold uppercase tracking-[0.14em] text-heading">
+                                {{ $t('label.price') }}
                             </th>
                         </tr>
                     </thead>
 
-                    <tbody class="border-b border-dashed border-gray-400">
-                        <tr v-if="orderProducts.length > 0" v-for="product in orderProducts" :key="product">
-                            <td class="text-left font-normal align-top py-1">
-                                <p class="text-xs leading-5 text-heading">{{ product.quantity }}</p>
+                    <tbody>
+                        <tr v-if="orderProducts.length > 0" v-for="product in orderProducts" :key="product"
+                            class="border-b border-dashed border-gray-300 last:border-b-0">
+                            <td class="py-2 align-top text-[11px] leading-[15px] font-bold text-heading">
+                                {{ product.quantity }}
                             </td>
-                            <td class="text-left font-normal align-top py-1">
-                                <div class="flex items-center justify-between">
-                                    <p class="text-xs leading-5 text-heading">{{ product.product_name }}
-                                    </p>
-                                    <p class="text-xs leading-5 text-heading">{{ product.subtotal_currency_price }}
-                                    </p>
-                                </div>
-                                <p v-if="product.variation_names" class="text-xs leading-5 text-heading max-w-[200px]">
+                            <td class="py-2 pe-3 align-top">
+                                <p class="text-[11px] leading-[15px] font-semibold text-heading">{{ product.product_name }}</p>
+                                <p v-if="product.variation_names" class="mt-0.5 text-[10px] leading-[14px] text-paragraph">
                                     {{ product.variation_names }}
                                 </p>
-                                <p class="text-xs leading-5 text-heading" v-if="product.product_tax.length > 0"
+                                <p class="text-[10px] leading-[14px] text-paragraph" v-if="product.product_tax.length > 0"
                                     v-for="tax in product.product_tax" :key="tax">
                                     {{ tax.tax_name }} ({{ tax.tax_rate }}%)
                                 </p>
+                            </td>
+                            <td class="py-2 align-top text-end text-[11px] leading-[15px] font-semibold whitespace-nowrap tabular-nums text-heading">
+                                {{ product.subtotal_currency_price }}
                             </td>
                         </tr>
                     </tbody>
                 </table>
 
-                <div class="py-2 pl-7">
-                    <table class="w-full">
+                <div class="pt-2 border-t border-heading">
+                    <table class="w-full leading-4">
                         <tbody>
                             <tr>
-                                <td class="text-xs text-left py-0.5 uppercase text-heading">{{ $t('label.subtotal') }}:
+                                <td class="py-[3px] text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                    {{ $t('label.subtotal') }}
                                 </td>
-                                <td class="text-xs text-right py-0.5 text-heading">
+                                <td class="py-[3px] text-end text-[11px] font-semibold tabular-nums text-heading">
                                     {{ order.subtotal_currency_price }}
                                 </td>
                             </tr>
                             <tr>
-                                <td class="text-xs text-left py-0.5 uppercase text-heading">
-                                    {{ $t('label.tax_fee') }}:
+                                <td class="py-[3px] text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                    {{ $t('label.tax_fee') }}
                                 </td>
-                                <td class="text-xs text-right py-0.5 text-heading">
+                                <td class="py-[3px] text-end text-[11px] font-semibold tabular-nums text-heading">
                                     {{ order.tax_currency_price }}
                                 </td>
                             </tr>
                             <tr>
-                                <td class="text-xs text-left py-0.5 uppercase text-heading">{{ $t('label.discount') }}:
+                                <td class="py-[3px] text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                    {{ $t('label.discount') }}
                                 </td>
-                                <td class="text-xs text-right py-0.5 text-heading">{{ order.discount_currency_price }}
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td class="text-xs text-left py-0.5 font-bold uppercase text-heading">
-                                    {{ $t('label.total') }}:
-                                </td>
-                                <td class="text-xs text-right py-0.5 font-bold text-heading">
-                                    {{ order.total_currency_price }}
+                                <td class="py-[3px] text-end text-[11px] font-semibold tabular-nums text-heading">
+                                    {{ order.discount_currency_price }}
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+
+                    <div class="flex items-center justify-between mt-2 py-2 border-t border-b-[3px] border-double border-heading">
+                        <span class="text-xs font-extrabold uppercase tracking-[0.2em] text-heading">{{ $t('label.total') }}</span>
+                        <span class="text-[17px] leading-6 font-extrabold tabular-nums text-heading">{{ order.total_currency_price }}</span>
+                    </div>
                 </div>
-                <p class="text-xs py-2 border-t border-b border-dashed border-gray-400 text-heading">
-                    {{ $t('label.payment_type') }}: {{ order.pos_payment_method_name }}
-                </p>
-                <div class="text-center pt-2 pb-4">
-                    <p class="text-[11px] leading-[14px] capitalize text-heading">
+
+                <table class="w-full leading-4 mt-2">
+                    <tbody>
+                        <tr>
+                            <td class="py-[3px] text-start text-[10px] font-semibold uppercase tracking-[0.12em] text-paragraph">
+                                {{ $t('label.payment_type') }}
+                            </td>
+                            <td class="py-[3px] text-end text-[11px] font-bold text-heading">{{ order.pos_payment_method_name }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="mt-3 pt-4 border-t border-dashed border-gray-400 text-center">
+                    <p class="text-[13px] leading-4 font-extrabold uppercase tracking-[0.35em] ps-[0.35em] text-heading">
                         {{ $t('message.thank_you') }}
                     </p>
-                    <p class="text-[11px] leading-[14px] capitalize text-heading">
+                    <p class="mt-1 text-[10px] leading-[14px] font-semibold uppercase tracking-[0.2em] ps-[0.2em] text-paragraph">
                         {{ $t('message.please_come_again') }}
                     </p>
                     <!-- Settings > Site > Receipt footer text. Not capitalized:
                          it prints as typed, and pre-line keeps its line breaks. -->
                     <p v-if="setting.site_receipt_footer"
-                        class="text-[11px] leading-[14px] text-heading whitespace-pre-line mt-1.5">{{ setting.site_receipt_footer }}</p>
+                        class="mt-2.5 text-[11px] leading-[15px] font-semibold tracking-[0.04em] text-heading whitespace-pre-line">{{ setting.site_receipt_footer }}</p>
+                    <div class="flex items-center justify-center gap-2 mt-3.5" aria-hidden="true">
+                        <span class="w-10 border-t border-heading"></span>
+                        <span class="w-[5px] h-[5px] rotate-45 border border-heading"></span>
+                        <span class="w-10 border-t border-heading"></span>
+                    </div>
                 </div>
-                
+
             </div>
         </div>
     </div>
@@ -145,6 +182,10 @@ export default {
         company: function () {
             return this.$store.getters['company/lists'];
         },
+        // "Level 1,Ramc" -> "Level 1, Ramc": one space after every comma.
+        companyAddress: function () {
+            return (this.company.company_address || '').replace(/\s*,\s*/g, ', ');
+        },
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
         },
@@ -157,3 +198,13 @@ export default {
     }
 }
 </script>
+<style scoped>
+@media print {
+    /* Thermal printers turn grey into faint dots: print everything solid black. */
+    .receipt,
+    .receipt * {
+        color: #000 !important;
+        border-color: #000 !important;
+    }
+}
+</style>

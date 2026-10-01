@@ -12,9 +12,9 @@
                     </div>
                     <h4 class="mx-auto max-w-[270px] text-[10px] leading-[15px] font-semibold uppercase tracking-[0.14em] text-balance text-heading">
                         {{ companyAddress }}</h4>
-                    <h5 class="mt-2.5 inline-flex items-center rounded-full border border-heading text-heading">
-                        <span class="ps-3 pe-2 py-[3px] text-[9px] font-bold uppercase tracking-[0.2em] border-e border-heading">{{ $t('label.support') }}</span>
-                        <span class="ps-2 pe-3 py-[3px] text-xs font-bold tracking-[0.06em]" dir="ltr">{{ company.company_calling_code }} {{ company.company_phone }}</span>
+                    <h5 class="mt-2.5 inline-flex max-w-full items-center whitespace-nowrap rounded-full border border-heading text-heading">
+                        <span class="ps-2.5 pe-2 py-[3px] text-[9px] font-bold uppercase tracking-[0.16em] border-e border-heading">{{ $t('label.support') }}</span>
+                        <span class="ps-2 pe-2.5 py-[3px] text-xs font-bold tracking-[0.03em]" dir="ltr">{{ company.company_calling_code }} {{ company.company_phone }}</span>
                     </h5>
                 </div>
 
@@ -155,10 +155,16 @@
                     <p class="mt-1 text-[10px] leading-[14px] font-semibold uppercase tracking-[0.2em] ps-[0.2em] text-paragraph">
                         {{ $t('message.please_come_again') }}
                     </p>
+                    <div class="mt-3.5 mx-auto max-w-[230px] rounded-md border border-heading px-3 py-2">
+                        <p class="text-[8.5px] leading-3 font-bold uppercase tracking-[0.2em] ps-[0.2em] text-heading">
+                            {{ $t('message.order_online_anytime') }}
+                        </p>
+                        <p class="mt-1 text-[15px] leading-5 font-extrabold tracking-[0.08em] text-heading" dir="ltr">{{ storeDomain }}</p>
+                    </div>
                     <!-- Settings > Site > Receipt footer text. Not capitalized:
                          it prints as typed, and pre-line keeps its line breaks. -->
                     <p v-if="setting.site_receipt_footer"
-                        class="mt-2.5 text-[11px] leading-[15px] font-semibold tracking-[0.04em] text-heading whitespace-pre-line">{{ setting.site_receipt_footer }}</p>
+                        class="mt-3 text-[11px] leading-[15px] font-semibold tracking-[0.04em] text-heading whitespace-pre-line">{{ setting.site_receipt_footer }}</p>
                     <div class="flex items-center justify-center gap-2 mt-3.5" aria-hidden="true">
                         <span class="w-10 border-t border-heading"></span>
                         <span class="w-[5px] h-[5px] rotate-45 border border-heading"></span>
@@ -185,6 +191,10 @@ export default {
         // "Level 1,Ramc" -> "Level 1, Ramc": one space after every comma.
         companyAddress: function () {
             return (this.company.company_address || '').replace(/\s*,\s*/g, ', ');
+        },
+        // The shop and this admin share a domain, so the receipt always names the live one.
+        storeDomain: function () {
+            return window.location.hostname.replace(/^www[.]/, '');
         },
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];

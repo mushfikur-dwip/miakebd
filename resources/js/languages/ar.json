@@ -991,6 +991,7 @@
         "thank_you_for_your_order": ".شكرًا لطلبك",
         "your_order_is_successfully_placed": ".تم وضع طلبك بنجاح",
         "please_come_again": ".الرجاء العودة مرة أخرى",
+        "order_online_anytime": "اطلب أونلاين في أي وقت",
         "discount_error_message": ".الخصم أقل من أو يساوي 100",
         "discount_fixed_error_message": ".مبلغ الخصم لا يتجاوز مبلغ الإجمالي الفرعي",
         "pos_order": ".تم إنشاء طلب نقطة البيع بنجاح",

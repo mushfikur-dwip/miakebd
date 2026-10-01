@@ -1018,6 +1018,7 @@
         "thank_you_for_your_order": "আপনার অর্ডারের জন্য ধন্যবাদ।",
         "your_order_is_successfully_placed": "আপনার অর্ডার সফলভাবে স্থাপিত হয়েছে।",
         "please_come_again": "আবার আসুন অনুগ্রহ করে",
+        "order_online_anytime": "যেকোনো সময় অনলাইনে অর্ডার করুন",
         "discount_error_message": "ডিসকাউন্ট ১০০ এর কম হতে হবে",
         "discount_fixed_error_message": "ডিসকাউন্টের পরিমাণ সাবটোটালের চেয়ে বেশি হতে পারে না",
         "pos_order": "পস অর্ডার সফলভাবে তৈরি হয়েছে",

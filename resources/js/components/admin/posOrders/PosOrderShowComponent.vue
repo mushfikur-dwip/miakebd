@@ -255,6 +255,10 @@ export default {
             printObj: {
                 id: "print",
                 popTitle: this.$t("menu.pos_order_receipt"),
+                // Chrome's default ~1cm page margins squeeze an 80mm roll to ~170px
+                // and wrap the phone number; the receipt's own padding is enough.
+                // (vue3-print-nb splits extraHead on commas, so keep it comma-free.)
+                extraHead: "<style>@page{margin:0}</style>",
             },
             enums: {
                 orderStatusEnum: orderStatusEnum,

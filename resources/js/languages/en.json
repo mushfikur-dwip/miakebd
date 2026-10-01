@@ -1092,6 +1092,7 @@
         "thank_you_for_your_order": "Thank you for your order.",
         "your_order_is_successfully_placed": "Your order is successfully placed.",
         "please_come_again": "Please Come Again",
+        "order_online_anytime": "Order online anytime",
         "discount_error_message": "Discount less then or equal to 100",
         "discount_fixed_error_message": "The discount amount does not over the subtotal amount",
         "pos_order": "Pos Order Created successfully",

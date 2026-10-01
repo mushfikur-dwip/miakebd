@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "test": "node --test tests/js/*.test.js"
     },
     "devDependencies": {
         "@vitejs/plugin-vue": "^5.2.1",

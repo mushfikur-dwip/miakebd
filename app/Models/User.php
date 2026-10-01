@@ -99,19 +99,26 @@ class User extends Authenticatable implements HasMedia
         return $query->whereHas('roles', fn($roles) => $roles->whereNotIn('id', [\App\Enums\Role::ADMIN, \App\Enums\Role::CUSTOMER]));
     }
 
-    /** Adds sales_count and sales_amount; see Order::scopeCountedAsSale(). */
-    public function scopeWithSalesTotals($query)
+    /**
+     * Adds sales_count and sales_amount; see Order::scopeCountedAsSale().
+     * With dates, only sales placed in that period count (the month view).
+     */
+    public function scopeWithSalesTotals($query, ?string $from = null, ?string $to = null)
     {
+        $sales = fn($orders) => $orders->countedAsSale()->placedBetween($from, $to);
+
         return $query
-            ->withCount(['salesOrders as sales_count' => fn($orders) => $orders->countedAsSale()])
-            ->withSum(['salesOrders as sales_amount' => fn($orders) => $orders->countedAsSale()], 'total');
+            ->withCount(['salesOrders as sales_count' => $sales])
+            ->withSum(['salesOrders as sales_amount' => $sales], 'total');
     }
 
-    public function loadSalesTotals(): static
+    public function loadSalesTotals(?string $from = null, ?string $to = null): static
     {
+        $sales = fn($orders) => $orders->countedAsSale()->placedBetween($from, $to);
+
         return $this
-            ->loadCount(['salesOrders as sales_count' => fn($orders) => $orders->countedAsSale()])
-            ->loadSum(['salesOrders as sales_amount' => fn($orders) => $orders->countedAsSale()], 'total');
+            ->loadCount(['salesOrders as sales_count' => $sales])
+            ->loadSum(['salesOrders as sales_amount' => $sales], 'total');
     }
 
     public function scopeNotGuest($query)

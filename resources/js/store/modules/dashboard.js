@@ -58,10 +58,11 @@ export const dashboard = {
     },
 
     actions: {
-        totalSales: function (context) {
+        // payload (optional): { first_date, last_date } for one period; all-time without it.
+        totalSales: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios
-                    .get("admin/dashboard/total-sales")
+                    .get("admin/dashboard/total-sales" + (payload ? appService.requestHandler(payload) : ""))
                     .then((res) => {
                         context.commit("totalSales", res.data.data);
                         resolve(res);
@@ -71,10 +72,10 @@ export const dashboard = {
                     });
             });
         },
-        totalOrders: function (context) {
+        totalOrders: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios
-                    .get("admin/dashboard/total-orders")
+                    .get("admin/dashboard/total-orders" + (payload ? appService.requestHandler(payload) : ""))
                     .then((res) => {
                         context.commit("totalOrders", res.data.data);
                         resolve(res);

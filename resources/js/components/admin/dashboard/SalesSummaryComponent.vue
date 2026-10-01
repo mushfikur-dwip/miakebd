@@ -39,9 +39,22 @@
 import LoadingComponent from "../components/LoadingComponent";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
+import monthService from "../../../services/monthService";
 export default {
     name: "SalesSummaryComponent",
     components: { LoadingComponent, Datepicker },
+    props: {
+        // The dashboard's month ({ from_date, to_date }), shown until another range is picked here.
+        month: { type: Object, required: true },
+    },
+    watch: {
+        month: {
+            deep: true,
+            handler: function () {
+                this.followMonth();
+            },
+        },
+    },
     data() {
         return {
             loading: {
@@ -56,13 +69,13 @@ export default {
         };
     },
     mounted() {
-        const date = new Date();
-        const startDate = new Date(date.getFullYear(), date.getMonth(), 1);
-        const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-        this.modelValue = [startDate, endDate];
-        this.salesSummary();
+        this.followMonth();
     },
     methods: {
+        followMonth: function () {
+            this.modelValue = monthService.dates(this.month);
+            this.salesSummary([this.month.from_date, this.month.to_date]);
+        },
         salesSummary: function (e) {
             let date = {
                 first_date: '',

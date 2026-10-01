@@ -178,20 +178,23 @@ class DashboardService
         }
     }
 
-    public function totalSales()
+    /** All-time, or only orders placed between first_date and last_date (the month view). */
+    public function totalSales(Request $request)
     {
         try {
-            return Order::where('payment_status', PaymentStatus::PAID)->sum('total');
+            return Order::where('payment_status', PaymentStatus::PAID)
+                ->placedBetween($request->first_date, $request->last_date)->sum('total');
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
     }
 
-    public function totalOrders()
+    public function totalOrders(Request $request)
     {
         try {
-            return Order::where('status', OrderStatus::DELIVERED)->count();
+            return Order::where('status', OrderStatus::DELIVERED)
+                ->placedBetween($request->first_date, $request->last_date)->count();
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

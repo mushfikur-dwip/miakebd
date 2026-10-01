@@ -9,6 +9,7 @@
                 <div class="db-card-header border-none">
                     <h3 class="db-card-title">{{ $t('menu.transactions') }}</h3>
                     <div class="db-card-filter">
+                        <MonthFilterComponent :search="props.search" :method="list" @change="modelValue = $event" />
                         <TableLimitComponent :method="list" :search="props.search" :page="paginationPage" />
                         <FilterComponent @click.prevent="handleSlide('transaction-filter')" />
                         <div class="dropdown-group">
@@ -145,6 +146,8 @@ import PaginationBox from "../components/pagination/PaginationBox";
 import PaginationSMBox from "../components/pagination/PaginationSMBox";
 import appService from "../../../services/appService";
 import TableLimitComponent from "../components/TableLimitComponent";
+import MonthFilterComponent from "../components/MonthFilterComponent";
+import monthService from "../../../services/monthService";
 import FilterComponent from "../components/buttons/collapse/FilterComponent";
 import ExportComponent from "../components/buttons/export/ExportComponent";
 import PrintComponent from "../components/buttons/export/PrintComponent";
@@ -159,6 +162,7 @@ export default {
     name: "TransactionListComponent",
     components: {
         TableLimitComponent,
+        MonthFilterComponent,
         PaginationSMBox,
         PaginationBox,
         PaginationTextComponent,
@@ -171,6 +175,7 @@ export default {
         BreadcrumbComponent
     },
     data() {
+        const month = monthService.monthOf();
         return {
             loading: {
                 isActive: false
@@ -191,11 +196,11 @@ export default {
                     order_serial_no: "",
                     transaction_no: "",
                     payment_method: null,
-                    from_date: "",
-                    to_date: ""
+                    from_date: month.from_date,
+                    to_date: month.to_date
                 }
             },
-            modelValue: null,
+            modelValue: monthService.dates(month),
             ENV:ENV
         }
     },
@@ -255,9 +260,10 @@ export default {
             this.props.search.order_serial_no = "";
             this.props.search.transaction_no = "";
             this.props.search.payment_method = null;
-            this.props.search.from_date = "";
-            this.props.search.to_date = "";
-            this.modelValue = null;
+            const month = monthService.monthOf();
+            this.props.search.from_date = month.from_date;
+            this.props.search.to_date = month.to_date;
+            this.modelValue = monthService.dates(month);
             this.list();
         },
         list: function (page = 1) {

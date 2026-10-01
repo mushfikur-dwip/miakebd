@@ -6,12 +6,16 @@
         <p>{{ $t('label.data_reset') }}</p>
     </div>
 
-    <div class="mb-8">
-        <h3 class="capitalize font-bold text-2xl text-primary mb-1.5">{{ visitorMessage() }}</h3>
-        <h4 class="capitalize font-medium text-xl text-secondary">{{ authInfo.name }}</h4>
+    <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <h3 class="capitalize font-bold text-2xl text-primary mb-1.5">{{ visitorMessage() }}</h3>
+            <h4 class="capitalize font-medium text-xl text-secondary">{{ authInfo.name }}</h4>
+        </div>
+        <!-- Earnings, orders and the monthly charts below follow this month. -->
+        <MonthFilterComponent :search="month" />
     </div>
     <!--========OVERVIEW START=============-->
-    <OverviewComponent />
+    <OverviewComponent :month="month" />
     <!--========OVERVIEW END=============-->
 
     <!--========ORDER STATISTIC START=============-->
@@ -19,11 +23,11 @@
     <!--========ORDER STATISTIC END=============-->
     <div class="row">
         <!--========SALES SUMMARY START=============-->
-        <SalesSummaryComponent />
+        <SalesSummaryComponent :month="month" />
         <!--========SALES SUMMARY END=============-->
 
         <!--========ORDERS SUMMARY START=============-->
-        <OrderSummaryComponent />
+        <OrderSummaryComponent :month="month" />
         <!--========ORDERS SUMMARY END=============-->
 
         <!--========BRANCH SALES SUMMARY START=============-->
@@ -31,7 +35,7 @@
         <!--========BRANCH SALES SUMMARY END=============-->
 
         <!--========CUSTOMER STATS START=============-->
-        <CustomerStatsComponent />
+        <CustomerStatsComponent :month="month" />
         <!--========CUSTOMER STATS END=============-->
 
         <!--========TOP CUSTOMERS START=============-->
@@ -54,6 +58,8 @@ import BranchSalesSummaryComponent from "./BranchSalesSummaryComponent";
 import CustomerStatsComponent from "./CustomerStatsComponent";
 import TopCustomersComponent from "./TopCustomersComponent";
 import TopProductsComponent from "./TopProductsComponent";
+import MonthFilterComponent from "../components/MonthFilterComponent";
+import monthService from "../../../services/monthService";
 import ENV from "../../../config/env";
 
 export default {
@@ -68,12 +74,14 @@ export default {
         CustomerStatsComponent,
         TopCustomersComponent,
         TopProductsComponent,
+        MonthFilterComponent,
     },
     data() {
         return {
             loading: {
                 isActive: false,
             },
+            month: monthService.monthOf(),
             demo: ENV.DEMO
         };
     },

@@ -92,9 +92,12 @@ export const employee = {
                 });
             });
         },
+        // payload: the employee id, or { id, search } to count sales in search's from_date/to_date.
         show: function (context, payload) {
+            const id = payload?.id ?? payload;
+            const query = payload?.search ? appService.requestHandler(payload.search) : "";
             return new Promise((resolve, reject) => {
-                axios.get(`admin/employee/show/${payload}`).then((res) => {
+                axios.get(`admin/employee/show/${id}${query}`).then((res) => {
                     context.commit("show", res.data.data);
                     resolve(res);
                 }).catch((err) => {

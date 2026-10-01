@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\OrderService;
 use App\Exports\EmployeeExport;
 use App\Services\EmployeeService;
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Resources\OrderResource;
 use App\Http\Requests\EmployeeRequest;
@@ -80,10 +81,10 @@ class EmployeeController extends AdminController implements HasMiddleware
         }
     }
 
-    public function show(User $employee): \Illuminate\Http\Response | EmployeeResource | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
+    public function show(Request $request, User $employee): \Illuminate\Http\Response | EmployeeResource | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
     {
         try {
-            return new EmployeeResource($this->employeeService->show($employee));
+            return new EmployeeResource($this->employeeService->show($employee, $request->get('from_date'), $request->get('to_date')));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

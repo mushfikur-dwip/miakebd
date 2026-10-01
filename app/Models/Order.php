@@ -94,6 +94,21 @@ class Order extends Model
             ->whereNotIn('status', [OrderStatus::CANCELED, OrderStatus::REJECTED]);
     }
 
+    /**
+     * Orders placed between two dates, both days included. Dates are parsed
+     * like the report filters' from_date/to_date; without both there is no
+     * limit, so callers can pass the request values straight through.
+     */
+    public function scopePlacedBetween($query, ?string $from, ?string $to)
+    {
+        if ($from && $to) {
+            $query->whereDate('order_datetime', '>=', date('Y-m-d', strtotime($from)))
+                ->whereDate('order_datetime', '<=', date('Y-m-d', strtotime($to)));
+        }
+
+        return $query;
+    }
+
     public function outlet(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Outlet::class);

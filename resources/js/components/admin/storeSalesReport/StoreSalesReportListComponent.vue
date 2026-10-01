@@ -5,6 +5,7 @@
             <div class="db-card-header">
                 <h3 class="db-card-title">{{ $t('menu.store_sales_report') }}</h3>
                 <div class="db-card-filter">
+                    <MonthFilterComponent :search="props.search" :method="list" @change="modelValue = $event" />
                     <TableLimitComponent :method="list" :search="props.search" :page="paginationPage" />
                     <FilterComponent @click.prevent="handleSlide('store-sales-report-filter')" />
                     <div class="dropdown-group">
@@ -203,6 +204,8 @@ import PaginationTextComponent from "../components/pagination/PaginationTextComp
 import PaginationBox from "../components/pagination/PaginationBox";
 import PaginationSMBox from "../components/pagination/PaginationSMBox";
 import TableLimitComponent from "../components/TableLimitComponent";
+import MonthFilterComponent from "../components/MonthFilterComponent";
+import monthService from "../../../services/monthService";
 import FilterComponent from "../components/buttons/collapse/FilterComponent";
 import ExportComponent from "../components/buttons/export/ExportComponent";
 import PrintComponent from "../components/buttons/export/PrintComponent";
@@ -225,6 +228,7 @@ export default {
         PaginationBox,
         PaginationSMBox,
         TableLimitComponent,
+        MonthFilterComponent,
         FilterComponent,
         ExportComponent,
         PrintComponent,
@@ -233,6 +237,7 @@ export default {
         Datepicker,
     },
     data() {
+        const month = monthService.monthOf();
         return {
             loading: { isActive: false },
             printObj: {
@@ -249,11 +254,11 @@ export default {
                     outlet_id: null,
                     status: null,
                     payment_method: null,
-                    from_date: "",
-                    to_date: "",
+                    from_date: month.from_date,
+                    to_date: month.to_date,
                 }
             },
-            modelValue: null,
+            modelValue: monthService.dates(month),
             orderStatusOptions: [
                 { id: orderStatusEnum.PENDING, name: this.$t('label.pending') },
                 { id: orderStatusEnum.CONFIRMED, name: this.$t('label.confirmed') },
@@ -329,9 +334,10 @@ export default {
             this.props.search.outlet_id = null;
             this.props.search.status = null;
             this.props.search.payment_method = null;
-            this.props.search.from_date = "";
-            this.props.search.to_date = "";
-            this.modelValue = null;
+            const month = monthService.monthOf();
+            this.props.search.from_date = month.from_date;
+            this.props.search.to_date = month.to_date;
+            this.modelValue = monthService.dates(month);
             this.list();
         },
         list: function (page = 1) {

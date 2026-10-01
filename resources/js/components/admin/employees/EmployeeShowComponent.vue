@@ -13,7 +13,8 @@
                         class="p-0.5 px-2 rounded text-[10px] leading-4 font-medium font-rubik uppercase mb-[22px] text-[#E89806] bg-[#FFF5DE]">
                         {{ employee.role }}
                     </label><br>
-                    <div class="flex flex-wrap gap-x-6 gap-y-1 mb-4 text-sm text-heading">
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mb-4 text-sm text-heading">
+                        <MonthFilterComponent :search="salesMonth" :method="loadEmployee" />
                         <span>{{ $t('label.sales') }}: <b>{{ employee.sales_count }}</b></span>
                         <span>{{ $t('label.sales_amount') }}: <b>{{ employee.sales_currency_amount }}</b></span>
                     </div>
@@ -227,6 +228,8 @@
 
 <script>
 import LoadingComponent from "../components/LoadingComponent";
+import MonthFilterComponent from "../components/MonthFilterComponent";
+import monthService from "../../../services/monthService";
 import statusEnum from "../../../enums/modules/statusEnum";
 import askEnum from "../../../enums/modules/askEnum";
 import alertService from "../../../services/alertService";
@@ -242,6 +245,7 @@ export default {
     components: {
         EmployeeAddressList,
         LoadingComponent,
+        MonthFilterComponent,
         PaginationSMBox,
         PaginationBox,
         PaginationTextComponent,
@@ -279,6 +283,8 @@ export default {
                 order_column: 'id',
                 active: askEnum.YES,
             },
+            // The period Sales and Sales Amount count; opens on this month.
+            salesMonth: monthService.monthOf(),
             ENV: ENV,
         };
     },
@@ -297,17 +303,24 @@ export default {
         },
     },
     mounted() {
-        this.loading.isActive = true;
-        this.$store.dispatch("employee/show", this.$route.params.id).then((res) => {
-            this.defaultImage = res.data.data.image;
-            this.previewImage = res.data.data.image;
-            this.loading.isActive = false;
-        }).catch((error) => {
-            this.loading.isActive = false;
+        this.loadEmployee().then((res) => {
+            if (res) {
+                this.defaultImage = res.data.data.image;
+                this.previewImage = res.data.data.image;
+            }
         });
         this.orderLists();
     },
     methods: {
+        loadEmployee: function () {
+            this.loading.isActive = true;
+            return this.$store.dispatch("employee/show", { id: this.$route.params.id, search: this.salesMonth }).then((res) => {
+                this.loading.isActive = false;
+                return res;
+            }).catch(() => {
+                this.loading.isActive = false;
+            });
+        },
         textShortener: function (text, number = 30) {
             return appService.textShortener(text, number);
         },

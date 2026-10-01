@@ -7,6 +7,7 @@ use Exception;
 use App\Enums\Ask;
 use Carbon\Carbon;
 use App\Enums\Status;
+use App\Models\Order;
 use App\Models\Product;
 use App\Enums\BarcodeType;
 use App\Models\ProductTag;
@@ -476,6 +477,21 @@ class ProductService
     }
 
     /**
+     * The products report's period: a product's sale lines (productOrders)
+     * from orders placed between from_date and to_date. Null without both
+     * dates, when every sale counts. (The dates once meant "product added".)
+     */
+    private function soldBetween(array $requests): ?\Closure
+    {
+        if (empty($requests['from_date']) || empty($requests['to_date'])) {
+            return null;
+        }
+        $orders = Order::select('id')->placedBetween($requests['from_date'], $requests['to_date']);
+
+        return fn($sales) => $sales->whereIn('model_id', $orders);
+    }
+
+    /**
      * @throws Exception
      */
     public function productReport(PaginateRequest $request)
@@ -486,16 +502,12 @@ class ProductService
             $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_type') ?? 'asc';
-            return Product::withCount('orders')->where(function ($query) use ($requests) {
-                if (isset($requests['from_date']) && isset($requests['to_date'])) {
-                    $first_date = date('Y-m-d', strtotime($requests['from_date']));
-                    $last_date  = date('Y-m-d', strtotime($requests['to_date']));
-                    $query->whereDate('created_at', '>=', $first_date)->whereDate(
-                        'created_at',
-                        '<=',
-                        $last_date
-                    );
-                }
+            $sold        = $this->soldBetween($requests);
+            // A Closure passed as when()'s condition gets called, hence the null check.
+            return Product::withCount('orders')->when($sold !== null, function ($query) use ($sold) {
+                // productOrders is what the report, its Excel and its PDF sum.
+                $query->with(['productOrders' => $sold])->whereHas('productOrders', $sold);
+            })->where(function ($query) use ($requests) {
                 foreach ($requests as $key => $request) {
                     if (in_array($key, $this->productFilter)) {
                         if ($key == "product_category_id") {
@@ -521,26 +533,20 @@ class ProductService
     {
         try {
             $requests    = $request->all();
-            $products =  Product::withSum('productOrders', 'quantity')->where(function ($query) use ($requests) {
-                if (isset($requests['from_date']) && isset($requests['to_date'])) {
-                    $first_date = date('Y-m-d', strtotime($requests['from_date']));
-                    $last_date  = date('Y-m-d', strtotime($requests['to_date']));
-                    $query->whereDate('created_at', '>=', $first_date)->whereDate(
-                        'created_at',
-                        '<=',
-                        $last_date
-                    );
-                }
-                foreach ($requests as $key => $request) {
-                    if (in_array($key, $this->productFilter)) {
-                        if ($key == "product_category_id") {
-                            $query->where($key, $request);
-                        } else {
-                            $query->where($key, 'like', '%' . $request . '%');
+            $sold        = $this->soldBetween($requests);
+            $products =  Product::withSum($sold ? ['productOrders' => $sold] : 'productOrders', 'quantity')
+                ->when($sold !== null, fn($query) => $query->whereHas('productOrders', $sold))
+                ->where(function ($query) use ($requests) {
+                    foreach ($requests as $key => $request) {
+                        if (in_array($key, $this->productFilter)) {
+                            if ($key == "product_category_id") {
+                                $query->where($key, $request);
+                            } else {
+                                $query->where($key, 'like', '%' . $request . '%');
+                            }
                         }
                     }
-                }
-            })->get();
+                })->get();
 
             $productsReportArray = [];
 

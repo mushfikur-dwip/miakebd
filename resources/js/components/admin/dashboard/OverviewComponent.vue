@@ -56,6 +56,19 @@ import LoadingComponent from "../components/LoadingComponent";
 export default {
     name: "OverviewComponent",
     components: { LoadingComponent },
+    props: {
+        // The dashboard's month ({ from_date, to_date }): earnings and orders count only it.
+        month: { type: Object, required: true },
+    },
+    watch: {
+        month: {
+            deep: true,
+            handler: function () {
+                this.totalSales();
+                this.totalOrders();
+            },
+        },
+    },
     data() {
         return {
             loading: {
@@ -75,9 +88,12 @@ export default {
         this.totalProducts();
     },
     methods: {
+        period: function () {
+            return { first_date: this.month.from_date, last_date: this.month.to_date };
+        },
         totalSales: function () {
             this.loading.isActive = true;
-            this.$store.dispatch("dashboard/totalSales").then((res) => {
+            this.$store.dispatch("dashboard/totalSales", this.period()).then((res) => {
                 this.total_sales = res.data.data.total_sales;
                 this.loading.isActive = false;
             }).catch((err) => {
@@ -87,7 +103,7 @@ export default {
 
         totalOrders: function () {
             this.loading.isActive = true;
-            this.$store.dispatch("dashboard/totalOrders").then((res) => {
+            this.$store.dispatch("dashboard/totalOrders", this.period()).then((res) => {
                 this.total_orders = res.data.data.total_orders;
                 this.loading.isActive = false;
             }).catch((err) => {

@@ -5,6 +5,8 @@
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">{{ $t('menu.pos_orders') }}</h3>
                 <div class="db-card-filter">
+                    <MonthFilterComponent :search="props.search" :method="list" :allMonths="searchingById"
+                        @change="modelValue = $event" />
                     <TableLimitComponent :method="list" :search="props.search" :page="paginationPage" />
                     <FilterComponent @click.prevent="handleSlide('posorderlist-filter')" />
                     <div class="dropdown-group">
@@ -160,6 +162,8 @@ import appService from "../../../services/appService";
 import orderStatusEnum from "../../../enums/modules/orderStatusEnum";
 import orderTypeEnum from "../../../enums/modules/orderTypeEnum";
 import TableLimitComponent from "../components/TableLimitComponent";
+import MonthFilterComponent from "../components/MonthFilterComponent";
+import monthService from "../../../services/monthService";
 import SmIconDeleteComponent from "../components/buttons/SmIconDeleteComponent";
 import SmIconViewComponent from "../components/buttons/SmIconViewComponent";
 import FilterComponent from "../components/buttons/collapse/FilterComponent";
@@ -175,6 +179,7 @@ export default {
     name: "PosOrderListComponent",
     components: {
         TableLimitComponent,
+        MonthFilterComponent,
         PaginationSMBox,
         PaginationBox,
         PaginationTextComponent,
@@ -188,6 +193,7 @@ export default {
         Datepicker
     },
     data() {
+        const month = monthService.monthOf();
         return {
             loading: {
                 isActive: false
@@ -221,11 +227,12 @@ export default {
                     user_id: null,
                     outlet_id: null,
                     status: null,
-                    from_date: "",
-                    to_date: "",
+                    from_date: month.from_date,
+                    to_date: month.to_date,
                 }
             },
-            modelValue: null,
+            modelValue: monthService.dates(month),
+            searchingById: false,
             ENV: ENV
         }
     },
@@ -293,17 +300,21 @@ export default {
             this.props.search.order_serial_no = "";
             this.props.search.status = null;
             this.props.search.excepts = orderTypeEnum.DELIVERY + '|' + orderTypeEnum.PICK_UP;
-            this.props.search.from_date = "";
-            this.props.search.to_date = "";
+            const month = monthService.monthOf();
+            this.props.search.from_date = month.from_date;
+            this.props.search.to_date = month.to_date;
             this.props.search.user_id = null;
             this.props.search.outlet_id = null;
-            this.modelValue = null;
+            this.modelValue = monthService.dates(month);
             this.list();
         },
         list: function (page = 1) {
             this.loading.isActive = true;
             this.props.search.page = page;
-            this.$store.dispatch('posOrder/lists', this.props.search).then(res => {
+            // An order ID is looked up in every month, not just the one on screen.
+            this.searchingById = !!this.props.search.order_serial_no;
+            const search = this.searchingById ? { ...this.props.search, from_date: "", to_date: "" } : this.props.search;
+            this.$store.dispatch('posOrder/lists', search).then(res => {
                 this.loading.isActive = false;
             }).catch((err) => {
                 this.loading.isActive = false;

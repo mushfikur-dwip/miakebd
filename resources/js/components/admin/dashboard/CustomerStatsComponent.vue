@@ -22,9 +22,22 @@
 import LoadingComponent from "../components/LoadingComponent";
 import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
+import monthService from "../../../services/monthService";
 export default {
     name: "CustomerStatsComponent",
     components: { LoadingComponent, Datepicker },
+    props: {
+        // The dashboard's month ({ from_date, to_date }), shown until another range is picked here.
+        month: { type: Object, required: true },
+    },
+    watch: {
+        month: {
+            deep: true,
+            handler: function () {
+                this.followMonth();
+            },
+        },
+    },
     data() {
         return {
             loading: {
@@ -38,9 +51,13 @@ export default {
         };
     },
     mounted() {
-        this.customerStates();
+        this.followMonth();
     },
     methods: {
+        followMonth: function () {
+            this.modelValue = monthService.dates(this.month);
+            this.customerStates([this.month.from_date, this.month.to_date]);
+        },
         customerStates: function (e) {
             let date = {
                 first_date: '',

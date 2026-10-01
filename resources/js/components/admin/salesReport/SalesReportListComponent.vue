@@ -5,6 +5,7 @@
             <div class="db-card-header">
                 <h3 class="db-card-title">{{ $t('menu.sales_report') }}</h3>
                 <div class="db-card-filter">
+                    <MonthFilterComponent :search="props.search" :method="list" @change="modelValue = $event" />
                     <TableLimitComponent :method="list" :search="props.search" :page="paginationPage" />
                     <FilterComponent @click.prevent="handleSlide('salesreport-filter')" />
                     <div class="dropdown-group">
@@ -217,6 +218,8 @@ import appService from "../../../services/appService";
 import paymentStatusEnum from "../../../enums/modules/paymentStatusEnum";
 import orderStatusEnum from "../../../enums/modules/orderStatusEnum";
 import TableLimitComponent from "../components/TableLimitComponent";
+import MonthFilterComponent from "../components/MonthFilterComponent";
+import monthService from "../../../services/monthService";
 import FilterComponent from "../components/buttons/collapse/FilterComponent";
 import ExportComponent from "../components/buttons/export/ExportComponent";
 import print from 'vue3-print-nb';
@@ -236,6 +239,7 @@ export default {
     name: "SalesReportListComponent",
     components: {
         TableLimitComponent,
+        MonthFilterComponent,
         PaginationSMBox,
         PaginationBox,
         PaginationTextComponent,
@@ -250,6 +254,7 @@ export default {
     },
 
     data() {
+        const month = monthService.monthOf();
         return {
             loading: {
                 isActive: false
@@ -301,12 +306,12 @@ export default {
                     payment_method: null,
                     order_serial_no: "",
                     status: null,
-                    from_date: "",
-                    to_date: "",
+                    from_date: month.from_date,
+                    to_date: month.to_date,
                     source: null,
                 }
             },
-            modelValue: null,
+            modelValue: monthService.dates(month),
             paymentGateways: [],
             ENV:ENV
         }
@@ -376,10 +381,11 @@ export default {
             this.props.search.payment_status = null;
             this.props.search.payment_method = null;
             this.props.search.status = null;
-            this.props.search.from_date = "";
-            this.props.search.to_date = "";
+            const month = monthService.monthOf();
+            this.props.search.from_date = month.from_date;
+            this.props.search.to_date = month.to_date;
             this.props.search.source = null;
-            this.modelValue = null;
+            this.modelValue = monthService.dates(month);
             this.list();
         },
         list: function (page = 1) {

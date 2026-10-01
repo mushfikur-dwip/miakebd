@@ -5,6 +5,7 @@
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">{{ $t("menu.employees") }}</h3>
                 <div class="db-card-filter">
+                    <MonthFilterComponent :search="props.search" :method="list" />
                     <TableLimitComponent :method="list" :search="props.search" :page="paginationPage" />
                     <FilterComponent @click.prevent="handleSlide('employee-filter')" />
                     <div class="dropdown-group">
@@ -159,6 +160,8 @@ import PaginationSMBox from "../components/pagination/PaginationSMBox";
 import appService from "../../../services/appService";
 import statusEnum from "../../../enums/modules/statusEnum";
 import TableLimitComponent from "../components/TableLimitComponent";
+import MonthFilterComponent from "../components/MonthFilterComponent";
+import monthService from "../../../services/monthService";
 import SmIconViewComponent from "../components/buttons/SmIconViewComponent";
 import SmIconSidebarModalEditComponent from "../components/buttons/SmIconSidebarModalEditComponent";
 import SmIconDeleteComponent from "../components/buttons/SmIconDeleteComponent";
@@ -176,6 +179,7 @@ export default {
         FilterComponent,
         SmIconSidebarModalEditComponent,
         TableLimitComponent,
+        MonthFilterComponent,
         PaginationSMBox,
         PaginationBox,
         PaginationTextComponent,
@@ -187,6 +191,8 @@ export default {
         ExcelComponent,
     },
     data() {
+        // Sales and Sales Amount count this month's sales; see MonthFilterComponent.
+        const month = monthService.monthOf();
         return {
             loading: {
                 isActive: false,
@@ -225,6 +231,8 @@ export default {
                     phone: "",
                     role_id: null,
                     status: null,
+                    from_date: month.from_date,
+                    to_date: month.to_date,
                 },
                 flag: ""
             },
@@ -285,6 +293,9 @@ export default {
             this.props.search.phone = "";
             this.props.search.role_id = null;
             this.props.search.status = null;
+            const month = monthService.monthOf();
+            this.props.search.from_date = month.from_date;
+            this.props.search.to_date = month.to_date;
             this.list();
         },
         list: function (page = 1) {

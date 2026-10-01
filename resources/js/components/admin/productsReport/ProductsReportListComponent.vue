@@ -5,6 +5,7 @@
             <div class="db-card-header border">
                 <h3 class="db-card-title">{{ $t('menu.products_report') }}</h3>
                 <div class="db-card-filter">
+                    <MonthFilterComponent :search="props.search" :method="list" @change="modelValue = $event" />
                     <TableLimitComponent :method="list" :search="props.search" :page="paginationPage" />
                     <FilterComponent @click.prevent="handleSlide('productreport-filter')" />
                     <div class="dropdown-group">
@@ -172,6 +173,8 @@ import PaginationBox from "../components/pagination/PaginationBox";
 import PaginationSMBox from "../components/pagination/PaginationSMBox";
 import appService from "../../../services/appService";
 import TableLimitComponent from "../components/TableLimitComponent";
+import MonthFilterComponent from "../components/MonthFilterComponent";
+import monthService from "../../../services/monthService";
 import FilterComponent from "../components/buttons/collapse/FilterComponent";
 import ExportComponent from "../components/buttons/export/ExportComponent";
 import print from 'vue3-print-nb';
@@ -187,6 +190,7 @@ export default {
     name: "ProductsReportListComponent",
     components: {
         TableLimitComponent,
+        MonthFilterComponent,
         PaginationSMBox,
         PaginationBox,
         PaginationTextComponent,
@@ -201,6 +205,7 @@ export default {
     },
 
     data() {
+        const month = monthService.monthOf();
         return {
             loading: {
                 isActive: false
@@ -218,8 +223,8 @@ export default {
                     order_column: 'id',
                     name: null,
                     product_category_id: null,
-                    from_date: "",
-                    to_date: "",
+                    from_date: month.from_date,
+                    to_date: month.to_date,
                 }
             },
             productSearch: {
@@ -227,7 +232,7 @@ export default {
                 page: 1,
                 order_column: 'id',
             },
-            modelValue: null,
+            modelValue: monthService.dates(month),
             productCategories: [],
             ENV:ENV
         }
@@ -302,9 +307,10 @@ export default {
             this.props.search.page = 1;
             this.props.search.name = null;
             this.props.search.product_category_id = null;
-            this.props.search.from_date = "";
-            this.props.search.to_date = "";
-            this.modelValue = null;
+            const month = monthService.monthOf();
+            this.props.search.from_date = month.from_date;
+            this.props.search.to_date = month.to_date;
+            this.modelValue = monthService.dates(month);
             this.list();
         },
         list: function (page = 1) {

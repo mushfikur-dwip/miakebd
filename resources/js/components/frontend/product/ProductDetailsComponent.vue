@@ -36,6 +36,7 @@
                         :modules="modules" class="gallery-swiper aspect-square bg-gray-100">
                         <SwiperSlide v-for="(image, index) in images" :key="index" class="w-full">
                             <inner-image-zoom :src="image" :zoomSrc="image" :zoomScale='1' zoomType="hover"
+                                :alt="index === 0 ? product.name : `${product.name} image ${index + 1}`"
                                 :hideHint='true' />
                         </SwiperSlide>
                     </Swiper>
@@ -225,7 +226,7 @@
                             <h3 class="capitalize text-2xl sm:text-3xl font-bold mb-4">
                                 {{ $t('label.product_details') }}
                             </h3>
-                            <div class="text-description" v-html="product.details"></div>
+                            <div class="text-description" v-html="withImageAlts(product.details)"></div>
                             <ProductSeoBlocks :description="product.seo?.description || ''" />
                         </div>
 
@@ -305,7 +306,7 @@
                         <div id="tab_shipping_and_return" class="tab-div p-4 sm:p-8 sm:pt-6 border-t border-[#D9DBE9]">
                             <h3 class="capitalize text-2xl sm:text-3xl font-bold mb-4">
                                 {{ $t('label.product_shipping_and_return') }}</h3>
-                            <div class="text-description" v-html="product.shipping_and_return"></div>
+                            <div class="text-description" v-html="withImageAlts(product.shipping_and_return)"></div>
                         </div>
                     </div>
                 </div>
@@ -496,6 +497,21 @@ export default {
         }
     },
     methods: {
+        /**
+         * Admin-written descriptions often paste in images (some from other
+         * sites) with no alt text. Each gets the product's name, so screen
+         * readers and Google Images know what it shows. An image that already
+         * has alt text keeps it.
+         */
+        withImageAlts: function (html) {
+            if (!html || typeof html !== 'string') {
+                return html;
+            }
+            const escape = { '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' };
+            const alt = String(this.product?.name || '').replace(/[&"<>]/g, (c) => escape[c]);
+
+            return html.replace(/<img\b(?![^>]*\balt\s*=)/gi, `<img alt="${alt}"`);
+        },
         // Function ref: the row only exists once the product has loaded, and
         // is re-rendered when another product is opened.
         watchCartButtons: function (el) {
@@ -623,6 +639,18 @@ export default {
                     this.updateSeoHead(res.data.data);
                 }).catch((err) => {
                     this.loading.isActive = false;
+                    // A removed product (an old Facebook link, say): show the
+                    // shop's "not found" screen at the same address - the
+                    // server already answered 404 - instead of an empty
+                    // product template.
+                    if (err && err.response && err.response.status === 404) {
+                        this.$router.replace({
+                            name: 'route.notFound',
+                            params: { pathMatch: this.$route.path.substring(1).split('/') },
+                            query: this.$route.query,
+                            hash: this.$route.hash,
+                        });
+                    }
                 });
             }
         },

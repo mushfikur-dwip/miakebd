@@ -2,6 +2,11 @@
 
 namespace App\Support;
 
+use App\Enums\Status;
+use App\Models\Product;
+use Dipokhalder\Settings\Facades\Settings;
+use Illuminate\Support\Facades\Cache;
+
 /**
  * Site-wide JSON-LD graph for master.blade.php.
  *
@@ -20,6 +25,61 @@ class SiteSchema
 {
     public const PHONE = '+8801709786330';
     public const PHONE_TEXT = '01709786330';
+
+    /**
+     * The shop's social profiles, from Admin -> Settings -> Social Media.
+     * sameAs is how Google's Knowledge Graph and AI answer engines tie the
+     * Facebook page and YouTube channel to the same business as the website.
+     * Only absolute http(s) URLs; one get() per key (a reused group handle
+     * reads null for the second key).
+     *
+     * @return list<string>
+     */
+    public static function sameAs(): array
+    {
+        $urls = [];
+
+        foreach (['social_media_facebook', 'social_media_instagram', 'social_media_twitter', 'social_media_youtube'] as $key) {
+            try {
+                $value = trim((string) Settings::group('social_media')->get($key));
+            } catch (\Throwable $e) {
+                $value = '';
+            }
+
+            if (preg_match('#^https?://\S+$#i', $value)) {
+                $urls[] = $value;
+            }
+        }
+
+        return $urls;
+    }
+
+    /**
+     * "over 1,100 products" - counted, not typed. The FAQ used to say "over 440"
+     * long after the catalogue passed a thousand, contradicting the sitemap and
+     * llms.txt. Rounded down to the hundred so the wording only changes when
+     * the catalogue really moves; cached because every homepage view reads it.
+     */
+    public static function productCountPhrase(): string
+    {
+        try {
+            $count = (int) Cache::remember('seo:product-count', now()->addHours(6), fn () => Product::query()
+                ->where('status', Status::ACTIVE)
+                ->storefront()
+                ->count());
+        } catch (\Throwable $e) {
+            $count = 0;
+        }
+
+        if ($count < 1) {
+            // Unknown (or a fresh install): say nothing that could be wrong.
+            return 'hundreds of products';
+        }
+
+        return $count < 100
+            ? $count . ' products'
+            : 'over ' . number_format(intdiv($count, 100) * 100) . ' products';
+    }
 
     /**
      * @param  bool   $full       true on the homepage — adds stores and FAQ.
@@ -107,6 +167,10 @@ class SiteSchema
 
         if (!$full) {
             return $organization;
+        }
+
+        if ($profiles = self::sameAs()) {
+            $organization['sameAs'] = $profiles;
         }
 
         return $organization + [
@@ -243,7 +307,7 @@ class SiteSchema
                     'name' => 'What products does Suglow sell?',
                     'acceptedAnswer' => [
                         '@type' => 'Answer',
-                        'text' => 'Suglow stocks over 440 products across skin care, personal care, fragrance, hair care, sunscreen, baby care, moisturizers, mens skin care and beauty accessories, from brands including Nivea, Dove, Garnier, Vaseline, CeraVe, Fogg, Lotus, Enchanteur, Bioaqua and Sadoer.',
+                        'text' => 'Suglow stocks ' . self::productCountPhrase() . ' across skin care, personal care, fragrance, hair care, sunscreen, baby care, moisturizers, mens skin care and beauty accessories, from brands including Nivea, Dove, Garnier, Vaseline, CeraVe, Fogg, Lotus, Enchanteur, Bioaqua and Sadoer.',
                     ],
                 ],
             ],

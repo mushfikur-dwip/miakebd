@@ -45,6 +45,10 @@
         // Config-derived, not url(): article:publisher and the noscript links
         // below must not vary with the host a request happened to arrive on.
         $siteUrl         = rtrim((string) config('app.url'), '/');
+        // This page's own address on the canonical host. getPathInfo() leaves
+        // out the /public prefix a request can arrive with, so those
+        // duplicates point back at the real URL instead of at themselves.
+        $currentUrl      = $siteUrl . request()->getPathInfo();
 
         $companyName = Settings::group('company')->get('company_name') ?: 'Suglow';
 
@@ -88,7 +92,9 @@
             $seoImage       = $controllerSeo['image'] ?: $brandImage;
             $seoType        = $controllerSeo['type'] ?? 'product';
             $seoRobots      = $controllerSeo['robots'] ?? 'index, follow, max-image-preview:large';
-            $seoCanonical   = $controllerSeo['canonical'] ?? url()->current();
+            // An explicit null means "no canonical" (404s, private screens),
+            // which ?? would silently turn back into this page's URL.
+            $seoCanonical   = array_key_exists('canonical', $controllerSeo) ? $controllerSeo['canonical'] : $currentUrl;
             $seoKeywords    = $controllerSeo['keywords'] ?? null;
         } elseif ($product) {
             // ---- PRODUCT PAGE (resolver fallback) ----
@@ -100,7 +106,7 @@
             $seoImage       = $product['image'];
             $seoType        = 'product';
             $seoRobots      = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
-            $seoCanonical   = url()->current();
+            $seoCanonical   = $currentUrl;
             $seoKeywords    = null;
         } elseif ($isHomepage) {
             // ---- HOMEPAGE ----
@@ -110,7 +116,7 @@
             $seoImage       = $brandImage;
             $seoType        = 'website';
             $seoRobots      = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
-            $seoCanonical   = url()->current();
+            $seoCanonical   = $currentUrl;
             $seoKeywords    = 'cosmetics bangladesh, skincare bangladesh, buy cosmetics online bd, authentic cosmetics bangladesh, imported cosmetics bd, online cosmetics shop bangladesh, cosmetics home delivery bangladesh, cosmetics dhaka, cosmetics rangpur, original cosmetics bd, malaysia cosmetics bangladesh, thailand cosmetics bd, korean skincare bangladesh, suglow, skin care product bd, cash on delivery cosmetics';
         } else {
             // ---- EVERY OTHER PAGE ----
@@ -120,7 +126,7 @@
             $seoImage       = $brandImage;
             $seoType        = 'website';
             $seoRobots      = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
-            $seoCanonical   = url()->current();
+            $seoCanonical   = $currentUrl;
             $seoKeywords    = null;
         }
 
@@ -156,10 +162,13 @@
     @if ($seoKeywords)
         <meta name="keywords" content="{{ $seoKeywords }}">
     @endif
+    {{-- Google reads this one too. A separate googlebot tag used to say
+         "index" on every page, contradicting noindex where it was set. --}}
     <meta name="robots" content="{{ $seoRobots }}">
-    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1">
     <meta name="author" content="Suglow">
-    <link rel="canonical" href="{{ $seoCanonical }}">
+    @if ($seoCanonical)
+        <link rel="canonical" href="{{ $seoCanonical }}">
+    @endif
 
     {{-- geo.region is BD (whole country), NOT BD-55 (Rangpur division).
          Suglow delivers nationwide; restricting the geo signal to Rangpur would
@@ -201,7 +210,9 @@
         <meta property="og:image:height" content="{{ $seoImageH }}">
     @endif
     <meta property="og:image:alt" content="{{ $product['name'] ?? ($controllerSeo['title'] ?? 'Suglow — authentic cosmetics and skincare in Bangladesh') }}">
-    <meta property="og:url" content="{{ $seoCanonical }}">
+    @if ($seoCanonical)
+        <meta property="og:url" content="{{ $seoCanonical }}">
+    @endif
     <meta property="og:site_name" content="Suglow">
     <meta property="og:locale" content="en_US">
     <meta property="og:locale:alternate" content="bn_BD">
@@ -535,6 +546,24 @@
                 @endif
                 <p><a href="{{ $siteUrl }}/product">All products</a> ·
                    Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
+            @elseif (!empty($cmsPage))
+                {{-- About / Support / Legal as written in the page editor. Raw
+                     on purpose: admin-authored, the same trust level as the
+                     blog bodies above. --}}
+                <p><a href="{{ $siteUrl }}/">Home</a> › {{ $cmsPage['name'] }}</p>
+                <h1>{{ $cmsPage['name'] }}</h1>
+                {!! $cmsPage['body'] !!}
+                <p><a href="{{ $siteUrl }}/product">Shop authentic cosmetics</a> ·
+                   Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
+            @elseif (!empty($notFound))
+                {{-- A dead link should still lead somewhere. --}}
+                <h1>Page not found</h1>
+                <p>This page is not on Suglow any more. These are good places to continue:</p>
+                <ul>
+                    <li><a href="{{ $siteUrl }}/">Home</a></li>
+                    <li><a href="{{ $siteUrl }}/product">All products</a></li>
+                    <li><a href="{{ $siteUrl }}/offers">Offers</a></li>
+                </ul>
             @elseif ($controllerSeo)
                 <h1>{{ $controllerSeo['title'] }}</h1>
                 @if (!empty($controllerSeo['image']))

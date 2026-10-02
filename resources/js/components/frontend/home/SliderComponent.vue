@@ -14,8 +14,13 @@
                 :modules="modules"
                 class="banner-swiper"
             >
+                <!-- The box has the slides' real shape: hero images are
+                     generated at exactly 1689x600 (Slider's `cover`
+                     conversion, and the size the admin form asks for). It
+                     used to be 4:3 on phones, so object-cover showed less
+                     than half of each banner's width and cut its offer text. -->
                 <SwiperSlide v-for="(slider, index) in sliders">
-                    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl aspect-[4/3] sm:aspect-[3/1] isolate">
+                    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl aspect-[1689/600] isolate">
                         <a v-if="safeLink(slider.link)" :href="safeLink(slider.link)" class="block w-full h-full">
                             <img class="w-full h-full object-cover" :src="slider.image" :alt="slider.title || 'Suglow'"
                                 :loading="index === 0 ? 'eager' : 'lazy'"
@@ -26,7 +31,7 @@
                             :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async">
 
                         <div v-if="slider.title"
-                            class="absolute inset-0 z-10 flex flex-col items-start justify-end gap-2 sm:gap-3 p-5 sm:p-10 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none">
+                            class="absolute inset-0 z-10 flex flex-col items-start justify-end gap-2 sm:gap-3 p-3 sm:p-10 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none">
                             <h2 class="max-w-xl text-lg sm:text-4xl font-bold text-white capitalize leading-snug sm:leading-11 line-clamp-2">
                                 {{ slider.title }}
                             </h2>
@@ -43,6 +48,11 @@
                     </div>
                 </SwiperSlide>
             </Swiper>
+            <!-- Holds the hero's place until the slides arrive. An empty
+                 section let its margin collapse through, and everything below
+                 jumped when the banner appeared. -->
+            <div v-else-if="!fetched" aria-hidden="true"
+                class="aspect-[1689/600] rounded-2xl sm:rounded-3xl bg-gray-100 animate-pulse"></div>
         </div>
     </section>
 </template>
@@ -73,6 +83,8 @@ export default {
             loading: {
                 isActive: false
             },
+            // False until the slider request settles; drives the placeholder.
+            fetched: false,
             sliderProps: {
                 search: {
                     paginate: 0,
@@ -110,8 +122,10 @@ export default {
         this.loading.isActive = true;
         this.$store.dispatch("frontendSlider/lists", this.sliderProps.search).then((res) => {
             this.loading.isActive = false;
+            this.fetched = true;
         }).catch((err) => {
             this.loading.isActive = false;
+            this.fetched = true;
         });
     }
 }

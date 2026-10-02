@@ -12,7 +12,6 @@ use Dipokhalder\EnvEditor\EnvEditor;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 
 class InstallerController extends Controller
@@ -27,9 +26,11 @@ class InstallerController extends Controller
         $this->installerRequirementsCheckerService = $installerRequirementsCheckerService;
         $this->installerPermissionCheckerService   = $installerPermissionCheckerService;
 
-        if (file_exists(storage_path('installed'))) {
-            Redirect::to(env('APP_URL'))->send();
-        }
+        // The route group's 'not-installed' middleware is the real guard. This
+        // stays as a second line, and it has to stop execution: the
+        // Redirect::to(...)->send() that used to be here flushed a redirect and
+        // then let the action run anyway.
+        abort_if(file_exists(storage_path('installed')), 404);
     }
 
     public function index(): \Illuminate\Contracts\View\View|\Illuminate\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Contracts\Foundation\Application
@@ -66,7 +67,7 @@ class InstallerController extends Controller
         try {
             $response = $this->installerService->licenseCodeChecker($request->all());
             if (isset($response->status) && $response->status) {
-                $envService = new EnvEditor();
+                $envService = app(EnvEditor::class);
                 $envService->addData([
                     'VITE_API_KEY' => $request->license_key,
                 ]);

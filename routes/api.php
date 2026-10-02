@@ -906,15 +906,17 @@ Route::prefix('checkout')->middleware(['auth:sanctum', 'throttle:60,1'])->group(
     // and wallet_discount straight from the request with no balance check —
     // an authenticated user could mint an order for any amount and drive any
     // account's wallet negative. The live order path is POST /frontend/order.
-    Route::get('/{order}/{paymentGateway}/payment', [CheckoutController::class, 'payment']);
-    Route::get('/{order}/{paymentGateway}/success', [CheckoutController::class, 'success']);
-    Route::get('/{order}/{paymentGateway}/fail', [CheckoutController::class, 'fail']);
-    Route::get('/{order}/{paymentGateway}/cancel', [CheckoutController::class, 'cancel']);
+    //
+    // Removed too: GET /{order}/{paymentGateway}/payment|success|fail|cancel.
+    // They handed the raw URL string to the gateways as the "order" (no model
+    // binding), so they could never settle anything, and nothing called them.
+    // Payments run through the web routes under /payment.
 });
 
 Route::group(['prefix' => 'frontend'], function () {
-    Route::get('language/{code}', [FrontendLanguageController::class, 'language']);
-    Route::get('overview', [OverviewController::class, 'index']);
+    // Removed: GET language/{code} and GET overview. Both pointed at controller
+    // methods that do not exist, so every hit was a 500 with a stack trace in
+    // laravel.log - unauthenticated and unthrottled.
 
     Route::prefix('setting')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendSettingController::class, 'index']);

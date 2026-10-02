@@ -18,7 +18,7 @@ class CompanyService
 
     public function __construct()
     {
-        $this->envService = new EnvEditor();
+        $this->envService = app(EnvEditor::class);
     }
 
     /**

@@ -23,3 +23,6 @@ Schedule::command('tiktok:send-events')->everyMinute()->withoutOverlapping(5);
 
 // The catalogue for Meta product ads and Google's free Shopping listings.
 Schedule::command('feeds:products')->hourly()->withoutOverlapping();
+
+// Tells Bing, Yandex, Seznam and Naver which pages changed. See App\Support\IndexNow.
+Schedule::command('indexnow:submit')->hourly()->withoutOverlapping();

@@ -17,7 +17,14 @@
 
         <FrontendNavbarComponent />
         <FrontendCartComponent />
-        <router-view></router-view>
+        <!-- min-height from sm up, where the footer is shown: while a page's
+             sections wait for their data the footer used to render near the
+             top of the screen and was then shoved down by the content - a 0.34
+             layout shift on the desktop home page. Starting it below the fold
+             keeps that movement off screen. -->
+        <main id="main" class="sm:min-h-screen">
+            <router-view></router-view>
+        </main>
         <FrontendMobileSideBarComponent />
         <FrontendMobileNavBarComponent />
         <FrontendMobileCategoryComponent />

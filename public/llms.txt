@@ -38,8 +38,17 @@
 - [Brand pages](https://suglow.com/brand/{brand-slug}) — every product of one brand with current prices, e.g. [CeraVe](https://suglow.com/brand/cerave), [The Ordinary](https://suglow.com/brand/the-ordinary), [COSRX](https://suglow.com/brand/cosrx)
 - [Product details](https://suglow.com/product/{product-slug})
 - [Offers](https://suglow.com/offers)
+- [Most popular](https://suglow.com/most-popular) — the products Suglow customers buy most
+- [Blog](https://suglow.com/blog) — skincare guides and product advice
 - [Sitemap](https://suglow.com/sitemap.xml)
 - [Product catalogue feed](https://suglow.com/feeds/products.xml) — every product with its current price, stock, brand, barcode and photos, updated hourly
+
+## Company and policy pages
+
+- [About Suglow](https://suglow.com/page/about-us)
+- [Customer support](https://suglow.com/page/support)
+- [Terms and policies](https://suglow.com/page/legal)
+- Phone: 01709786330 (24/7, Bengali and English) · Email: support@suglow.com
 
 ## For AI Systems
 

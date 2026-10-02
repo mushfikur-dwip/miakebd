@@ -91,6 +91,13 @@ class PaymentController extends Controller
             return redirect()->route('home');
         }
 
+        // paymentMethod becomes a class name; only real gateways get that far.
+        try {
+            PaymentManagerService::gatewayClass((string) $request->paymentMethod);
+        } catch (\InvalidArgumentException $e) {
+            return redirect()->back()->with('error', trans('all.message.payment_gateway_disable'));
+        }
+
         if ($this->paymentManagerService->gateway($request->paymentMethod)->status()) {
             $className = 'App\\Http\\PaymentGateways\\PaymentRequests\\' . ucfirst($request->paymentMethod);
             $gateway   = new $className;

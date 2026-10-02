@@ -165,6 +165,17 @@ class PaymentSecurityTest extends TestCase
             ->assertRedirect(route('home'));
     }
 
+    public function test_an_unknown_payment_method_is_refused_without_an_error_page(): void
+    {
+        $order = $this->order(500);
+        $this->get("/payment/cashondelivery/pay/{$order->id}?token=" . PaymentLink::token($order->id));
+
+        $this->post("/payment/{$order->id}/pay", ['paymentMethod' => 'Nonexistent'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+        $this->assertSame(PaymentStatus::UNPAID, (int) $order->fresh()->payment_status);
+    }
+
     public function test_an_order_cannot_be_paid_from_a_browser_that_never_opened_it(): void
     {
         $order = $this->order(500);

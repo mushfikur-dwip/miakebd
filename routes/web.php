@@ -16,7 +16,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('install')->name('installer.')->middleware(['web'])->group(function () {
+// 'not-installed' 404s the whole wizard once storage/installed exists. Before
+// it, the only guard was a redirect sent from the controller's constructor -
+// which let the action run anyway (see EnsureNotInstalled).
+Route::prefix('install')->name('installer.')->middleware(['web', 'not-installed'])->group(function () {
     Route::get('/', [InstallerController::class, 'index'])->name('index');
     Route::get('/requirement', [InstallerController::class, 'requirement'])->name('requirement');
     Route::get('/permission', [InstallerController::class, 'permission'])->name('permission');
@@ -31,6 +34,14 @@ Route::prefix('install')->name('installer.')->middleware(['web'])->group(functio
 });
 
 Route::get('/', [RootController::class, 'index'])->middleware(['installed'])->name('home');
+
+// The SPA used to rewrite / to /home, so /home is in shared links and in
+// Google's index as a second homepage. Permanent, so it consolidates onto /.
+Route::get('/home', function (\Illuminate\Http\Request $request) {
+    $query = $request->getQueryString();
+
+    return redirect()->to('/' . ($query ? '?' . $query : ''), 301);
+})->middleware(['installed']);
 Route::get('/product/{product:slug}', [RootController::class, 'product'])
     ->middleware(['installed'])
     ->name('product.show');
@@ -86,6 +97,19 @@ Route::get('/brand/{slug}', [RootController::class, 'brand'])
 Route::get('/offers', [RootController::class, 'offers'])
     ->middleware(['installed'])
     ->name('offers');
+
+// CMS and landing pages: server-rendered titles, descriptions and (for CMS
+// pages) content, and a real 404 when the record is missing or switched off.
+// Vue renders the same paths client-side.
+Route::middleware(['installed'])->where(['slug' => '[A-Za-z0-9\-_.]+'])->group(function () {
+    Route::get('/page/{slug}', [RootController::class, 'page'])->name('page.show');
+    Route::get('/promotion/{slug}', [RootController::class, 'promotion'])->name('promotion.show');
+    Route::get('/product-section/{slug}', [RootController::class, 'productSection'])->name('product-section.show');
+    Route::get('/campaign/{slug}', [RootController::class, 'campaign'])->name('campaign.show');
+});
+Route::get('/flash-sale', [RootController::class, 'flashSale'])
+    ->middleware(['installed'])
+    ->name('flash-sale');
 Route::get('/most-popular', [RootController::class, 'mostPopular'])
     ->middleware(['installed'])
     ->name('most-popular');
@@ -149,11 +173,21 @@ Route::get('/storage/{path}', function (string $path) {
     return \App\Support\PublicStorageFile::respond($path);
 })->where('path', '.*');
 
+// IndexNow key file: the engines fetch https://suglow.com/{key}.txt to confirm
+// the submissions really come from this site. See App\Support\IndexNow.
+Route::get('/{indexNowKey}.txt', function (string $indexNowKey) {
+    abort_unless(hash_equals(\App\Support\IndexNow::key(), $indexNowKey), 404);
+
+    return response(\App\Support\IndexNow::key(), 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
+})->where('indexNowKey', '[a-f0-9]{32}');
+
 Route::fallback(function (\Illuminate\Http\Request $request) {
     // Don't catch API routes
     if ($request->is('api/*')) {
         abort(404);
     }
 
-    return app(RootController::class)->index();
+    // Real SPA screens get the shell; unknown addresses a 404. See
+    // RootController::spa() and App\Support\StorefrontPaths.
+    return app(RootController::class)->spa($request);
 })->middleware(['installed']);

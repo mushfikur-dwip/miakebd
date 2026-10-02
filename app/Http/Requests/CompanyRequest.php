@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\EnvSafe;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,7 +26,8 @@ class CompanyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'company_name'         => ['required', 'string', 'max:190'],
+            // Copied into .env as APP_NAME - see EnvSafe.
+            'company_name'         => ['required', 'string', 'max:190', new EnvSafe()],
             'company_email'        => ['required', 'email', 'max:190'],
             'company_calling_code' => ['required', 'string', 'max:20'],
             'company_phone'        => ['required', 'string', 'max:20'],

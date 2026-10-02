@@ -26,7 +26,7 @@
                         }})
                     </span>
                 </div>
-                <button @click.prevent="showTarget('filter-canvas', 'canvas-active')" type="button"
+                <button @click.prevent="showTarget('filter-canvas', 'canvas-active')" type="button" :aria-label="$t('button.filter')"
                     class="lab-line-filter md:invisible flex-shrink-0 text-2xl w-9 h-9 leading-9 text-center rounded-full border border-primary text-primary md:hidden"></button>
             </div>
 

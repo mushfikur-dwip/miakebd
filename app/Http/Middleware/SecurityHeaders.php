@@ -36,6 +36,12 @@ class SecurityHeaders
 
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
 
+        // Nothing on the site uses the camera, microphone or location, so no
+        // script running here - an analytics snippet, a compromised package -
+        // may ask a shopper for them. Payment is left at the browser default:
+        // a card gateway's iframe may need it.
+        $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
         // PHP adds "X-Powered-By: PHP/8.x.y" to every response - a free exact
         // version for anyone matching it against published PHP CVEs.
         if (!headers_sent()) {

@@ -15,7 +15,7 @@ class InstallerService
 {
     public function siteSetup(Request $request): void
     {
-        $envService = new EnvEditor();
+        $envService = app(EnvEditor::class);
         $envService->addData([
             'APP_NAME' => $request->app_name,
             'APP_URL'  => rtrim($request->app_url, '/')
@@ -27,7 +27,7 @@ class InstallerService
     {
         $connection = $this->checkDatabaseConnection($request);
         if ($connection) {
-            $envService = new EnvEditor();
+            $envService = app(EnvEditor::class);
             $envService->addData([
                 'DB_HOST'     => $request->database_host,
                 'DB_PORT'     => $request->database_port,
@@ -114,7 +114,7 @@ class InstallerService
         }
 
         Artisan::call('storage:link', ['--force' => true]);
-        $envService = new EnvEditor();
+        $envService = app(EnvEditor::class);
         $envService->addData([
             'APP_ENV'   => 'production',
             'APP_DEBUG' => 'false'

@@ -65,6 +65,7 @@ class ScheduleFallback
             'tiktok-events' => [60, fn () => self::sendTikTokEvents()],
             'product-feed' => [3600, fn () => Artisan::call('feeds:products')],
             'sitemap' => [86400, fn () => Artisan::call('sitemap:generate')],
+            'indexnow' => [3600, fn () => Artisan::call('indexnow:submit')],
         ];
     }
 

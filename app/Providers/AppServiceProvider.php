@@ -16,6 +16,9 @@ class AppServiceProvider extends ServiceProvider
         // Retries the host's momentary "[2002] Operation not permitted"
         // refusals instead of showing them to shoppers. See the class.
         $this->app->bind('db.connector.mysql', \App\Database\RetryingMySqlConnector::class);
+
+        // Every .env write refuses values that would break or extend the file.
+        $this->app->bind(\Dipokhalder\EnvEditor\EnvEditor::class, \App\Support\SafeEnvEditor::class);
     }
 
     /**
@@ -24,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
+
+        // Every export: customer-typed text starting with "=" is written as
+        // text, never as a live formula. See the class.
+        config(['excel.value_binder.default' => \App\Support\SafeExcelValueBinder::class]);
 
         // /storage normally resolves to the public/storage symlink and never
         // reaches Laravel. The zip-based deploys used here keep deleting that

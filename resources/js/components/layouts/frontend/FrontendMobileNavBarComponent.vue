@@ -1,6 +1,6 @@
 <template>
     <nav class="lg:hidden w-full flex items-center justify-between px-5 py-3 fixed bottom-0 left-0 z-10 shadow-widget bg-white">
-        <router-link class="flex flex-col items-center gap-1 text-text transition-all duration-300 hover:text-primary" :class="checkIsPathAndRoutePathSame('/home') ? 'router-link-active router-link-exact-active !text-primary' : ''" :to="{name : 'frontend.home'}">
+        <router-link class="flex flex-col items-center gap-1 text-text transition-all duration-300 hover:text-primary" :class="checkIsPathAndRoutePathSame('/') ? 'router-link-active router-link-exact-active !text-primary' : ''" :to="{name : 'frontend.home'}">
             <i class="lab-line-home text-lg leading-none"></i>
             <span class="text-xs font-medium capitalize">{{ $t('label.home') }}</span>
         </router-link>
@@ -10,7 +10,7 @@
             <span class="text-xs font-medium capitalize">{{ $t('label.categories') }}</span>
         </button>
 
-        <button @click="showTarget('cart-canvas', 'canvas-active')" type="button" class="relative isolate -mt-11"
+        <button @click="showTarget('cart-canvas', 'canvas-active')" type="button" class="relative isolate -mt-11" :aria-label="$t('label.cart')"
                 :class="cartBump ? 'cart-bump' : ''">
             <i class="lab-line-bag text-lg w-12 h-12 !leading-12 text-center rounded-full shadow-cart bg-primary text-white"></i>
             <span v-if="carts.length > 0" class="absolute top-5 ltr:right-1.5 rtl:left-1.5 text-[10px] font-medium h-4 px-1 leading-[14px] text-center rounded-full border border-primary bg-[#FFBC1F]">

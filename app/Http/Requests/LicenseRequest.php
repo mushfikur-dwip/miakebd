@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\EnvSafe;
 use App\Services\InstallerService;
 use Dipokhalder\EnvEditor\EnvEditor;
 use Illuminate\Foundation\Http\FormRequest;
@@ -26,7 +27,8 @@ class LicenseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'license_key' => ['required', 'string', 'max:500'],
+            // Copied into .env as VITE_API_KEY - see EnvSafe.
+            'license_key' => ['required', 'string', 'max:500', new EnvSafe()],
         ];
     }
 
@@ -44,7 +46,7 @@ class LicenseRequest extends FormRequest
             $response         = $installerService->licenseCodeChecker($validator->validated());
             $request          = $validator->validated();
             if (isset($response->status) && $response->status) {
-                $envService = new EnvEditor();
+                $envService = app(EnvEditor::class);
                 $envService->addData([
                     'VITE_API_KEY' => $request['license_key'],
                 ]);

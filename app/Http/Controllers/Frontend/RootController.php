@@ -7,7 +7,10 @@ use App\Enums\Status;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SettingResource;
 use App\Models\Analytic;
+use App\Models\Campaign;
 use App\Models\Product;
+use App\Models\ProductSection;
+use App\Models\Promotion;
 use App\Models\SlugRedirect;
 use App\Models\ThemeSetting;
 use App\Support\BlogMetaResolver;
@@ -15,9 +18,13 @@ use App\Support\BrandMetaResolver;
 use App\Support\CategoryMetaResolver;
 use App\Support\MediaUrl;
 use App\Support\MetaPixel;
+use App\Support\PageMetaResolver;
 use App\Support\TikTokPixel;
 use App\Support\SeoSchema;
+use App\Support\StorefrontPaths;
 use App\Services\SettingService;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class RootController extends Controller
@@ -25,6 +32,60 @@ class RootController extends Controller
     public function index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
     {
         return $this->shell();
+    }
+
+    /**
+     * Every address without its own web route. Real SPA screens get the shell
+     * (private ones marked noindex); anything else is a 404 - with the shop's
+     * header and search around it, so a dead link still leads somewhere.
+     */
+    public function spa(Request $request): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\Response
+    {
+        $path = $request->path() === '/' ? '' : $request->path();
+
+        switch (StorefrontPaths::classify($path)) {
+            case StorefrontPaths::INDEX:
+                return $this->shell();
+
+            case StorefrontPaths::NOINDEX:
+                return $this->shell(['seo' => [
+                    'title'       => 'Suglow — Authentic Cosmetics & Skincare in Bangladesh',
+                    'description' => 'Shop authentic cosmetics & skincare at Suglow. Imported from Malaysia, Thailand & Indonesia. Cash on delivery across Bangladesh.',
+                    'keywords'    => null,
+                    // A checkout or account screen has nothing to rank for and
+                    // no canonical address worth declaring.
+                    'canonical'   => null,
+                    'image'       => null,
+                    'type'        => 'website',
+                    'robots'      => 'noindex, follow',
+                ]]);
+        }
+
+        abort_if(StorefrontPaths::looksLikeFile($path), 404);
+
+        return $this->notFound();
+    }
+
+    /**
+     * The storefront's 404: the SPA shell (which renders the "not found"
+     * screen with full navigation) under a real 404 status, so search engines
+     * drop the address instead of indexing an empty page. Also rendered for
+     * a missing product, category, brand or post - see bootstrap/app.php.
+     */
+    public function notFound(): \Illuminate\Http\Response
+    {
+        return response($this->shell([
+            'seo' => [
+                'title'       => 'Page Not Found | Suglow',
+                'description' => 'This page is not on Suglow any more. Browse authentic cosmetics and skincare with cash on delivery across Bangladesh.',
+                'keywords'    => null,
+                'canonical'   => null,
+                'image'       => null,
+                'type'        => 'website',
+                'robots'      => 'noindex, follow',
+            ],
+            'notFound' => true,
+        ]), 404);
     }
 
     public function product(Product $product): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
@@ -90,7 +151,9 @@ class RootController extends Controller
             'price' => $structuredData['offers']['price'] ?? null,
             'currency' => $structuredData['offers']['priceCurrency'] ?? 'BDT',
             'availability' => $structuredData['offers']['availability'] ?? null,
-            'brand' => $product->brand?->name,
+            // Not the raw name: the placeholder "No Brand" is a brand row too,
+            // and it was showing in link previews. Same rule as the JSON-LD.
+            'brand' => SeoSchema::brandName($product),
             'sku' => $product->sku,
         ];
 
@@ -291,6 +354,95 @@ class RootController extends Controller
                 'description' => 'The skincare, makeup and beauty products Suglow customers buy most. 100% authentic, cash on delivery across Bangladesh.',
                 'keywords'    => null,
                 'canonical'   => rtrim((string) config('app.url'), '/') . '/most-popular',
+                'image'       => null,
+                'type'        => 'website',
+                'robots'      => 'index, follow, max-image-preview:large',
+            ],
+        ]);
+    }
+
+    /**
+     * /page/{slug} — About us, Support, Legal: the pages answer engines read
+     * to judge whether the shop is real. Content in the HTML, typed schema.
+     */
+    public function page(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\Response
+    {
+        $meta = PageMetaResolver::forSlug($slug);
+
+        if ($meta === null) {
+            return $this->notFound();
+        }
+
+        return $this->shell([
+            'seo' => [
+                'title'       => $meta['title'],
+                'description' => $meta['description'],
+                'keywords'    => null,
+                'canonical'   => $meta['url'],
+                'image'       => null,
+                'type'        => 'website',
+                'robots'      => 'index, follow, max-image-preview:large',
+            ],
+            'structuredData' => PageMetaResolver::structuredData($meta),
+            'cmsPage'        => $meta,
+        ]);
+    }
+
+    /** /promotion/{slug} — an active promotion's landing page. */
+    public function promotion(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\Response
+    {
+        return $this->promoPage(
+            Promotion::query()->where('slug', $slug)->where('status', Status::ACTIVE)->first(),
+            'promotion'
+        );
+    }
+
+    /** /product-section/{slug} — a curated product section. */
+    public function productSection(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\Response
+    {
+        return $this->promoPage(ProductSection::query()->active()->where('slug', $slug)->first(), 'product-section');
+    }
+
+    /**
+     * /campaign/{slug} — only while the campaign runs. The API already refuses
+     * an ended campaign's products, so its page would be empty anyway.
+     */
+    public function campaign(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\Response
+    {
+        return $this->promoPage(Campaign::query()->running()->where('slug', $slug)->first(), 'campaign');
+    }
+
+    /** /flash-sale — fell through to the generic title. */
+    public function flashSale(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    {
+        return $this->shell([
+            'seo' => [
+                'title'       => 'Flash Sale — Limited-Time Deals on Authentic Cosmetics | Suglow',
+                'description' => 'Limited-time flash sale prices on authentic skincare and cosmetics at Suglow. Cash on delivery across Bangladesh.',
+                'keywords'    => null,
+                'canonical'   => rtrim((string) config('app.url'), '/') . '/flash-sale',
+                'image'       => null,
+                'type'        => 'website',
+                'robots'      => 'index, follow, max-image-preview:large',
+            ],
+        ]);
+    }
+
+    /** Shared by the promotion, product-section and campaign pages. */
+    private function promoPage(?Model $record, string $prefix): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\Response
+    {
+        if (!$record) {
+            return $this->notFound();
+        }
+
+        $name = trim((string) $record->name);
+
+        return $this->shell([
+            'seo' => [
+                'title'       => "{$name} — Offers on Authentic Cosmetics | Suglow",
+                'description' => "Shop {$name} at Suglow: authentic skincare and cosmetics with cash on delivery across Bangladesh.",
+                'keywords'    => null,
+                'canonical'   => rtrim((string) config('app.url'), '/') . "/{$prefix}/" . rawurlencode($record->slug),
                 'image'       => null,
                 'type'        => 'website',
                 'robots'      => 'index, follow, max-image-preview:large',

@@ -68,4 +68,12 @@ return [
         'test_code' => env('TIKTOK_EVENTS_TEST_CODE'),
     ],
 
+    // IndexNow (Bing, Yandex, Seznam, Naver). Nothing to set up: the key is
+    // derived from APP_KEY. Submits only when APP_ENV=production unless
+    // INDEXNOW_ENABLED says otherwise. See App\Support\IndexNow.
+    'indexnow' => [
+        'enabled'  => env('INDEXNOW_ENABLED'),
+        'endpoint' => 'https://api.indexnow.org/indexnow',
+    ],
+
 ];

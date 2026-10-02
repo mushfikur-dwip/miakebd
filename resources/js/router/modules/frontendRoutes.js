@@ -34,13 +34,18 @@ const  BlogTagPageComponent = () => import("../../components/frontend/blog/BlogT
 
 export default [
     {
-        path: "/home",
+        path: "/",
         component: HomeComponent,
         name: "frontend.home",
         meta: {
             isFrontend: true,
             auth: false,
         },
+    },
+    // Old links and bookmarks. The server answers /home with a 301 too.
+    {
+        path: "/home",
+        redirect: "/",
     },
     {
         path: "/product",

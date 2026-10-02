@@ -214,6 +214,10 @@
        banner sliders but stretched this ~80px row of thumbnails to 200px and
        left a blank band between the gallery and the product name. */
     .swiper.thumb-swiper { min-height: 0 }
+    /* Same for the hero: it now has its slides' real 1689:600 shape (about
+       130px tall on a phone) and holds that box itself while loading, so the
+       200px floor only left a blank band under the banner. */
+    .swiper.banner-swiper { min-height: 0 }
     .thumb-swiper .swiper-slide-thumb-active { @apply border-primary }
     .thumb-swiper .swiper-slide-thumb-active img { @apply border-white }
     /*==================================

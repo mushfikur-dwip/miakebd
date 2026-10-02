@@ -44,6 +44,9 @@ class GenerateSitemap extends Command
         $writer->setIndent(true);
         $writer->startElement('urlset');
         $writer->writeAttribute('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9');
+        // Google's image extension: product photos are how cosmetics get found
+        // in Google Images, and listing them here gets them crawled with the page.
+        $writer->writeAttribute('xmlns:image', 'http://www.google.com/schemas/sitemap-image/1.1');
 
         $count = 0;
         $this->writeUrl($writer, "{$baseUrl}/", now(), 'daily', '1.0');
@@ -52,6 +55,7 @@ class GenerateSitemap extends Command
 
         Product::query()
             ->select(['id', 'slug', 'updated_at'])
+            ->with('media')
             ->where('status', Status::ACTIVE)
             ->storefront()
             ->whereNotNull('slug')
@@ -64,7 +68,8 @@ class GenerateSitemap extends Command
                         "{$baseUrl}/product/".rawurlencode($product->slug),
                         $product->updated_at,
                         'weekly',
-                        '0.9'
+                        '0.9',
+                        $this->productImages($product, $baseUrl)
                     );
                     $count++;
                 }
@@ -103,7 +108,8 @@ class GenerateSitemap extends Command
         }
 
         $this->writeUrl($writer, "{$baseUrl}/offers", now(), 'daily', '0.7');
-        $count++;
+        $this->writeUrl($writer, "{$baseUrl}/most-popular", now(), 'daily', '0.7');
+        $count += 2;
 
         Page::query()
             ->select(['id', 'slug', 'updated_at', 'status'])
@@ -207,7 +213,8 @@ class GenerateSitemap extends Command
         string $location,
         mixed $lastModified,
         string $changeFrequency,
-        string $priority
+        string $priority,
+        array $images = []
     ): void {
         $writer->startElement('url');
         $writer->writeElement('loc', $location);
@@ -218,6 +225,41 @@ class GenerateSitemap extends Command
 
         $writer->writeElement('changefreq', $changeFrequency);
         $writer->writeElement('priority', $priority);
+
+        foreach ($images as $image) {
+            $writer->startElement('image:image');
+            $writer->writeElement('image:loc', $image);
+            $writer->endElement();
+        }
+
         $writer->endElement();
+    }
+
+    /**
+     * The product's own photos, as the JSON-LD lists them. The stock "no
+     * image" placeholder is not a photo of anything, so it is never listed.
+     * Google reads up to 1,000 per page; ten is plenty for a product. A
+     * sitemap needs absolute URLs, so a disk configured with a relative
+     * /storage URL is anchored to the site.
+     *
+     * @return list<string>
+     */
+    private function productImages(Product $product, string $baseUrl): array
+    {
+        try {
+            $urls = $product->previews ?: [$product->cover];
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $urls = array_filter(
+            $urls,
+            fn ($url) => is_string($url) && $url !== '' && !str_contains($url, '/images/default/')
+        );
+
+        return array_slice(array_values(array_map(
+            fn (string $url) => str_starts_with($url, '/') ? $baseUrl . $url : $url,
+            $urls
+        )), 0, 10);
     }
 }

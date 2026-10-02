@@ -4,8 +4,12 @@
         <p class="text-sm sm:text-base font-medium">{{ setting.site_offer_banner_text }}</p>
     </div>
 
-    <header
-        :class="isSticky === true ? 'fixed top-0 left-0 z-30 w-full mb-5 sm:mb-8 shadow-xs bg-white' : 'relative z-30 mb-5 sm:mb-8 shadow-xs bg-white'">
+    <!-- Sticky, never toggled to `fixed`: switching to fixed at scrollY > 0
+         took the header out of the page flow, so everything under it jumped
+         up by its height on every scroll away from the top and back down at
+         the top - 0.13 layout shift per page on phones. Sticky keeps its
+         space in the flow and still pins it while scrolling. -->
+    <header class="sticky top-0 z-30 mb-5 sm:mb-8 shadow-xs bg-white">
         <div class="container py-3.5 px-4 lg:py-0">
             <div class="flex items-center justify-between gap-5">
                 <!--  Logo & Mobile Responsive Start -->
@@ -36,7 +40,7 @@
                     <ul class="header-nav-list">
                         <li class="header-nav-item">
                             <router-link class="header-nav-menu"
-                                :class="checkIsPathAndRoutePathSame('/home') ? 'router-link-active router-link-exact-active' : ''"
+                                :class="checkIsPathAndRoutePathSame('/') ? 'router-link-active router-link-exact-active' : ''"
                                 :to="{ name: 'frontend.home' }">
                                 {{ $t("label.home") }}
                             </router-link>
@@ -135,7 +139,7 @@
                 <!-- Mobile Search Start -->
                 <form @submit.prevent="search"
                     class="hidden w-full lg:w-80 h-10 rounded-3xl lg:flex items-center gap-2 px-4 border border-gray-100 bg-gray-100 transition-all duration-300 focus-within:border-primary focus-within:bg-white">
-                    <button class="lab-line-search text-lg flex-shrink-0"></button>
+                    <button class="lab-line-search text-lg flex-shrink-0" :aria-label="$t('label.search')"></button>
                     <input v-model="searchProduct" class="w-full h-full" type="search"
                         :placeholder="$t('label.search') + '...'" />
                     <button @click="resetSearch" type="button" v-if="searchProduct" class="text-sm text-red-500 fa-regular fa-circle-xmark" ></button>
@@ -180,7 +184,7 @@
 
 
                 <!-- Wishlist Start -->
-                <router-link class="hidden lg:block relative" :to="{ name: 'frontend.wishlist' }">
+                <router-link class="hidden lg:block relative" :to="{ name: 'frontend.wishlist' }" :aria-label="$t('label.wishlist')">
                     <i class="lab-line-heart text-xl"></i>
                     <span v-if="wishlists.length > 0"
                         class="absolute top-2 ltr:-right-2 rtl:-left-2 text-[10px] font-medium h-4 px-1 !leading-[14px] text-center rounded-full border border-white text-white bg-primary">
@@ -212,7 +216,7 @@
                      stays open until you pick something, click away, or press
                      Escape. -->
                 <div class="relative hidden lg:block" ref="accountMenu">
-                    <button type="button" class="lab-line-user text-xl py-5" :aria-expanded="accountOpen"
+                    <button type="button" class="lab-line-user text-xl py-5" :aria-label="$t('button.profile')" :aria-expanded="accountOpen"
                         aria-haspopup="true" @click.stop="accountOpen = !accountOpen"></button>
                     <div v-if="logged" v-show="accountOpen"
                         class="w-60 absolute top-full ltr:-right-10 rtl:-left-10 z-50 rounded-2xl overflow-hidden shadow-card bg-white"
@@ -314,7 +318,7 @@
                 <!-- My Account End -->
 
                 <!-- Card Button Start -->
-                <button @click.prevent="openCanvas('cart-canvas')" type="button"
+                <button @click.prevent="openCanvas('cart-canvas')" type="button" :aria-label="$t('label.cart')"
                     class="hidden lg:block flex-shrink-0 relative" :class="cartBump ? 'cart-bump' : ''">
                     <i
                         class="lab-line-bag text-xl w-10 h-10 !leading-10 text-center rounded-full bg-secondary text-white"></i>
@@ -343,7 +347,7 @@
         </div>
         <div
             class="w-full h-10 rounded-3xl flex items-center gap-2 px-4 mb-4 border border-gray-100 bg-gray-100 transition-all duration-300 focus-within:border-primary focus-within:bg-white">
-            <button class="lab-line-search text-lg flex-shrink-0"></button>
+            <button class="lab-line-search text-lg flex-shrink-0" :aria-label="$t('label.search')"></button>
             <input id="searchSomething" v-model="searchProduct" @keyup="searchElement" class="w-full h-full"
                 type="search" :placeholder="$t('label.search') + '...'">
         </div>
@@ -386,7 +390,6 @@
 
 import { loadLocale } from "../../../i18n";
 import statusEnum from "../../../enums/modules/statusEnum";
-import { onMounted, ref } from "vue";
 import targetService from "../../../services/targetService";
 import appService from "../../../services/appService";
 import activityEnum from "../../../enums/modules/activityEnum";
@@ -405,20 +408,9 @@ export default {
     components: { MenuChildrenComponent },
     mixins: [cartBump],
     setup() {
-        const isSticky = ref();
+        // No scroll listener: the header is position: sticky (see the template).
         const { openCanvas } = useCanvas();
-        onMounted(() => {
-            window.addEventListener('scroll', function () {
-                let windowScroll = this.scrollY;
-                if (windowScroll > 0) {
-                    isSticky.value = true;
-                } else {
-                    isSticky.value = false;
-                }
-            })
-        })
         return {
-            isSticky,
             openCanvas
         }
     },

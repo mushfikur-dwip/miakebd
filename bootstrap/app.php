@@ -6,6 +6,7 @@ use App\Http\Middleware\FlushPublicResponses;
 use App\Http\Middleware\Idempotent;
 use App\Http\Middleware\CaptureMetaClickIds;
 use App\Http\Middleware\CaptureTikTokClickId;
+use App\Http\Middleware\EnsureNotInstalled;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\Installed;
@@ -87,6 +88,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'apiKey' => ApiKeyMiddleware::class,
             'localization' => localization::class,
             'installed' => Installed::class,
+            'not-installed' => EnsureNotInstalled::class,
             'active' => EnsureUserIsActive::class,
             'staff' => EnsureStaff::class,
             'cache.public' => CachePublicResponse::class,
@@ -144,6 +146,28 @@ return Application::configure(basePath: dirname(__DIR__))
                         'error' => config('app.debug') ? $e->getMessage() : null,
                     ], 422);
                 }
+            }
+        });
+
+        // A page that does not exist - a removed product, a renamed category,
+        // an old link - used to get Laravel's bare "Not Found" page: no header,
+        // no search, no way back into the shop. It now gets the storefront's
+        // own 404 (still a 404 status, marked noindex). API calls, uploads and
+        // file-like probes keep the plain response; any failure while building
+        // the page falls back to it too.
+        $exceptions->render(function (NotFoundHttpException $e, Request $request) {
+            if ($request->expectsJson()
+                || !in_array($request->method(), ['GET', 'HEAD'], true)
+                || $request->is('api/*')
+                || $request->is('storage/*')
+                || \App\Support\StorefrontPaths::looksLikeFile($request->path())) {
+                return null;
+            }
+
+            try {
+                return app(\App\Http\Controllers\Frontend\RootController::class)->notFound();
+            } catch (\Throwable $ignored) {
+                return null;
             }
         });
     })->create();

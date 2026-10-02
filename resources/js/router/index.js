@@ -44,12 +44,9 @@ import subscriberRoutes from "./modules/subscriberRoutes";
 import transactionRoutes from "./modules/transactionRoutes";
 import mobileSectionRoutes from "./modules/mobileSectionRoutes";
 
+// The homepage is "/" itself (frontendRoutes). It used to redirect to /home,
+// which put a second homepage URL in every address bar and shared link.
 const baseRoutes = [
-    {
-        path: "/",
-        redirect: { name: "frontend.home" },
-        name: "root",
-    },
     {
         path: "/:pathMatch(.*)*",
         name: "route.notFound",

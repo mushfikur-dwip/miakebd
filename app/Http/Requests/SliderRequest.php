@@ -59,6 +59,10 @@ class SliderRequest extends FormRequest
                 Rule::in([SliderPosition::HERO, SliderPosition::GRID, SliderPosition::WIDE])
             ],
             'image'       => $this->route('slider.id') ? ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'] : ['required', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            // The hero's optional phone version (2:1, 1200x600) - see
+            // Slider::getMobileImageAttribute().
+            'mobile_image'        => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            'remove_mobile_image' => ['nullable', 'boolean'],
         ];
     }
 }

@@ -28,6 +28,9 @@ class SliderResource extends JsonResource
             // and the column is absent until the migration runs.
             'position'    => $this->position ?? SliderPosition::HERO,
             'tile'        => $this->tile,
+            // Hero only: the phone version, or null (phones then crop the
+            // desktop banner). See Slider::getMobileImageAttribute().
+            'mobile_image' => $this->mobile_image,
             'link'        => $this->link
         ];
     }

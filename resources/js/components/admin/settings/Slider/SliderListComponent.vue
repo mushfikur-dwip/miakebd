@@ -181,6 +181,8 @@ export default {
                 position: slider.position,
                 status: slider.status,
                 description: slider.description,
+                // Shown in the form with a "Remove" box; null when none.
+                mobile_image: slider.mobile_image,
             };
             this.loading.isActive = false;
         },

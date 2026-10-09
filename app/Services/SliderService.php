@@ -83,6 +83,7 @@ class SliderService
             if ($request->image) {
                 $slider->addMediaFromRequest('image')->toMediaCollection('slider');
             }
+            $this->savePhoneImage($request, $slider);
             return $slider;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
@@ -101,10 +102,25 @@ class SliderService
                 $slider->clearMediaCollection('slider');
                 $slider->addMediaFromRequest('image')->toMediaCollection('slider');
             }
+            $this->savePhoneImage($request, $slider);
             return $slider;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    /**
+     * The hero's optional phone version: a new upload replaces the old one,
+     * remove_mobile_image drops it, and neither leaves it untouched.
+     */
+    private function savePhoneImage(SliderRequest $request, Slider $slider): void
+    {
+        if ($request->hasFile('mobile_image')) {
+            $slider->clearMediaCollection('slider-mobile');
+            $slider->addMediaFromRequest('mobile_image')->toMediaCollection('slider-mobile');
+        } elseif ($request->boolean('remove_mobile_image')) {
+            $slider->clearMediaCollection('slider-mobile');
         }
     }
 

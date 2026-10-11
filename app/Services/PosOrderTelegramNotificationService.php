@@ -2,19 +2,20 @@
 
 namespace App\Services;
 
-use App\Enums\Ask;
 use App\Enums\OrderType;
 use App\Enums\PaymentStatus;
 use App\Libraries\AppLibrary;
 use App\Models\Order;
-use Dipokhalder\Settings\Facades\Settings;
 use Exception;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class PosOrderTelegramNotificationService
 {
+    public function __construct(private TelegramNotifier $telegram)
+    {
+    }
+
     public function send(int $orderId): void
     {
         try {
@@ -22,17 +23,7 @@ class PosOrderTelegramNotificationService
                 return;
             }
 
-            $settings = array_merge([
-                'telegram_status'    => Ask::NO,
-                'telegram_bot_token' => '',
-                'telegram_chat_id'   => '',
-            ], Settings::group('telegram')->all());
-
-            if ((int)$settings['telegram_status'] !== Ask::YES) {
-                return;
-            }
-
-            if (blank($settings['telegram_bot_token']) || blank($settings['telegram_chat_id'])) {
+            if (!$this->telegram->enabled()) {
                 return;
             }
 
@@ -41,19 +32,7 @@ class PosOrderTelegramNotificationService
                 return;
             }
 
-            $response = Http::timeout(8)->asForm()->post(
-                'https://api.telegram.org/bot' . $settings['telegram_bot_token'] . '/sendMessage',
-                [
-                    'chat_id'                  => $settings['telegram_chat_id'],
-                    'text'                     => $this->message($order),
-                    'parse_mode'               => 'HTML',
-                    'disable_web_page_preview' => true,
-                ]
-            );
-
-            if ($response->failed()) {
-                Log::info('Telegram POS order notification failed: ' . $response->body());
-            }
+            $this->telegram->send($this->message($order), 'POS order');
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
         }
@@ -79,6 +58,6 @@ class PosOrderTelegramNotificationService
 
     private function escape(string $value): string
     {
-        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return TelegramNotifier::escape($value);
     }
 }

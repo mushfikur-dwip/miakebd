@@ -9,6 +9,7 @@ use App\Events\SendOrderGotSms;
 use App\Events\SendOrderMail;
 use App\Events\SendOrderPush;
 use App\Events\SendOrderSms;
+use App\Events\SendOnlineOrderTelegram;
 use App\Events\SendPosCustomerSms;
 use App\Events\SendPosOrderSms;
 use App\Events\SendPosOrderTelegram;
@@ -21,6 +22,7 @@ use App\Listeners\SendOrderGotSmsNotification;
 use App\Listeners\SendOrderMailNotification;
 use App\Listeners\SendOrderPushNotification;
 use App\Listeners\SendOrderSmsNotification;
+use App\Listeners\SendOnlineOrderTelegramNotification;
 use App\Listeners\SendPosCustomerSmsNotification;
 use App\Listeners\SendPosOrderSmsNotification;
 use App\Listeners\SendPosOrderTelegramNotification;
@@ -68,6 +70,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         SendPosOrderTelegram::class => [
             SendPosOrderTelegramNotification::class,
+        ],
+        SendOnlineOrderTelegram::class => [
+            SendOnlineOrderTelegramNotification::class,
         ],
         SendPosOrderSms::class => [
             SendPosOrderSmsNotification::class,

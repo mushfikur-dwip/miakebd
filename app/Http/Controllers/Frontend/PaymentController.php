@@ -14,6 +14,7 @@ use App\Events\SendOrderGotSms;
 use App\Events\SendOrderMail;
 use App\Events\SendOrderPush;
 use App\Events\SendOrderSms;
+use App\Events\SendOnlineOrderTelegram;
 use App\Http\Requests\PaymentRequest;
 use App\Libraries\AppLibrary;
 use App\Models\Currency;
@@ -227,6 +228,13 @@ class PaymentController extends Controller
             SendOrderGotPush::dispatch(['order_id' => $order->id]);
         } catch (\Exception $e) {
             $this->releaseConfirmation($order, $e);
+        } finally {
+            // The shop's Telegram chat, like the POS sale alerts. In finally:
+            // the mail and push listeners above can throw, and a broken mail
+            // server must not keep the shop from hearing about the order. It
+            // never throws itself, and sends once per order however often
+            // this runs (a failure above lets a refresh run it again).
+            SendOnlineOrderTelegram::dispatch(['order_id' => $order->id]);
         }
     }
 

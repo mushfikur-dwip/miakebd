@@ -35,7 +35,29 @@ class StorefrontNotFoundTest extends TestCase
         $this->assertStringContainsString('<div id="app"></div>', $html, $path);
         $this->assertStringContainsString('<meta name="robots" content="noindex, follow">', $html, $path);
         $this->assertStringNotContainsString('rel="canonical"', $html, $path);
+        // Language alternates belong to a page that may be indexed; a 404
+        // advertising them invites Google to crawl the same dead URL again.
+        $this->assertStringNotContainsString('rel="alternate"', $html, $path);
         $this->assertSame('Page Not Found | Suglow', $this->title($html), $path);
+    }
+
+    /**
+     * The shop's pages are served at one address per page and switch language
+     * client-side, so each language's alternate is that same address - and
+     * x-default covers a visitor whose language the shop does not serve.
+     * Without these the en/bn/ar views of a page compete as duplicates.
+     */
+    public function test_an_indexable_page_names_its_language_alternates(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        foreach (['en', 'bn', 'bn-BD', 'x-default'] as $language) {
+            $this->assertStringContainsString(
+                '<link rel="alternate" hreflang="' . $language . '" href="https://suglow.com/">',
+                $html,
+                $language
+            );
+        }
     }
 
     public function test_an_unknown_address_is_a_real_404_with_the_shop_around_it(): void

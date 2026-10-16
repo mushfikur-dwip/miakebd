@@ -16,6 +16,17 @@
                         <button v-if="props.search.sku" @click.prevent="clearSku" type="button"
                             class="text-sm text-red-500 fa-regular fa-circle-xmark"></button>
                     </div>
+                    <!-- The rule itself, where the stock it governs is read.
+                         Behind the branch PIN, so only someone trusted with
+                         the drawer can let the shop sell what it has not got. -->
+                    <button type="button" @click.prevent="askSwitch"
+                        class="stock-zero-switch db-btn py-2 border"
+                        :class="cannotBeZero ? 'border-emerald-500 text-emerald-700 bg-emerald-50'
+                            : 'border-amber-500 text-amber-700 bg-amber-50'">
+                        <i class="lab" :class="cannotBeZero ? 'lab-fill-lock' : 'lab-line-unlock'"></i>
+                        <span>{{ $t('message.stock_zero_switch_title') }}:
+                            {{ cannotBeZero ? $t('label.on') : $t('label.off') }}</span>
+                    </button>
                     <router-link :to="{ name: 'admin.stock.adjustment.list' }"
                         class="db-btn py-2 text-white bg-primary">
                         <i class="lab lab-line-stock"></i>
@@ -128,10 +139,15 @@
                             </td>
                             <td class="db-table-body-td">
                                 <div class="flex flex-wrap gap-1.5">
+                                    <!-- Amber where the branch owes units it
+                                         already billed; grey where it simply
+                                         holds nothing. The two are different. -->
                                     <span v-for="outletStock in stock.outlet_stocks" :key="outletStock.outlet_name"
                                         class="whitespace-nowrap text-xs px-2 py-1 rounded"
-                                        :class="outletStock.quantity > 0 ? 'bg-gray-100' : 'bg-gray-50 text-gray-400'">
+                                        :class="outletStock.billed_beyond > 0 ? 'bg-amber-100 text-amber-800'
+                                            : (outletStock.quantity > 0 ? 'bg-gray-100' : 'bg-gray-50 text-gray-400')">
                                         {{ outletStock.outlet_name }}: <b>{{ outletStock.quantity }}</b>
+                                        <template v-if="outletStock.billed_beyond > 0"> (−{{ outletStock.billed_beyond }})</template>
                                     </span>
                                 </div>
                             </td>
@@ -198,6 +214,48 @@
          branch lines instead of showing the previous product's numbers. -->
     <StockEditModalComponent v-if="editModal.isShowModal" :key="editKey" :item="editItem" :modal="editModal"
         :outlets="outlets" v-on:saved="list(props.search.page)" />
+
+    <!-- Turning the rule on or off: which way it is going, what that means,
+         and the branch PIN. -->
+    <div v-if="switchModal" class="fixed inset-0 z-50 p-3 w-screen h-dvh overflow-y-auto bg-black/50">
+        <div class="w-full rounded-xl mx-auto bg-white max-w-lg mt-16">
+            <div class="flex items-center justify-between gap-2 py-4 px-4 border-b border-slate-100">
+                <h3 class="text-lg font-bold">{{ $t('message.stock_zero_switch_title') }}</h3>
+                <button @click="closeSwitch" type="button" class="lab-line-circle-cross text-lg text-danger"></button>
+            </div>
+            <form class="d-block w-full p-4" @submit.prevent="saveSwitch">
+                <p class="text-sm mb-3" :class="switchTo ? 'text-emerald-700' : 'text-amber-700'">
+                    {{ switchTo ? $t('message.stock_zero_switch_on') : $t('message.stock_zero_switch_off') }}
+                </p>
+
+                <div class="form-col-12">
+                    <label for="switchBranch" class="db-field-title required">{{ $t('label.branch') }}</label>
+                    <select id="switchBranch" v-model="switchOutlet" class="db-field-control">
+                        <option v-for="outlet in outlets" :key="outlet.id" :value="outlet.id">{{ outlet.name }}</option>
+                    </select>
+                </div>
+
+                <div class="form-col-12 mt-3">
+                    <label for="switchPin" class="db-field-title required">{{ $t('message.stock_zero_switch_pin') }}</label>
+                    <input id="switchPin" v-model="switchPin" type="password" inputmode="numeric" autocomplete="off"
+                        class="db-field-control" />
+                </div>
+
+                <small class="db-field-alert d-block mt-2" v-if="switchError">{{ switchError }}</small>
+
+                <div class="modal-btns mt-6">
+                    <button type="submit" class="modal-btn-fill" :disabled="!switchPin">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>{{ $t('button.save') }}</span>
+                    </button>
+                    <button type="button" class="modal-btn-outline" @click="closeSwitch">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                        <span>{{ $t('button.close') }}</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </template>
 <script>
 import LoadingComponent from "../components/LoadingComponent";
@@ -270,6 +328,13 @@ export default {
             editItem: {},
             editKey: 0,
             loadError: "",
+            // The "stock cannot be zero" switch's dialog: which way it is
+            // being moved, against which branch, and the PIN.
+            switchModal: false,
+            switchTo: true,
+            switchOutlet: null,
+            switchPin: "",
+            switchError: "",
             ENV: ENV
         }
     },
@@ -291,9 +356,18 @@ export default {
         paginationPage: function () {
             return this.$store.getters['stock/page'];
         },
+        cannotBeZero: function () {
+            return this.$store.getters['stock/setup'].stock_cannot_be_zero !== false;
+        },
     },
     mounted() {
         this.list();
+        // Which position the switch is in. It governs what the numbers in the
+        // table mean, so the page reads it alongside them.
+        this.$store.dispatch('stock/setup').catch(() => {
+            // Left at "on", the safe position - the table simply shows the
+            // real figures, which is what it did before this switch existed.
+        });
         this.$store.dispatch('outlet/lists', {
             paginate: 0,
             order_column: 'id',
@@ -320,6 +394,43 @@ export default {
         },
         search: function () {
             this.list();
+        },
+        /** Opens the dialog on the opposite position to the current one. */
+        askSwitch: function () {
+            this.switchTo = !this.cannotBeZero;
+            this.switchOutlet = this.outlets.length ? this.outlets[0].id : null;
+            this.switchPin = "";
+            this.switchError = "";
+            this.switchModal = true;
+        },
+        closeSwitch: function () {
+            this.switchModal = false;
+            this.switchPin = "";
+            this.switchError = "";
+        },
+        saveSwitch: function () {
+            this.switchError = "";
+            this.loading.isActive = true;
+
+            this.$store.dispatch('stock/updateSetup', {
+                outlet_id: this.switchOutlet,
+                stock_cannot_be_zero: this.switchTo,
+                pin: this.switchPin,
+            }).then(() => {
+                this.loading.isActive = false;
+                this.closeSwitch();
+                alertService.success(this.$t('message.stock_zero_switch_saved'));
+                // The figures mean something different now: 0-with-a-remark
+                // instead of a negative, or the other way round.
+                this.list(this.props.search.page);
+            }).catch((err) => {
+                this.loading.isActive = false;
+                // A wrong PIN and a lockout both come back with a message the
+                // page shows as-is; anything else is a real failure.
+                this.switchError = err.response?.data?.message
+                    || err.response?.data?.errors?.pin?.[0]
+                    || this.$t('message.something_wrong');
+            });
         },
         edit: function (stock) {
             this.editItem = stock;

@@ -793,6 +793,9 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle
         Route::get('/export', [StockController::class, 'export']);
         Route::get('/item-quantity', [StockController::class, 'itemQuantity']);
         Route::post('/update-item', [StockController::class, 'updateItem']);
+        // The "stock cannot be zero" switch. Changing it needs the branch PIN.
+        Route::get('/setup', [StockController::class, 'setup']);
+        Route::match(['put', 'patch'], '/setup', [StockController::class, 'updateSetup']);
 
         Route::prefix('adjustment')->group(function () {
             Route::get('/', [StockAdjustmentController::class, 'index']);

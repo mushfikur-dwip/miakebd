@@ -27,7 +27,12 @@ class OutletRequest extends FormRequest
                 'required',
                 'string',
                 'max:190',
-                Rule::unique("outlets", "name")->ignore($this->route('outlet.id'))
+                // The branch being edited, so saving it without renaming it is
+                // not refused as a duplicate of itself. The route parameter is
+                // `{outlet}` (a bound Outlet): asking for 'outlet.id' always
+                // read null, so the ignore never applied and every edit of an
+                // existing branch came back "name has already been taken".
+                Rule::unique("outlets", "name")->ignore($this->route('outlet'))
             ],
             'email'     => ['nullable', 'email', 'max:190'],
             'phone'     => ['nullable', 'string', 'max:20'],

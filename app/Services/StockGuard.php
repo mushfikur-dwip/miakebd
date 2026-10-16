@@ -9,6 +9,7 @@ use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductVariation;
 use App\Models\Stock;
+use App\Support\StockPolicy;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,10 @@ use Illuminate\Support\Facades\DB;
 class StockGuard
 {
     public const LOW = 1;
+
+    public function __construct(private readonly StockPolicy $policy)
+    {
+    }
 
     /**
      * @param iterable<array> $changes
@@ -60,7 +65,13 @@ class StockGuard
 
             // Only a movement that took stock away can be refused for it: a
             // purchase into a branch already short still has to go through.
-            if ($refuse && $moved < 0 && $left < 0) {
+            // And only while the switch is on: with it off the sale goes
+            // through, the row really does go negative, and the stock page
+            // shows 0 with a note of what was billed beyond stock.
+            //
+            // Stock that covers the sale is never affected either way - this
+            // only ever fires when the movement would end below zero.
+            if ($refuse && $this->policy->cannotBeZero() && $moved < 0 && $left < 0) {
                 throw new Exception(trans('all.message.stock_not_enough', [
                     'name'   => $this->itemName($product, $first),
                     'branch' => $outletId ? (Outlet::find($outletId)?->name ?? '') : trans('all.label.unassigned'),

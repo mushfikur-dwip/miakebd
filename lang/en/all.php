@@ -71,6 +71,8 @@ return [
         "branch"                     => "Branch",
         "branch_stock"               => "Branch Stock",
         "unassigned"                 => "Unassigned",
+        // A delivery order has no branch: it draws on the shop's whole stock.
+        "online"                     => "the online shop",
         "stock_adjustment"           => "Stock Adjustment",
         "stock_edit"                 => "Stock edit",
         "stock_adjustments"          => "Stock Adjustments",
@@ -188,6 +190,7 @@ return [
         'stock_add_only'                   => 'Stock can only be added, or moved between branches. It goes down only through sales.',
         'stock_adjustment_cannot_lower'    => 'Deleting this would take stock away by hand, which is not allowed. Stock goes down only through sales.',
         'stock_add_whole_number'           => 'Type how many units to add: a whole number, 0 or more.',
+        'stock_sold_beyond'                => ':n billed beyond stock',
         'pos_sale_only'                    =>'Only a POS sale can be changed here.',
         'pos_sale_already_reversed'        => 'This sale has already been reversed, and a reversal is final. If it was a real sale, ring it up again.',
         'pos_sale_use_reverse'             => 'A POS sale is cancelled with Reverse, which needs the branch PIN.',

@@ -7,10 +7,10 @@
                 dir="rtl"
                 :slides-per-view="1"
                 :speed="1000"
-                :loop="true"
-                :navigation="true"
-                :pagination="{ clickable: true }"
-                :autoplay="{ delay: 2500 }"
+                :loop="sliders.length > 1"
+                :navigation="sliders.length > 1"
+                :pagination="sliders.length > 1 ? { clickable: true } : false"
+                :autoplay="sliders.length > 1 ? { delay: 2500 } : false"
                 :modules="modules"
                 class="banner-swiper"
             >
@@ -21,7 +21,11 @@
                      design uploaded in Admin -> Slider) is shown whole there;
                      without one the desktop banner is cropped from the left,
                      where hero banners carry their offer text. -->
-                <SwiperSlide v-for="(slider, index) in sliders">
+                <!-- Keyed by the slide's own id. Without a key Vue reused the
+                     slide nodes when the list arrived, and Swiper - which has
+                     its own copies of them while looping - was left showing
+                     blank slides. -->
+                <SwiperSlide v-for="(slider, index) in sliders" :key="slider.id">
                     <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl aspect-[2/1] sm:aspect-[1689/600] isolate">
                         <component :is="safeLink(slider.link) ? 'a' : 'div'" :href="safeLink(slider.link) || null"
                             class="block w-full h-full">

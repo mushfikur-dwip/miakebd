@@ -72,6 +72,16 @@ class OrderTotalsTest extends TestCase
             // The live catalogue's usual limit; the column's own default is 1.
             'maximum_purchase_quantity' => 100,
         ]);
+
+        // On the shelf, because the website may not sell what the shop does
+        // not have while the "stock cannot be zero" switch is on - and it is
+        // on by default. These tests are about money, not stock, so there is
+        // plenty of it. See StockZeroSwitchTest for the rule itself.
+        Stock::create([
+            'product_id' => $this->product->id, 'outlet_id' => null, 'model_type' => Product::class,
+            'model_id' => $this->product->id, 'item_type' => Product::class, 'item_id' => $this->product->id,
+            'quantity' => 500, 'status' => Status::ACTIVE,
+        ]);
     }
 
     private function line(array $overrides = []): array

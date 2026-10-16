@@ -168,6 +168,19 @@
     <meta name="author" content="Suglow">
     @if ($seoCanonical)
         <link rel="canonical" href="{{ $seoCanonical }}">
+
+        {{-- The same page in the shop's other languages. The storefront serves
+             one URL per page and switches language client-side (the
+             x-localization header), so every alternate is this same address -
+             which is exactly what Google asks for in that case, and it stops
+             the en/bn/ar variants being read as competing duplicates.
+             x-default names the version shown to a visitor whose language we
+             do not serve. Only on pages with a canonical: a noindex screen
+             must not advertise alternates. --}}
+        <link rel="alternate" hreflang="en" href="{{ $seoCanonical }}">
+        <link rel="alternate" hreflang="bn" href="{{ $seoCanonical }}">
+        <link rel="alternate" hreflang="bn-BD" href="{{ $seoCanonical }}">
+        <link rel="alternate" hreflang="x-default" href="{{ $seoCanonical }}">
     @endif
 
     {{-- geo.region is BD (whole country), NOT BD-55 (Rangpur division).

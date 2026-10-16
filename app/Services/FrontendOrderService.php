@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Support\OrderPriceGuard;
 use App\Support\OrderTotals;
 use App\Support\StorefrontOrderGuard;
+use App\Support\StorefrontStockGuard;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\OrderRequest;
 use Illuminate\Support\Facades\Log;
@@ -144,6 +145,16 @@ class FrontendOrderService
                 OrderPriceGuard::assertPricesAreGenuine(
                     (array) json_decode($request->products),
                     $attributes['subtotal'] ?? null
+                );
+
+                // While the "stock cannot be zero" switch is on, the website
+                // may not sell what the shop does not have - the till could
+                // not either. After the quantity guard above, so the figures
+                // this reads have already been checked for sanity, and before
+                // anything is written, so a refused order leaves no rows.
+                StorefrontStockGuard::assertStockCovers(
+                    (array) json_decode($request->products),
+                    blank($attributes['outlet_id'] ?? null) ? null : (int) $attributes['outlet_id']
                 );
 
                 // Discount, tax, shipping and total, from the server. These were

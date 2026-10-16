@@ -106,7 +106,7 @@
     </div>
     <div id="orderReceiptPrint"
         class="fixed inset-0 z-50 p-3 w-screen h-dvh overflow-y-auto bg-black/50 transition-all duration-500 opacity-0 invisible">
-        <div class="w-full max-w-[302px] mx-auto bg-white transition-all duration-500" id="print">
+        <div class="w-full max-w-[860px] mx-auto bg-white transition-all duration-500" id="print">
             <div class="modal-header hidden-print">
                 <button type="button" @click="reset"
                     class="modal-close flex items-center justify-center gap-1.5 py-2 px-4 rounded bg-[#FB4E4E]">
@@ -147,6 +147,9 @@ export default {
             printObj: {
                 id: "print",
                 popTitle: this.$t("menu.order_receipt"),
+                // An online order prints as an A4 invoice. (vue3-print-nb splits
+                // extraHead on commas, so keep it comma-free.)
+                extraHead: "<style>@page{size:A4;margin:12mm}</style>",
             },
             enums: {
                 paymentStatusEnum: paymentStatusEnum,

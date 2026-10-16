@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use App\Enums\OrderType;
 use App\Enums\PaymentStatus;
+use App\Enums\Source;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -92,6 +94,19 @@ class Order extends Model
     {
         return $query->where('payment_status', PaymentStatus::PAID)
             ->whereNotIn('status', [OrderStatus::CANCELED, OrderStatus::REJECTED]);
+    }
+
+    /** The same test as scopeCountedAsSale(), for an order already loaded. */
+    public function countsAsSale(): bool
+    {
+        return (int) $this->payment_status === PaymentStatus::PAID
+            && !in_array((int) $this->status, [OrderStatus::CANCELED, OrderStatus::REJECTED], true);
+    }
+
+    /** Rung up at the till rather than ordered online. */
+    public function isTillOrder(): bool
+    {
+        return (int) $this->source === Source::POS || (int) $this->order_type === OrderType::POS;
     }
 
     /**

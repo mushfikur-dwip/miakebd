@@ -42,12 +42,12 @@
                         <div>
                             <label class="db-field-title">{{ tr('current_pin') }}</label>
                             <input v-model="form.current_pin" type="password" inputmode="numeric" autocomplete="off" class="db-field-control" />
-                            <small class="db-field-alert" v-if="errors.current_pin">{{ errors.current_pin }}</small>
+                            <small class="db-field-alert" v-if="section === 'pin' && errors.current_pin">{{ errors.current_pin }}</small>
                         </div>
                         <div>
                             <label class="db-field-title">{{ tr('new_pin') }}</label>
                             <input v-model="form.new_pin" type="password" inputmode="numeric" autocomplete="new-password" class="db-field-control" />
-                            <small class="db-field-alert" v-if="errors.new_pin">{{ errors.new_pin }}</small>
+                            <small class="db-field-alert" v-if="section === 'pin' && errors.new_pin">{{ errors.new_pin }}</small>
                         </div>
                         <div>
                             <label class="db-field-title">{{ tr('confirm_pin') }}</label>
@@ -55,6 +55,35 @@
                         </div>
                     </div>
                     <small class="db-field-alert d-block mt-2" v-if="section === 'pin' && message">{{ message }}</small>
+                    <div class="modal-btns mt-4">
+                        <button type="submit" class="modal-btn-fill" :disabled="busy">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>{{ tr('change_pin') }}</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- The shop-wide PIN that changes how a POS sale was paid. -->
+                <form class="cash-method-pin rounded-lg border p-4" @submit.prevent="changeMethodPin">
+                    <h4 class="font-semibold">{{ tr('method_pin_title') }}</h4>
+                    <p class="text-xs text-gray-500 mt-1 mb-3">{{ tr('method_pin_help') }}</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="db-field-title">{{ tr('method_pin_current') }}</label>
+                            <input v-model="form.method_current_pin" type="password" inputmode="numeric" autocomplete="off" class="db-field-control" />
+                            <small class="db-field-alert" v-if="section === 'method_pin' && errors.current_pin">{{ errors.current_pin }}</small>
+                        </div>
+                        <div>
+                            <label class="db-field-title">{{ tr('new_pin') }}</label>
+                            <input v-model="form.method_new_pin" type="password" inputmode="numeric" autocomplete="new-password" class="db-field-control" />
+                            <small class="db-field-alert" v-if="section === 'method_pin' && errors.new_pin">{{ errors.new_pin }}</small>
+                        </div>
+                        <div>
+                            <label class="db-field-title">{{ tr('confirm_pin') }}</label>
+                            <input v-model="form.method_new_pin_confirmation" type="password" inputmode="numeric" autocomplete="new-password" class="db-field-control" />
+                        </div>
+                    </div>
+                    <small class="db-field-alert d-block mt-2" v-if="section === 'method_pin' && message">{{ message }}</small>
                     <div class="modal-btns mt-4">
                         <button type="submit" class="modal-btn-fill" :disabled="busy">
                             <i class="fa-solid fa-circle-check"></i>
@@ -274,7 +303,7 @@
 
 <script>
 import alertService from "../../../services/alertService";
-import { tr, ACCOUNT, ALL_ACCOUNTS, BASE_ACCOUNTS, NOTE_ACCOUNTS } from "./cashCalculationText";
+import { tr, ACCOUNT, MANUAL_ACCOUNTS, BASE_ACCOUNTS, NOTE_ACCOUNTS } from "./cashCalculationText";
 import { save, failure } from "./cashHttp";
 
 export default {
@@ -314,6 +343,9 @@ export default {
                 counted_by_id: "",
                 reset_pin: "",
                 reset_ok: false,
+                method_current_pin: "",
+                method_new_pin: "",
+                method_new_pin_confirmation: "",
             },
         };
     },
@@ -322,8 +354,9 @@ export default {
         this.resend = {};
     },
     computed: {
+        // Card and MFS sales are never a balance, so never offered here.
         accounts: function () {
-            return this.outlet.mfs_enabled ? ALL_ACCOUNTS : BASE_ACCOUNTS;
+            return this.outlet.mfs_enabled ? MANUAL_ACCOUNTS : BASE_ACCOUNTS;
         },
         needsPin: function () {
             return ["withdraw", "transfer", "reverse"].includes(this.action.type);
@@ -463,6 +496,17 @@ export default {
                 new_pin_confirmation: this.form.new_pin_confirmation,
             }, "pin", () => {
                 alertService.success(tr("pin_changed"));
+                this.$emit("saved", true);
+            });
+        },
+        changeMethodPin: function () {
+            this.send("admin/cash-calculation/method-pin", {
+                outlet_id: this.outlet.id,
+                current_pin: this.form.method_current_pin,
+                new_pin: this.form.method_new_pin,
+                new_pin_confirmation: this.form.method_new_pin_confirmation,
+            }, "method_pin", () => {
+                alertService.success(tr("method_pin_changed"));
                 this.$emit("saved", true);
             });
         },

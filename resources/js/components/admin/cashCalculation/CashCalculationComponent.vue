@@ -109,6 +109,56 @@
 
             <!-- Owner / manager: the statements -->
             <template v-else>
+                <!-- The day's till sale, big, with its profit; and the month so far. -->
+                <div v-if="sales" class="cash-sale-hero db-card p-4 sm:p-5 mb-6">
+                    <div class="grid gap-5 lg:grid-cols-5">
+                        <div class="lg:col-span-3 min-w-0">
+                            <div class="text-sm font-medium text-gray-500">{{ summary.is_today ? tr('todays_sale') : tr('sale_on', { d: shownDate }) }}</div>
+                            <div class="flex flex-wrap items-end gap-x-4 gap-y-1 mt-1">
+                                <div class="cash-sale-total text-4xl sm:text-5xl font-extrabold text-primary tabular-nums leading-none break-all">{{ money(sales.day.total) }}</div>
+                                <div class="text-sm text-gray-500 pb-1">{{ tr('sales_count', { n: sales.day.count }) }}</div>
+                            </div>
+                            <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+                                <span class="cash-sale-profit rounded-full px-3 py-1 font-semibold"
+                                    :class="sales.day.profit < 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'">
+                                    {{ sales.day.profit < 0 ? tr('loss') : tr('profit') }} {{ money(Math.abs(sales.day.profit)) }}
+                                </span>
+                                <span class="text-gray-500">{{ tr('buying_cost', { amount: money(sales.day.cost) }) }}</span>
+                                <span v-if="sales.day.discount > 0" class="text-gray-500">{{ tr('discount_given') }} {{ money(sales.day.discount) }}</span>
+                            </div>
+                            <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <div v-for="method in METHODS" :key="method" class="rounded-lg bg-gray-50 px-3 py-2 min-w-0">
+                                    <div class="text-[11px] text-gray-500">{{ tr('method_' + method) }}</div>
+                                    <div class="text-base font-semibold tabular-nums truncate">{{ money(sales.day.methods[method]) }}</div>
+                                </div>
+                            </div>
+                            <p v-if="sales.reversed.count > 0" class="mt-3 text-xs font-medium text-red-600">
+                                {{ tr('reversed_line', { n: sales.reversed.count, amount: money(sales.reversed.total) }) }}
+                            </p>
+                        </div>
+                        <div class="lg:col-span-2 rounded-lg border border-gray-100 p-4 min-w-0">
+                            <div class="text-sm font-medium text-gray-500">{{ tr('month_to_date', { from: dmy(sales.month.from), to: dmy(sales.month.to) }) }}</div>
+                            <div class="cash-month-total text-2xl font-bold tabular-nums mt-1 break-all">{{ money(sales.month.total) }}</div>
+                            <div class="text-xs text-gray-500">{{ tr('sales_count', { n: sales.month.count }) }}</div>
+                            <div class="mt-2 text-sm font-semibold" :class="sales.month.profit < 0 ? 'text-red-700' : 'text-emerald-700'">
+                                {{ sales.month.profit < 0 ? tr('loss') : tr('profit') }} {{ money(Math.abs(sales.month.profit)) }}
+                                <span class="font-normal text-gray-500">· {{ tr('buying_cost', { amount: money(sales.month.cost) }) }}</span>
+                            </div>
+                            <table class="w-full text-sm mt-3">
+                                <tbody>
+                                    <tr v-for="method in METHODS" :key="method" class="border-b border-gray-100 last:border-0">
+                                        <td class="py-1 text-gray-600">{{ tr('method_' + method) }}</td>
+                                        <td class="py-1 text-right tabular-nums">{{ money(sales.month.methods[method]) }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p v-if="sales.month.missing_cost > 0" class="mt-4 rounded-md bg-amber-50 text-amber-800 p-2 text-xs">
+                        {{ tr('missing_cost_note', { n: sales.month.missing_cost }) }}
+                    </p>
+                </div>
+
                 <div class="grid gap-6 mb-6 lg:grid-cols-2 2xl:grid-cols-3">
                     <!-- Cash drawer: notes and coins only -->
                     <div class="db-card p-4 flex flex-col" :class="{ 'cash-flash': flashKey === 'drawer' }">
@@ -140,11 +190,6 @@
                             <div class="text-lg font-bold text-emerald-800 whitespace-nowrap">{{ money(summary.grand_total.notes) }}</div>
                         </div>
                         <p class="text-xs text-gray-500 mt-3">{{ tr('last_count') }}: {{ countText(summary.drawer.last_count) }}</p>
-                        <!-- Card and MFS have their own card now; "Other" names no
-                             place the money went, so it stays information only. -->
-                        <div v-if="summary.pos_other && summary.pos_other.other > 0" class="mt-3 rounded-md bg-gray-50 p-2 text-xs text-gray-600">
-                            {{ tr('non_cash_info') }}: {{ tr('other_sales') }} {{ money(summary.pos_other.other) }}
-                        </div>
                         <div class="mt-auto pt-4 space-y-3" v-if="summary.is_today">
                             <!-- The one count: every note in the drawer, the shop's and the agent cash together. -->
                             <button type="button" class="cash-count-btn db-btn w-full justify-center py-3 text-base font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md ring-4 ring-emerald-100"
@@ -160,16 +205,17 @@
                         </div>
                     </div>
 
-                    <!-- Till sales paid by card or MFS: e-money, never notes -->
-                    <div v-if="summary.emoney" class="db-card p-4 flex flex-col" :class="{ 'cash-flash': flashKey === 'emoney' }">
+                    <!-- Till sales paid by card or MFS: the day's and the month's,
+                         never a balance - that money never passes through the branch. -->
+                    <div v-if="sales" class="cash-emoney db-card p-4 flex flex-col">
                         <div class="flex items-start justify-between gap-2 mb-3">
                             <div>
                                 <h4 class="text-base font-semibold text-sky-700">{{ tr('emoney_title') }}</h4>
                                 <p class="text-[11px] text-gray-500 mt-0.5">{{ tr('emoney_help') }}</p>
                             </div>
                             <div class="text-right shrink-0">
-                                <div class="text-xs text-gray-500">{{ tr('total_card_mfs') }}</div>
-                                <div class="text-2xl font-bold">{{ money(summary.emoney.total_closing) }}</div>
+                                <div class="text-xs text-gray-500">{{ summary.is_today ? tr('emoney_day') : tr('emoney_that_day') }} · {{ tr('total_card_mfs') }}</div>
+                                <div class="text-2xl font-bold tabular-nums">{{ money(sales.day.methods.card + sales.day.methods.mfs) }}</div>
                             </div>
                         </div>
                         <table class="w-full text-sm">
@@ -181,15 +227,21 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="line in emoneyLines" :key="line.key" class="border-b border-gray-100 last:border-0">
-                                    <td class="py-1.5" :class="line.strong ? 'font-semibold' : 'text-gray-600'">{{ line.label }}</td>
-                                    <td class="py-1.5 text-right" :class="lineClass({ ...line, value: line.card })">{{ money(line.card) }}</td>
-                                    <td class="py-1.5 text-right" :class="lineClass({ ...line, value: line.mfs })">{{ money(line.mfs) }}</td>
+                                <tr class="border-b border-gray-100">
+                                    <td class="py-1.5 font-semibold">{{ summary.is_today ? tr('emoney_day') : tr('emoney_that_day') }}</td>
+                                    <td class="py-1.5 text-right font-semibold tabular-nums">{{ money(sales.day.methods.card) }}</td>
+                                    <td class="py-1.5 text-right font-semibold tabular-nums">{{ money(sales.day.methods.mfs) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1.5 text-gray-600">{{ tr('emoney_month') }}</td>
+                                    <td class="py-1.5 text-right tabular-nums">{{ money(sales.month.methods.card) }}</td>
+                                    <td class="py-1.5 text-right tabular-nums">{{ money(sales.month.methods.mfs) }}</td>
                                 </tr>
                             </tbody>
                         </table>
-                        <div class="flex flex-wrap gap-2 mt-auto pt-4" v-if="summary.is_today">
-                            <button type="button" class="db-btn py-2 bg-gray-100" @click="open({ type: 'withdraw', account: ACCOUNT.POS_CARD })">🔒 {{ tr('withdraw') }}</button>
+                        <div class="mt-3 flex justify-between text-sm">
+                            <span class="text-gray-600">{{ tr('emoney_month') }} · {{ tr('total_card_mfs') }}</span>
+                            <span class="font-semibold tabular-nums">{{ money(sales.month.methods.card + sales.month.methods.mfs) }}</span>
                         </div>
                     </div>
 
@@ -320,6 +372,18 @@
                                     <span v-if="row.reference"> · {{ tr('order') }} #{{ row.reference }}</span>
                                     · {{ row.by }} · {{ row.at }}
                                     <span v-if="row.minutes_after_sale !== null"> · {{ tr('minutes_after_sale', { n: row.minutes_after_sale }) }}</span>
+                                    <div v-if="row.reason" class="mt-0.5 text-gray-600">{{ tr('reason_word') }}: {{ row.reason }}</div>
+                                </li>
+                            </ul>
+                        </div>
+                        <div v-if="alerts.method_changes && alerts.method_changes.length">
+                            <div class="text-sm font-medium text-red-700 mb-2">{{ tr('method_changes_alert') }}</div>
+                            <ul class="text-xs space-y-1.5">
+                                <li v-for="row in alerts.method_changes" :key="row.id" class="rounded bg-amber-50 p-2">
+                                    <b>{{ money(row.amount) }}</b>
+                                    <span v-if="row.reference"> · {{ tr('order') }} #{{ row.reference }}</span>
+                                    · {{ row.from }} → {{ row.to }} · {{ row.by }} · {{ row.at }}
+                                    <div v-if="row.reason" class="mt-0.5 text-gray-600">{{ tr('reason_word') }}: {{ row.reason }}</div>
                                 </li>
                             </ul>
                         </div>
@@ -438,7 +502,10 @@ const PERIOD_KEY = "cash_calculation_watch_period";
 
 // The history's type filter: every type but the old "count difference",
 // which counts no longer write.
-const TYPES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12];
+const TYPES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14];
+
+// The till's payment methods, as the sales figures name them.
+const METHODS = ["cash", "card", "mfs", "other"];
 
 // The last answer for each view (branch, day, filters), shown at once while
 // the fresh one loads - on a slow line the page is readable immediately
@@ -533,6 +600,7 @@ export default {
             MFS: MFS,
             PROVIDERS: PROVIDERS,
             TYPES: TYPES,
+            METHODS: METHODS,
             // The full-screen loader: only while there is nothing at all to show.
             loading: { isActive: false },
             loaded: false,
@@ -591,6 +659,7 @@ export default {
                 { key: "opening", label: tr("opening_balance"), value: d.opening, strong: true, always: true },
                 { key: "pos", label: tr("pos_cash_sales"), value: d.pos_sales, always: true },
                 { key: "pos_rev", label: tr("pos_reversed"), value: d.pos_reversals },
+                { key: "pos_method", label: tr("pos_method_line"), value: d.pos_method },
                 { key: "added", label: tr("money_added"), value: d.added, always: true },
                 { key: "withdrawn", label: tr("withdrawn"), value: d.withdrawn, always: true },
                 { key: "t_in", label: tr("transfer_in"), value: d.transfer_in },
@@ -611,31 +680,16 @@ export default {
         maxDate: function () {
             return this.today ? parseDate(this.today) : new Date();
         },
-        emoneyLines: function () {
-            const card = this.summary.emoney.card;
-            const mfs = this.summary.emoney.mfs;
-            const row = (key, label, field, strong = false, always = false) => ({
-                key, label, card: card[field], mfs: mfs[field], strong, always,
-            });
-            return [
-                row("opening", tr("opening_balance"), "opening", true, true),
-                row("pos", tr("pos_sales"), "pos_sales", false, true),
-                row("pos_rev", tr("pos_reversed"), "pos_reversals"),
-                row("added", tr("money_added"), "added"),
-                row("withdrawn", tr("withdrawn"), "withdrawn"),
-                row("t_in", tr("transfer_in"), "transfer_in"),
-                row("t_out", tr("transfer_out"), "transfer_out"),
-                row("variance", tr("count_difference"), "variance"),
-                row("reversals", tr("reversals"), "reversals"),
-                row("reset", tr("reset_line"), "reset"),
-                row("closing", this.summary.is_today ? tr("closing") : tr("closing_balance"), "closing", true, true),
-            ].filter((line) => line.always || Number(line.card || 0) !== 0 || Number(line.mfs || 0) !== 0);
-        },
         quietWeek: function () {
             return this.alerts
                 && this.alerts.pos_reversals.length === 0
+                && (this.alerts.method_changes || []).length === 0
                 && this.alerts.pin_failures.length === 0
                 && this.alerts.shortages.length === 0;
+        },
+        // The day's and the month's till sales, by payment method.
+        sales: function () {
+            return (this.summary && this.summary.sales) || null;
         },
     },
     mounted() {
@@ -661,6 +715,10 @@ export default {
         // A Recharge "SIM" is the recharge balance.
         simLabel: function (provider) {
             return provider === "recharge" ? tr("balance") : tr("sim");
+        },
+        // YYYY-MM-DD as the page shows dates: dd-mm-yyyy.
+        dmy: function (value) {
+            return value ? value.split("-").reverse().join("-") : "";
         },
         shiftDay: function (days) {
             const next = parseDate(this.date);
@@ -948,7 +1006,6 @@ export default {
             if (detail.kind === "add") {
                 effect = tr("acc_" + detail.account) + " +" + amount;
                 card = detail.account === ACCOUNT.DRAWER ? "drawer"
-                    : [ACCOUNT.POS_CARD, ACCOUNT.POS_MFS].includes(detail.account) ? "emoney"
                     : Object.keys(MFS).find((provider) => [MFS[provider].sim, MFS[provider].cash].includes(detail.account)) || null;
             } else {
                 const pots = MFS[detail.provider];

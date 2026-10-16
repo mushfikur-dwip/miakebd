@@ -18,11 +18,12 @@ class StockAdjustmentRequest extends FormRequest
         $type = (int) $this->get('type');
 
         return [
+            // Stock is added, or moved between branches; it goes down only
+            // through sales. Remove and Recalculate (which could lower it) are
+            // no longer offered - their old records stay readable.
             'type'           => ['required', Rule::in([
                 StockAdjustmentType::TRANSFER,
                 StockAdjustmentType::ADD,
-                StockAdjustmentType::REMOVE,
-                StockAdjustmentType::RECALCULATE,
             ])],
             // Null is the unassigned pool, so only the destination of an ADD
             // and the source of a REMOVE have to name a real branch. A
@@ -34,6 +35,11 @@ class StockAdjustmentRequest extends FormRequest
             'note'           => ['nullable', 'string', 'max:1000'],
             'products'       => ['required', 'json'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['type.in' => trans('all.message.stock_add_only')];
     }
 
     public function withValidator($validator): void

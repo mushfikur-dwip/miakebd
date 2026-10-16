@@ -42,7 +42,8 @@
                             <td class="db-table-body-td">{{ adjustment.total_items }}</td>
                             <td class="db-table-body-td">
                                 <div class="flex justify-start items-center gap-1.5">
-                                    <SmIconDeleteComponent @click="destroy(adjustment.id)" />
+                                    <!-- Undoing an add would take stock away by hand: never offered. -->
+                                    <SmIconDeleteComponent v-if="adjustment.type !== enums.typeEnum.ADD" @click="destroy(adjustment.id)" />
                                 </div>
                             </td>
                         </tr>

@@ -3,7 +3,10 @@
 namespace App\Http\Resources;
 
 
+use App\Enums\OrderStatus;
 use App\Libraries\AppLibrary;
+use App\Models\Order;
+use App\Models\PosSaleChange;
 use App\Support\PaymentLink;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -57,6 +60,17 @@ class OrderDetailsResource extends JsonResource
             "pos_received_amount"            => AppLibrary::flatAmountFormat($this->pos_received_amount),
             "pos_currency_received_amount"   => AppLibrary::currencyAmountFormat($this->pos_received_amount),
             "change_currency_amount"         => AppLibrary::currencyAmountFormat($this->pos_received_amount-$this->total),
+            // A till sale taken back with Reverse (cancelled), and every
+            // correction made to it, oldest first.
+            'is_reversed'                    => $this->isTillSale() && in_array((int) $this->status, [OrderStatus::CANCELED, OrderStatus::REJECTED], true),
+            'pos_changes'                    => $this->isTillSale()
+                ? PosSaleChangeResource::collection(PosSaleChange::with('creator:id,name')->where('order_id', $this->id)->orderBy('id')->get())
+                : [],
         ];
+    }
+
+    private function isTillSale(): bool
+    {
+        return $this->resource instanceof Order && $this->resource->isTillOrder();
     }
 }

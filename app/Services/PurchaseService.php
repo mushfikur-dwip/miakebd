@@ -202,6 +202,7 @@ class PurchaseService
                 if ($request->products) {
                     $model_id = $purchase->id;
                     $products = json_decode($request->products, true);
+                    $before   = $purchase->stocks()->get();
                     if ($purchase->stocks) {
                         $stockIds = $purchase->stocks->pluck('id');
                         if (!blank($stockIds)) {
@@ -247,6 +248,10 @@ class PurchaseService
                             }
                         }
                     }
+
+                    // A smaller or moved purchase cannot leave a branch below zero.
+                    $guard = app(StockGuard::class);
+                    $guard->settle(array_merge($guard->changesOf($before, -1), $guard->changesOf($purchase->stocks()->get())));
                 }
 
                 if ($request->file) {
@@ -272,6 +277,7 @@ class PurchaseService
     {
         try {
             DB::transaction(function () use ($purchase) {
+                $before = $purchase->stocks()->get();
                 if ($purchase->stocks) {
                     $stockIds = $purchase->stocks->pluck('id');
                     if (!blank($stockIds)) {
@@ -279,6 +285,9 @@ class PurchaseService
                     }
                     $purchase->stocks()->delete();
                 }
+                // Goods already sold cannot be un-bought.
+                $guard = app(StockGuard::class);
+                $guard->settle($guard->changesOf($before, -1));
                 $file = $purchase->getFirstMedia('purchase');
                 $file?->delete();
                 $purchase->delete();

@@ -20,7 +20,8 @@
                             <tr class="db-table-head-tr">
                                 <th class="db-table-head-th">{{ $t('label.branch') }}</th>
                                 <th class="db-table-head-th">{{ $t('label.current_stock') }}</th>
-                                <th class="db-table-head-th">{{ $t('label.new_stock') }}</th>
+                                <th class="db-table-head-th">{{ $t('label.add_quantity') }}</th>
+                                <th class="db-table-head-th">{{ $t('label.new_total') }}</th>
                             </tr>
                         </thead>
                         <tbody class="db-table-body">
@@ -28,11 +29,12 @@
                                 <td class="db-table-body-td font-medium">{{ row.outlet_name }}</td>
                                 <td class="db-table-body-td">{{ row.current }}</td>
                                 <td class="db-table-body-td">
-                                    <input v-model="row.quantity" type="number" class="db-field-control max-w-32" />
+                                    <input v-model="row.add" type="number" min="0" step="1" inputmode="numeric" class="db-field-control max-w-32" />
                                 </td>
+                                <td class="db-table-body-td font-semibold">{{ row.current + (parseInt(row.add, 10) || 0) }}</td>
                             </tr>
                             <tr v-if="rows.length === 0" class="db-table-body-tr">
-                                <td class="db-table-body-td text-center" colspan="3">
+                                <td class="db-table-body-td text-center" colspan="4">
                                     {{ $t('message.no_branch_found') }}
                                 </td>
                             </tr>
@@ -79,7 +81,7 @@ export default {
     },
     computed: {
         total: function () {
-            return this.rows.reduce((sum, row) => sum + (parseInt(row.quantity, 10) || 0), 0);
+            return this.rows.reduce((sum, row) => sum + row.current + (parseInt(row.add, 10) || 0), 0);
         },
     },
     mounted() {
@@ -101,7 +103,7 @@ export default {
                 outlet_id: outlet.id,
                 outlet_name: outlet.name,
                 current: held[outlet.id] || 0,
-                quantity: held[outlet.id] || 0,
+                add: 0,
             }));
 
             // A branch that has since been deactivated still shows in the table
@@ -115,7 +117,7 @@ export default {
                     outlet_id: entry.outlet_id,
                     outlet_name: entry.outlet_name,
                     current: entry.quantity,
-                    quantity: entry.quantity,
+                    add: 0,
                 });
             });
 
@@ -124,7 +126,7 @@ export default {
                     outlet_id: 0,
                     outlet_name: this.$t('label.unassigned'),
                     current: held[0],
-                    quantity: held[0],
+                    add: 0,
                 });
             }
         },
@@ -134,7 +136,8 @@ export default {
         save: function () {
             this.error = "";
 
-            const invalid = this.rows.find(row => row.quantity === "" || row.quantity === null || isNaN(parseInt(row.quantity, 10)));
+            // Units that arrived, added on top: never negative, never a fraction.
+            const invalid = this.rows.find(row => row.add === "" || row.add === null || !/^[0-9]+$/.test(String(row.add)));
             if (invalid) {
                 this.error = this.$t('message.stock_edit_number_required');
                 return;
@@ -145,7 +148,7 @@ export default {
             fd.append('variation_id', this.item.variation_id || 0);
             fd.append('stocks', JSON.stringify(this.rows.map(row => ({
                 outlet_id: row.outlet_id,
-                quantity: parseInt(row.quantity, 10),
+                add: parseInt(row.add, 10),
             }))));
 
             this.$store.dispatch('stock/updateItem', fd).then(() => {

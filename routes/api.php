@@ -822,6 +822,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle
             Route::post('/reset', [CashCalculationController::class, 'reset']);
         });
         Route::post('/pin', [CashCalculationController::class, 'changePin']);
+        Route::post('/method-pin', [CashCalculationController::class, 'methodPin']);
     });
 
     Route::prefix('reviews')->group(function () {
@@ -876,6 +877,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle
         Route::get('/export', [PosOrderController::class, 'export']);
         Route::post('/change-status/{order}', [PosOrderController::class, 'changeStatus']);
         Route::post('/change-payment-status/{order}', [PosOrderController::class, 'changePaymentStatus']);
+        // Corrections, behind PINs. Idempotent: a copy resent after a lost
+        // answer is not applied twice.
+        Route::middleware('idempotent')->group(function () {
+            Route::post('/reverse/{order}', [PosOrderController::class, 'reverse']);
+            Route::post('/change-method/{order}', [PosOrderController::class, 'changeMethod']);
+        });
     });
 
     Route::prefix('pos')->group(function () {

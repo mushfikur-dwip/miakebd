@@ -125,6 +125,9 @@ class DamageService
                         }
                     }
                 }
+                // A write-off cannot take more than the shop holds.
+                $guard = app(StockGuard::class);
+                $guard->settle($guard->changesOf($this->damage->stocks()->get()));
                 if ($request->file) {
                     $this->damage->addMediaFromRequest('file')->toMediaCollection('damage');
                 }
@@ -182,6 +185,7 @@ class DamageService
                 if ($request->products) {
                     $model_id = $damage->id;
                     $products = json_decode($request->products, true);
+                    $before   = $damage->stocks()->get();
                     if ($damage->stocks) {
                         $stockIds = $damage->stocks->pluck('id');
                         if (!blank($stockIds)) {
@@ -224,6 +228,10 @@ class DamageService
                             }
                         }
                     }
+
+                    // The edited write-off still cannot take more than the shop holds.
+                    $guard = app(StockGuard::class);
+                    $guard->settle(array_merge($guard->changesOf($before, -1), $guard->changesOf($damage->stocks()->get())));
                 }
                 if ($request->file) {
                     $file = $damage->getFirstMedia('damage');

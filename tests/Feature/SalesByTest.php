@@ -24,6 +24,7 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
+use Tests\Feature\Concerns\StocksShelves;
 
 /**
  * "Sale By": the till credits each sale to an employee, and the Employees page
@@ -32,6 +33,7 @@ use Tests\TestCase;
 class SalesByTest extends TestCase
 {
     use RefreshDatabase;
+    use StocksShelves;
 
     private Outlet $outlet;
     private Product $product;
@@ -76,6 +78,7 @@ class SalesByTest extends TestCase
             'selling_price'   => 150,
             'variation_price' => 150,
         ]);
+        $this->stockUp($this->product, $this->outlet);
     }
 
     private function user(string $name, ?int $role = null, int $status = Status::ACTIVE): User

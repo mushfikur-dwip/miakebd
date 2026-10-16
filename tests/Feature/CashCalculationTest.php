@@ -24,6 +24,8 @@ use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\CashPinService;
+use App\Support\CashException;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -33,6 +35,7 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
+use Tests\Feature\Concerns\StocksShelves;
 
 /**
  * The Cash Calculation page: each branch's shop cash, bKash and Nagad agent
@@ -43,6 +46,7 @@ use Tests\TestCase;
 class CashCalculationTest extends TestCase
 {
     use RefreshDatabase;
+    use StocksShelves;
 
     private Outlet $outlet;
     private Product $product;
@@ -82,6 +86,7 @@ class CashCalculationTest extends TestCase
             'selling_price'   => 150,
             'variation_price' => 150,
         ]);
+        $this->stockUp($this->product, $this->outlet);
 
         Sanctum::actingAs($this->owner);
     }
@@ -125,14 +130,19 @@ class CashCalculationTest extends TestCase
         ]);
     }
 
-    private function ringUp(int $method = PosPaymentMethod::CASH, float $total = 150): Order
+    // One till sale of $quantity units of one product (Soap by default) for
+    // $total, of which $tax is tax - the way the POS screen sends it.
+    private function ringUp(int $method = PosPaymentMethod::CASH, float $total = 150, int $quantity = 1, float $tax = 0, ?Product $product = null): Order
     {
+        $product ??= $this->product;
+        $net       = $total - $tax;
+
         $response = $this->postJson('/api/admin/pos', [
             'customer_id'         => $this->user('Walk In', EnumRole::CUSTOMER)->id,
             'outlet_id'           => $this->outlet->id,
-            'subtotal'            => $total,
+            'subtotal'            => $net,
             'discount'            => 0,
-            'tax'                 => 0,
+            'tax'                 => $tax,
             'total'               => $total,
             'order_type'          => OrderType::POS,
             'source'              => Source::POS,
@@ -140,15 +150,15 @@ class CashCalculationTest extends TestCase
             'pos_payment_note'    => $method === PosPaymentMethod::CARD ? '1234' : ($method === PosPaymentMethod::CASH ? '' : 'TX123'),
             'pos_received_amount' => $method === PosPaymentMethod::CASH ? $total : null,
             'products'            => json_encode([[
-                'product_id'      => $this->product->id,
+                'product_id'      => $product->id,
                 'variation_id'    => 0,
                 'variation_names' => null,
-                'sku'             => 'SOAP1',
-                'price'           => $total,
-                'quantity'        => 1,
+                'sku'             => $product->sku,
+                'price'           => $net / $quantity,
+                'quantity'        => $quantity,
                 'discount'        => 0,
-                'total_tax'       => 0,
-                'subtotal'        => $total,
+                'total_tax'       => $tax,
+                'subtotal'        => $net,
                 'total'           => $total,
                 'taxes'           => [],
             ]]),
@@ -243,19 +253,21 @@ class CashCalculationTest extends TestCase
         $this->assertSame($mfs->id, CashEntry::where('account', CashAccount::POS_MFS)->sole()->order_id);
     }
 
-    public function test_a_cancelled_card_sale_is_taken_back_from_card_emoney(): void
+    public function test_a_reversed_card_sale_is_taken_back_from_card_emoney(): void
     {
         $order = $this->ringUp(PosPaymentMethod::CARD, 300);
 
-        $this->postJson('/api/admin/pos-order/change-status/' . $order->id, [
-            'status' => OrderStatus::CANCELED,
+        $this->postJson('/api/admin/pos-order/reverse/' . $order->id, [
             'reason' => 'Card declined later',
+            'pin'    => '51920',
         ])->assertSuccessful();
 
         $this->assertEquals(0, $this->balanceOf(CashAccount::POS_CARD));
         $this->assertSame(CashEntryType::POS_SALE_REVERSAL, CashEntry::latest('id')->first()->type);
     }
 
+    // A corrected payment method is a move of the same money, recorded as
+    // such - not as a sale taken back and a new one rung up.
     public function test_correcting_a_sales_payment_method_moves_its_money(): void
     {
         $order = $this->ringUp(PosPaymentMethod::CARD, 300);
@@ -264,6 +276,19 @@ class CashCalculationTest extends TestCase
 
         $this->assertEquals(0, $this->balanceOf(CashAccount::POS_CARD));
         $this->assertEquals(300, $this->drawer());
+
+        $moves = CashEntry::whereIn('type', [CashEntryType::POS_METHOD_OUT, CashEntryType::POS_METHOD_IN])->orderBy('id')->get();
+        $this->assertSame([
+            [CashAccount::POS_CARD, CashEntryType::POS_METHOD_OUT, -300.0],
+            [CashAccount::DRAWER, CashEntryType::POS_METHOD_IN, 300.0],
+        ], $moves->map(fn(CashEntry $entry) => [$entry->account, $entry->type, $entry->amount])->all());
+        $this->assertNotNull($moves[0]->group_ref);
+        $this->assertSame($moves[0]->group_ref, $moves[1]->group_ref, 'one movement, two legs');
+        $this->assertSame(0, CashEntry::where('type', CashEntryType::POS_SALE_REVERSAL)->count(), 'no sale was taken back');
+
+        $this->assertEquals(300, $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id)->json('data.drawer.pos_method'));
+        $this->getJson('/api/admin/cash-calculation/entries?outlet_id=' . $this->outlet->id . '&type=' . CashEntryType::POS_METHOD_IN)
+            ->assertOk()->assertJsonCount(1, 'data');
     }
 
     // Card and MFS sales made before this release were never written in. The
@@ -302,24 +327,103 @@ class CashCalculationTest extends TestCase
         $this->assertSame(3, CashEntry::whereIn('account', [CashAccount::POS_CARD, CashAccount::POS_MFS])->count(), 'a second run adds nothing');
     }
 
-    public function test_card_emoney_can_be_settled_out_with_the_pin(): void
+    // Card and MFS money goes to the bank and the merchant number, never
+    // into the branch's hands: there is no balance to add to, take from or
+    // count.
+    public function test_card_and_mfs_take_no_manual_entries(): void
     {
         $this->ringUp(PosPaymentMethod::CARD, 300);
+        $this->ringUp(PosPaymentMethod::MOBILE_BANKING, 200);
 
-        $this->withdraw(300, '00000', CashAccount::POS_CARD)->assertStatus(422);
-        $this->withdraw(300, '51920', CashAccount::POS_CARD)->assertSuccessful();
+        foreach ([CashAccount::POS_CARD, CashAccount::POS_MFS] as $account) {
+            $this->add(100, $account)->assertStatus(422);
+            $this->withdraw(100, '51920', $account)->assertStatus(422);
+            $this->postJson('/api/admin/cash-calculation/count', [
+                'outlet_id' => $this->outlet->id,
+                'account'   => $account,
+                'counted'   => 100,
+            ])->assertStatus(422);
+        }
 
-        $this->assertEquals(0, $this->balanceOf(CashAccount::POS_CARD));
+        $this->assertSame(2, CashEntry::count(), 'only the two sales');
+        $this->assertSame(0, CashCount::count());
     }
 
+    // The day's figures and the month's: what was sold, never a total that
+    // keeps growing from the day the page went live.
+    public function test_card_and_mfs_show_the_day_and_the_month_never_a_running_total(): void
+    {
+        Carbon::setTestNow('2026-09-30 18:00:00');
+        $this->ringUp(PosPaymentMethod::CARD, 300);
+        $this->ringUp(PosPaymentMethod::MOBILE_BANKING, 90);
+        Carbon::setTestNow('2026-10-01 09:00:00');
+        $this->ringUp(PosPaymentMethod::CARD, 200);
+        Carbon::setTestNow('2026-10-02 11:00:00');
+        $this->ringUp(PosPaymentMethod::CARD, 50);
+        $this->ringUp(PosPaymentMethod::CASH, 70);
+
+        $sales = $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id . '&date=2026-10-02')->json('data.sales');
+
+        $this->assertEquals(['cash' => 70, 'card' => 50, 'mfs' => 0, 'other' => 0], $sales['day']['methods']);
+        $this->assertEquals(120, $sales['day']['total']);
+        $this->assertSame(2, $sales['day']['count']);
+        $this->assertEquals(['cash' => 70, 'card' => 250, 'mfs' => 0, 'other' => 0], $sales['month']['methods'], 'September is not in October');
+        $this->assertEquals(320, $sales['month']['total']);
+        $this->assertSame(['2026-10-01', '2026-10-02'], [$sales['month']['from'], $sales['month']['to']]);
+    }
+
+    // Profit: what was taken without the tax, less what the units cost to
+    // buy. A product with no buying price set is flagged, since its whole
+    // price would otherwise look like profit.
+    public function test_profit_is_the_sale_without_tax_less_what_the_units_cost(): void
+    {
+        $sample = Product::create([
+            'name' => 'Sample', 'slug' => 'sample', 'sku' => 'SAMPLE1', 'status' => Status::ACTIVE,
+            'can_purchasable' => Ask::YES, 'buying_price' => 0, 'selling_price' => 50, 'variation_price' => 50,
+        ]);
+        $this->stockUp($sample, $this->outlet);
+
+        Carbon::setTestNow('2026-10-01 10:00:00');
+        $this->ringUp(PosPaymentMethod::CASH, 300, 2, 20);          // 2 Soap at 100 each to buy
+        $this->ringUp(PosPaymentMethod::CARD, 150)->refresh()->update(['status' => OrderStatus::CANCELED]);
+        Carbon::setTestNow('2026-10-02 10:00:00');
+        $this->ringUp(PosPaymentMethod::CASH, 50, 1, 0, $sample);
+
+        $summary = fn(string $date) => $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id . '&date=' . $date)->json('data.sales');
+        $first   = $summary('2026-10-01');
+        $second  = $summary('2026-10-02');
+
+        $this->assertEquals([300, 200, 80, 0], [$first['day']['total'], $first['day']['cost'], $first['day']['profit'], $first['day']['missing_cost']]);
+        $this->assertEquals([50, 0, 50, 1], [$second['day']['total'], $second['day']['cost'], $second['day']['profit'], $second['day']['missing_cost']]);
+        $this->assertEquals([350, 200, 130, 1], [$second['month']['total'], $second['month']['cost'], $second['month']['profit'], $second['month']['missing_cost']]);
+    }
+
+    // A sale taken back on a later day leaves the day it was sold; the
+    // drawer shows the notes leaving on the day they left.
+    public function test_a_sale_reversed_next_day_leaves_its_sale_day(): void
+    {
+        Carbon::setTestNow('2026-10-01 12:00:00');
+        $order = $this->ringUp(PosPaymentMethod::CASH, 300);
+        Carbon::setTestNow('2026-10-02 10:00:00');
+        $order->refresh()->update(['status' => OrderStatus::CANCELED]);
+
+        $first  = $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id . '&date=2026-10-01')->json('data');
+        $second = $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id . '&date=2026-10-02')->json('data');
+
+        $this->assertEquals(0, $first['sales']['day']['total']);
+        $this->assertEquals(300, $first['drawer']['closing'], 'the notes were in the drawer that night');
+        $this->assertEquals(-300, $second['drawer']['pos_reversals']);
+        $this->assertEquals(0, $second['drawer']['closing']);
+    }
+
+    // The ledger follows the order whatever changes it: the screens now
+    // allow only Reverse (final), but a cancel undone in the database must
+    // still put the money back.
     public function test_cancelling_a_cash_sale_reverses_it_and_restoring_it_posts_it_again(): void
     {
         $order = $this->ringUp();
 
-        $this->postJson('/api/admin/pos-order/change-status/' . $order->id, [
-            'status' => OrderStatus::CANCELED,
-            'reason' => 'Customer changed mind',
-        ])->assertSuccessful();
+        $order->refresh()->update(['status' => OrderStatus::CANCELED, 'reason' => 'Customer changed mind']);
 
         $this->assertEquals(0, $this->drawer());
         $reversal = CashEntry::where('type', CashEntryType::POS_SALE_REVERSAL)->sole();
@@ -335,11 +439,13 @@ class CashCalculationTest extends TestCase
         $this->assertSame(3, CashEntry::count());
     }
 
+    // No screen deletes a till sale any more (see PosSaleChangeTest); one
+    // deleted in the database still takes its money with it.
     public function test_deleting_a_cash_sale_reverses_it(): void
     {
         $order = $this->ringUp();
 
-        $this->deleteJson('/api/admin/pos-order/' . $order->id)->assertSuccessful();
+        $order->refresh()->delete();
 
         $this->assertNull(Order::find($order->id));
         $this->assertEquals(0, $this->drawer());
@@ -350,9 +456,7 @@ class CashCalculationTest extends TestCase
     {
         $order = $this->ringUp();
 
-        $this->postJson('/api/admin/pos-order/change-payment-status/' . $order->id, [
-            'payment_status' => PaymentStatus::UNPAID,
-        ])->assertSuccessful();
+        $order->refresh()->update(['payment_status' => PaymentStatus::UNPAID]);
 
         $this->assertEquals(0, $this->drawer());
     }
@@ -501,6 +605,55 @@ class CashCalculationTest extends TestCase
         $this->withdraw(10, '51920')->assertStatus(422);
         $this->withdraw(10, '777888')->assertSuccessful();
         $this->withdraw(10, '51920', CashAccount::DRAWER, $other)->assertSuccessful();
+    }
+
+    // Correcting a sale's payment method has a PIN of its own, one for the
+    // whole shop: whoever knows a branch PIN cannot use it here.
+    public function test_the_method_pin_starts_at_112233_and_is_not_the_branch_pin(): void
+    {
+        $pins = app(CashPinService::class);
+
+        $pins->verifyMethodPin($this->outlet->id, '112233');
+
+        try {
+            $pins->verifyMethodPin($this->outlet->id, '51920');
+            $this->fail('the branch PIN must not correct a payment method');
+        } catch (CashException $exception) {
+            $this->assertSame(422, $exception->status());
+        }
+
+        $failure = CashPinFailure::sole();
+        $this->assertSame('method_change', $failure->action);
+        $this->assertSame($this->outlet->id, $failure->outlet_id, 'counted against the branch it was tried on');
+        $this->assertSame($this->owner->id, $failure->user_id);
+    }
+
+    public function test_the_method_pin_change_needs_the_current_method_pin(): void
+    {
+        $change = fn(string $current, string $new) => $this->postJson('/api/admin/cash-calculation/method-pin', [
+            'outlet_id'            => $this->outlet->id,
+            'current_pin'          => $current,
+            'new_pin'              => $new,
+            'new_pin_confirmation' => $new,
+        ]);
+        $works = function (string $pin): bool {
+            try {
+                app(CashPinService::class)->verifyMethodPin($this->outlet->id, $pin);
+
+                return true;
+            } catch (CashException) {
+                return false;
+            }
+        };
+
+        $change('51920', '445566')->assertStatus(422);
+        $this->assertTrue($works('112233'), 'a branch PIN changes nothing');
+
+        $change('112233', '445566')->assertSuccessful();
+
+        $this->assertFalse($works('112233'));
+        $this->assertTrue($works('445566'));
+        $this->assertTrue(app(CashPinService::class)->matches($this->outlet->id, '51920'), 'the branch PIN stays its own');
     }
 
     public function test_a_pin_change_with_the_wrong_current_pin_is_refused(): void
@@ -666,9 +819,9 @@ class CashCalculationTest extends TestCase
 
         $data = $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id)->json('data');
 
-        $this->assertEquals(120, $data['emoney']['card']['pos_sales']);
-        $this->assertEquals(80, $data['emoney']['mfs']['closing']);
-        $this->assertEquals(200, $data['emoney']['total_closing']);
+        $this->assertEquals(120, $data['sales']['day']['methods']['card']);
+        $this->assertEquals(80, $data['sales']['day']['methods']['mfs']);
+        $this->assertArrayNotHasKey('emoney', $data, 'card and MFS are sales, not a balance');
         $this->assertEquals(1000, $data['drawer']['closing']);
         $this->assertEquals(1700, $data['mfs']['bkash']['sim']['closing']);
         $this->assertEquals(300, $data['mfs']['bkash']['cash']['closing']);
@@ -679,11 +832,12 @@ class CashCalculationTest extends TestCase
         $this->assertEquals(-50, $data['mfs']['recharge']['sim']['recharge']);
         $this->assertEquals(400, $data['mfs']['recharge']['total_closing']);
         $this->assertEquals(1350, $data['grand_total']['notes']);
-        $this->assertEquals(2550 + 200, $data['grand_total']['emoney'], 'SIMs plus the till\'s card and MFS e-money');
-        $this->assertEquals(3900 + 200, $data['grand_total']['total']);
+        $this->assertEquals(2550, $data['grand_total']['emoney'], 'the SIM balances only - card and MFS sales are not money the branch holds');
+        $this->assertEquals(3900, $data['grand_total']['total']);
     }
 
-    // Yesterday's closing is today's opening, for the notes and for e-money.
+    // Yesterday's closing is today's opening for the drawer; card and MFS
+    // sales have no opening at all - they start every day from nothing.
     public function test_every_section_opens_on_yesterdays_closing(): void
     {
         Carbon::setTestNow('2026-09-27 21:00:00');
@@ -699,16 +853,11 @@ class CashCalculationTest extends TestCase
         $today     = $this->getJson('/api/admin/cash-calculation/summary?outlet_id=' . $this->outlet->id)->json('data');
 
         $this->assertSame('2026-09-28', $today['today'], 'the page is told the shop\'s today');
-        foreach ([['drawer'], ['emoney', 'card'], ['emoney', 'mfs']] as $path) {
-            $closing = data_get($yesterday, implode('.', $path) . '.closing');
-            $opening = data_get($today, implode('.', $path) . '.opening');
-            $this->assertEquals($closing, $opening, implode('.', $path));
-        }
+        $this->assertEquals($yesterday['drawer']['closing'], $today['drawer']['opening']);
         $this->assertEquals(700, $today['drawer']['opening']);
         $this->assertEquals(850, $today['drawer']['closing']);
-        $this->assertEquals(300, $today['emoney']['card']['opening']);
-        $this->assertEquals(350, $today['emoney']['card']['closing']);
-        $this->assertEquals(390, $today['emoney']['total_opening']);
+        $this->assertEquals(50, $today['sales']['day']['methods']['card'], 'only today\'s card sales');
+        $this->assertEquals(0, $today['sales']['day']['methods']['mfs']);
     }
 
     // -------------------------------------------------------------- counts
@@ -847,20 +996,6 @@ class CashCalculationTest extends TestCase
     }
 
     // Card and MFS e-money is checked against a statement, not counted in notes.
-    public function test_card_emoney_is_counted_as_one_typed_figure(): void
-    {
-        $this->ringUp(PosPaymentMethod::CARD, 300);
-
-        $this->postJson('/api/admin/cash-calculation/count', [
-            'outlet_id'     => $this->outlet->id,
-            'account'       => CashAccount::POS_CARD,
-            'counted'       => 280,
-            'denominations' => ['100' => 9],
-        ])->assertSuccessful()->assertJsonPath('data.variance', -20)->assertJsonPath('data.denominations', []);
-
-        $this->assertEquals(300, $this->balanceOf(CashAccount::POS_CARD));
-    }
-
     // The history is the chosen day's: change the date, see that day's
     // transactions and nothing else.
     public function test_the_history_shows_the_chosen_days_transactions(): void
@@ -961,6 +1096,20 @@ class CashCalculationTest extends TestCase
 
     // -------------------------------------------------------------- access
 
+    // The history's "Balance after" column: every row's running balance, for
+    // the owner - on the page's first answer and on its later pages alike.
+    public function test_the_history_shows_each_rows_balance_to_a_balance_viewer(): void
+    {
+        $this->add(100)->assertSuccessful();
+        $this->add(50)->assertSuccessful();
+
+        $page    = $this->getJson('/api/admin/cash-calculation/page?outlet_id=' . $this->outlet->id)->json('data.entries.data');
+        $entries = $this->getJson('/api/admin/cash-calculation/entries?outlet_id=' . $this->outlet->id)->json('data');
+
+        $this->assertEquals([150, 100], array_column($page, 'balance_after'));
+        $this->assertEquals([150, 100], array_column($entries, 'balance_after'));
+    }
+
     public function test_a_cashier_sees_no_balances(): void
     {
         $this->add(1000)->assertSuccessful();
@@ -1003,7 +1152,7 @@ class CashCalculationTest extends TestCase
     public function test_alerts_show_reversed_sales_wrong_pins_and_the_default_pin(): void
     {
         $order = $this->ringUp();
-        $this->deleteJson('/api/admin/pos-order/' . $order->id)->assertSuccessful();
+        $this->postJson('/api/admin/pos-order/reverse/' . $order->id, ['reason' => 'Wrong item', 'pin' => '51920'])->assertSuccessful();
 
         Sanctum::actingAs($this->cashier);
         $this->withdraw(10, '00000');
@@ -1122,7 +1271,7 @@ class CashCalculationTest extends TestCase
         $this->assertContains('Rahim', array_column($data['employees'], 'name'));
         $this->assertSame($this->outlet->id, $data['summary']['outlet']['id'], 'no branch asked for: the first one');
         $this->assertEquals(1000, $data['summary']['drawer']['closing']);
-        $this->assertEquals(300, $data['summary']['emoney']['card']['closing']);
+        $this->assertEquals(300, $data['summary']['sales']['day']['methods']['card']);
         $this->assertCount(2, $data['entries']['data'], 'the day\'s transactions');
         $this->assertArrayHasKey('meta', $data['entries'], 'with their pages');
         $this->assertSame('today', $data['alerts']['period']);

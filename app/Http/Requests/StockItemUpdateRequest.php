@@ -32,11 +32,12 @@ class StockItemUpdateRequest extends FormRequest
             }
 
             foreach ($stocks as $stock) {
-                // A branch count may legitimately be set to zero, and a
-                // negative one is what an over-sold branch actually holds, so
-                // the only thing rejected here is a non-number.
-                if (!isset($stock['quantity']) || !is_numeric($stock['quantity'])) {
-                    $validator->errors()->add('global', trans('all.message.product_quantity_invalid'));
+                // Units arriving, added to what the branch already holds:
+                // stock is never reduced by hand. An old screen still sending
+                // the count to set ("quantity") is refused, not misread.
+                $add = $stock['add'] ?? null;
+                if ($add === null || !is_numeric($add) || (float) $add < 0 || floor((float) $add) != (float) $add) {
+                    $validator->errors()->add('global', trans('all.message.stock_add_whole_number'));
                     return;
                 }
             }

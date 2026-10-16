@@ -6,6 +6,9 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class PaginateRequest extends FormRequest
 {
+    // "All" in an admin list's rows-per-page choice: more rows than the shop
+    // has, on one page. The public storefront keeps its cap of 1000.
+    public const ADMIN_ALL = 100000;
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -30,7 +33,7 @@ class PaginateRequest extends FormRequest
         // credential column. (order_type is left alone: several order lists
         // use it as the delivery/pickup/POS filter, not a sort direction.)
         return [
-            'per_page'     => ['numeric', 'min:1', 'max:1000'],
+            'per_page'     => ['numeric', 'min:1', 'max:' . ($this->is('api/admin/*') ? self::ADMIN_ALL : 1000)],
             'order_column' => ['nullable', 'string', 'max:64', 'regex:/^(?!.*(password|token|secret))[A-Za-z_][A-Za-z0-9_.]*$/i'],
         ];
     }

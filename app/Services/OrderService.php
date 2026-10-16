@@ -195,14 +195,24 @@ class OrderService
                         'user_id'        => $request->customer_id,
                         'status'         => OrderStatus::CONFIRMED,
                         'payment_status' => PaymentStatus::PAID,
-                        'order_datetime' => date('Y-m-d H:i:s'),
+                        // The app's clock, as created_at uses: the same moment,
+                        // and one a test can set.
+                        'order_datetime' => now()->format('Y-m-d H:i:s'),
                         'active'         => Ask::YES,
                     ]
                 );
 
                 $products = json_decode($request->products);
+                $changes  = [];
                 if (!blank($products)) {
                     foreach ($products as $product) {
+                        $changes[] = [
+                            'product_id' => (int) $product->product_id,
+                            'item_type'  => $product->variation_id > 0 ? ProductVariation::class : Product::class,
+                            'item_id'    => (int) ($product->variation_id > 0 ? $product->variation_id : $product->product_id),
+                            'outlet_id'  => $this->order->outlet_id ? (int) $this->order->outlet_id : null,
+                            'quantity'   => -$product->quantity,
+                        ];
                         $stockId = Stock::create([
                             'product_id'      => $product->product_id,
                             // The branch picked in the POS. Without it the sale
@@ -244,6 +254,10 @@ class OrderService
                         }
                     }
                 }
+
+                // The branch must hold what it hands over; one down to its
+                // last unit is announced once the sale is saved.
+                app(StockGuard::class)->settle($changes);
 
                 $this->order->order_serial_no = date('dmy') . $this->order->id;
                 $this->order->save();
@@ -307,6 +321,9 @@ class OrderService
     public function changeStatus(Order $order, OrderStatusRequest $request, $auth = false): Order|array
     {
         try {
+            if ($order->isTillOrder()) {
+                $this->assertTillStatus($order, (int) $request->status);
+            }
             if ($auth) {
                 if ($order->user_id == Auth::user()->id) {
                     if ($request->reason) {
@@ -365,6 +382,12 @@ class OrderService
     public function changePaymentStatus(Order $order, PaymentStatusRequest $request, $auth = false): Order|array
     {
         try {
+            // A till sale is paid at the counter. Marking it unpaid took its
+            // money off the books with no PIN and no trace; Reverse and Change
+            // payment method are the ways to put one right.
+            if ($order->isTillOrder() && (int) $request->payment_status !== PaymentStatus::PAID) {
+                throw new Exception(trans('all.message.pos_sale_paid_at_till'), 422);
+            }
             if ($auth) {
                 if ($order->user_id == Auth::user()->id) {
                     $order->payment_status = $request->payment_status;
@@ -389,6 +412,13 @@ class OrderService
      */
     public function destroy(Order $order): void
     {
+        // A deleted till sale left no record of what was sold. Refused before
+        // the transaction below, whose catch would otherwise roll back more
+        // than this request started.
+        if ($order->isTillOrder()) {
+            throw new Exception(trans('all.message.pos_sale_never_deleted'), 422);
+        }
+
         try {
             DB::transaction(function () use ($order) {
                 if ($order?->orderProducts) {
@@ -404,6 +434,23 @@ class OrderService
             Log::info($exception->getMessage());
             DB::rollBack();
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    /**
+     * A till sale's status moves only between Confirmed and Delivered while it
+     * stands. Cancelling one is Reverse, behind the branch PIN; a reversed one
+     * is final, on this screen and on the online-order one alike.
+     *
+     * @throws Exception
+     */
+    private function assertTillStatus(Order $order, int $status): void
+    {
+        if (in_array((int) $order->status, [OrderStatus::CANCELED, OrderStatus::REJECTED], true)) {
+            throw new Exception(trans('all.message.pos_sale_already_reversed'), 422);
+        }
+        if (!in_array($status, [OrderStatus::CONFIRMED, OrderStatus::DELIVERED], true)) {
+            throw new Exception(trans('all.message.pos_sale_use_reverse'), 422);
         }
     }
 
@@ -449,10 +496,14 @@ class OrderService
             })->orderBy($orderColumn, $orderType)->get();
             $salesReportArray = [];
 
+            // The list shows every order; the money is only what was earned -
+            // paid orders that were not cancelled or rejected.
+            $sales = $orders->filter(fn(Order $order) => $order->countsAsSale());
+
             $salesReportArray['total_orders'] = $orders->count();
-            $salesReportArray['total_earnings'] = AppLibrary::currencyAmountFormat($orders->sum('total'));
-            $salesReportArray['total_discounts'] = AppLibrary::currencyAmountFormat($orders->sum('discount'));
-            $salesReportArray['total_shipping_charges'] = AppLibrary::currencyAmountFormat($orders->sum('shipping_charge'));
+            $salesReportArray['total_earnings'] = AppLibrary::currencyAmountFormat($sales->sum('total'));
+            $salesReportArray['total_discounts'] = AppLibrary::currencyAmountFormat($sales->sum('discount'));
+            $salesReportArray['total_shipping_charges'] = AppLibrary::currencyAmountFormat($sales->sum('shipping_charge'));
 
             return $salesReportArray;
         } catch (Exception $exception) {

@@ -17,7 +17,7 @@ class ProductAdminResource extends JsonResource
      */
     public function toArray($request): array
     {
-        $price = count($this->variations) > 0 ? $this->variation_price : $this->selling_price;
+        $price = $this->variationCount() > 0 ? $this->variation_price : $this->selling_price;
         return [
             "id"                         => $this->id,
             "name"                       => $this->name,
@@ -46,7 +46,7 @@ class ProductAdminResource extends JsonResource
             // Branch quantity when the caller passed outlet_id (the POS),
             // otherwise the total across every branch.
             "stock"                      => (int) $this->stock_items_sum_quantity,
-            "order"                      => abs($this?->productOrders->sum('quantity')),
+            "order"                      => $this->unitsSold(),
             'currency_price'             => AppLibrary::currencyAmountFormat($price),
             "cover"                      => $this->cover,
             'flash_sale'                 => $this->add_to_flash_sale == Ask::YES,
@@ -56,5 +56,21 @@ class ProductAdminResource extends JsonResource
             'rating_star_count'          => $this->rating_star_count,
             "barcode_image"              => $this->barcodeImage,
         ];
+    }
+
+    // The list query brings both figures along (see ProductService::list);
+    // anything else that renders a product still loads them itself.
+    private function unitsSold(): int
+    {
+        return array_key_exists('product_orders_sum_quantity', $this->resource->getAttributes())
+            ? (int) abs((float) $this->product_orders_sum_quantity)
+            : (int) abs($this->productOrders->sum('quantity'));
+    }
+
+    private function variationCount(): int
+    {
+        return array_key_exists('variations_count', $this->resource->getAttributes())
+            ? (int) $this->variations_count
+            : count($this->variations);
     }
 }

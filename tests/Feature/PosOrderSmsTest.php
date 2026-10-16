@@ -26,6 +26,7 @@ use App\Services\SmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
 use Tests\TestCase;
+use Tests\Feature\Concerns\StocksShelves;
 
 /**
  * The SMS a customer gets after buying at the till. It must reach a real
@@ -36,6 +37,7 @@ use Tests\TestCase;
 class PosOrderSmsTest extends TestCase
 {
     use RefreshDatabase;
+    use StocksShelves;
 
     private int $sequence = 0;
 
@@ -172,6 +174,7 @@ class PosOrderSmsTest extends TestCase
             'selling_price'   => 150,
             'variation_price' => 150,
         ]);
+        $this->stockUp($product, $outlet);
 
         $request = PosOrderRequest::create('/api/admin/pos', 'POST', [
             'customer_id'         => $this->customer()->id,

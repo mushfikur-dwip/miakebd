@@ -21,7 +21,7 @@ class CashQueryRequest extends FormRequest
             'from'      => ['nullable', 'date_format:Y-m-d'],
             'to'        => ['nullable', 'date_format:Y-m-d'],
             'account'   => ['nullable', 'integer', 'between:1,9'],
-            'type'      => ['nullable', 'integer', 'between:1,12'],
+            'type'      => ['nullable', 'integer', 'between:1,14'],
             'page'      => ['nullable', 'integer', 'min:1'],
             'per_page'  => ['nullable', 'integer', 'between:1,100'],
             // The watch list: today, or the last 7 days (the default).

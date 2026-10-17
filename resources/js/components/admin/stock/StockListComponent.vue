@@ -136,6 +136,13 @@
                                     class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
                                     {{ $t('label.not_stock_controlled') }}
                                 </span>
+                                <!-- Switch off: the count stops at 0 and the
+                                     units sold past it are said here, in the
+                                     column the owner reads first - the branch
+                                     chips alone were easy to miss. -->
+                                <span v-if="stock.billed_beyond > 0" class="block mt-1 text-[11px] text-amber-700">
+                                    {{ $t('message.stock_billed_beyond', { n: stock.billed_beyond }) }}
+                                </span>
                             </td>
                             <td class="db-table-body-td">
                                 <div class="flex flex-wrap gap-1.5">

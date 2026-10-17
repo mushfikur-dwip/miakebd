@@ -268,18 +268,19 @@ class StockService
     }
 
     /**
-     * Only while the switch is off. With it on a negative is damage from
-     * before the rule existed, and the owner has to see the real figure to
-     * clear it with `stock:zero-negatives`.
+     * While the switch is off, for every product. With it on a tracked
+     * product's negative is damage from before the rule existed, and the
+     * owner has to see the real figure to clear it with `stock:zero-negatives`.
      *
-     * This deliberately does NOT exclude products the shop does not count
-     * (can_purchasable = NO). They are most of this catalogue, and they are
-     * exactly the ones that get sold with nothing on the shelf - excluding
-     * them left the whole switch doing nothing on the stock page.
+     * Products the shop does not count (can_purchasable = NO) always get 0 and
+     * the remark. They are most of this catalogue and the till never refuses
+     * them, so they go below zero in either position - and the owner's rule
+     * (2026-10-17) is that the page never shows a negative for them.
      */
     private function overdraftApplies($product): bool
     {
-        return !app(StockPolicy::class)->cannotBeZero();
+        return (int) $product->can_purchasable === Ask::NO
+            || !app(StockPolicy::class)->cannotBeZero();
     }
 
     /**

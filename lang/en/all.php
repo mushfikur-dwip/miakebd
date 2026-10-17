@@ -70,6 +70,7 @@ return [
         "store_sales_report"         => "Store Sales Report",
         "branch"                     => "Branch",
         "branch_stock"               => "Branch Stock",
+        "billed_beyond_stock"        => "Billed Beyond Stock",
         "unassigned"                 => "Unassigned",
         // A delivery order has no branch: it draws on the shop's whole stock.
         "online"                     => "the online shop",

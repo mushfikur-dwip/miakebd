@@ -343,8 +343,13 @@ class StockZeroSwitchTest extends TestCase
         $this->orderOnline(5)->assertCreated();
     }
 
-    /** A product the shop does not count is never "beyond stock". */
-    public function test_an_untracked_product_never_carries_the_remark(): void
+    /**
+     * Products the shop does not count (can_purchasable = NO) are most of the
+     * catalogue and exactly the ones sold with nothing on the shelf. The build
+     * that left them out showed -1 on the stock page with the switch off, which
+     * is what the owner reported - so they get 0 and the remark like the rest.
+     */
+    public function test_an_untracked_product_also_shows_zero_and_the_remark(): void
     {
         $tea = $this->product('Tea', Ask::NO);
         $this->holds($tea, $this->main, -4);
@@ -353,7 +358,52 @@ class StockZeroSwitchTest extends TestCase
         $rows = $this->getJson('/api/admin/stock?paginate=0')->assertOk()->json('data');
         $row  = collect($rows)->firstWhere('product_id', $tea->id);
 
-        $this->assertSame(-4, $row['stock'], 'shown as it is, so it can be corrected');
-        $this->assertSame(0, $row['billed_beyond']);
+        $this->assertSame(0, $row['stock'], 'never below zero while the switch is off');
+        $this->assertSame(-4, $row['real_stock']);
+        $this->assertSame(4, $row['billed_beyond']);
+        $this->assertFalse($row['stock_tracked'], 'still flagged as not stock controlled');
+
+        $branch = collect($row['outlet_stocks'])->firstWhere('outlet_id', $this->main->id);
+        $this->assertSame(0, $branch['quantity']);
+        $this->assertSame(4, $branch['billed_beyond']);
+    }
+
+    /**
+     * The till never refuses an untracked product, so it can go below zero
+     * with the switch on as well. The owner's rule (2026-10-17): the page
+     * still never shows a negative for it - 0 and the remark, either way.
+     */
+    public function test_with_the_switch_on_an_untracked_product_still_shows_zero_and_the_remark(): void
+    {
+        $tea = $this->product('Tea', Ask::NO);
+        $this->sell($tea, 2)->assertSuccessful();
+
+        $rows = $this->getJson('/api/admin/stock?paginate=0')->assertOk()->json('data');
+        $row  = collect($rows)->firstWhere('product_id', $tea->id);
+
+        $this->assertSame(0, $row['stock']);
+        $this->assertSame(-2, $row['real_stock']);
+        $this->assertSame(2, $row['billed_beyond']);
+
+        $branch = collect($row['outlet_stocks'])->firstWhere('outlet_id', $this->main->id);
+        $this->assertSame(0, $branch['quantity']);
+        $this->assertSame(-2, $branch['real_quantity']);
+        $this->assertSame(2, $branch['billed_beyond']);
+    }
+
+    /** The Excel export is read away from the page, so it carries the remark too. */
+    public function test_the_export_shows_zero_and_what_was_billed_beyond_stock(): void
+    {
+        $this->holds($this->soap, $this->main, 2);
+        $this->switchOff();
+        $this->sell($this->soap, 3)->assertSuccessful();
+
+        $request = new \App\Http\Requests\PaginateRequest();
+        $rows    = (new \App\Exports\StockExport(app(\App\Services\StockService::class), $request))->collection();
+        $row     = $rows->first(fn($row) => $row[0] === 'Soap');
+
+        $this->assertSame(0, $row[2], 'never below zero while the switch is off');
+        $this->assertSame(1, $row[3], 'units billed beyond stock');
+        $this->assertStringContainsString('Main: 0 (-1)', $row[4]);
     }
 }

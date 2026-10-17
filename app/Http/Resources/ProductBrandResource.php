@@ -25,7 +25,14 @@ class ProductBrandResource extends JsonResource
             'description' => $this->description === null ? '' : $this->description,
             'status'      => $this->status,
             'thumb'       => $this->thumb,
-            'cover'       => $this->cover
+            'cover'       => $this->cover,
+            // For the admin's edit dialog only - the shop's brand carousel
+            // would carry every brand's intro text for nothing.
+            $this->mergeWhen($request->is('api/admin/*'), fn () => [
+                'seo_title'       => (string) $this->seo_title,
+                'seo_description' => (string) $this->seo_description,
+                'seo_content'     => (string) $this->seo_content,
+            ]),
         ];
     }
 }

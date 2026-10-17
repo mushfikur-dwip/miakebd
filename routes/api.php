@@ -106,6 +106,7 @@ use App\Http\Controllers\Frontend\OverviewController;
 use App\Http\Controllers\Frontend\PageController as FrontendPageController;
 use App\Http\Controllers\Frontend\PaymentGatewayController as FrontendPaymentGatewayController;
 use App\Http\Controllers\Frontend\ProductBrandController as FrontendProductBrandController;
+use App\Http\Controllers\Frontend\CollectionSeoController as FrontendCollectionSeoController;
 use App\Http\Controllers\Frontend\ProductCategoryController as FrontendProductCategoryController;
 use App\Http\Controllers\Frontend\ProductController as FrontendProductController;
 use App\Http\Controllers\Frontend\ProductReviewController;
@@ -1024,6 +1025,12 @@ Route::group(['prefix' => 'frontend'], function () {
     Route::prefix('product-brand')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendProductBrandController::class, 'index']);
     });
+
+    // A brand or category page's intro, questions and related links - the
+    // same words as its crawler fallback and FAQPage markup.
+    Route::get('/collection-seo/{type}/{slug}', [FrontendCollectionSeoController::class, 'show'])
+        ->where(['type' => 'brand|category', 'slug' => '[A-Za-z0-9\-_.]{1,200}'])
+        ->middleware('cache.public:300,shared');
 
     Route::prefix('benefit')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendBenefitController::class, 'index']);

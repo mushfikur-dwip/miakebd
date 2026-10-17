@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 class SlugRedirect extends Model
 {
     public const PRODUCT_CATEGORY = 'product_category';
+    public const PRODUCT_BRAND = 'product_brand';
 
     protected $fillable = ['type', 'from_slug', 'to_slug'];
 

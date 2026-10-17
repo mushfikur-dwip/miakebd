@@ -149,6 +149,10 @@ class ProductCategoryService
                 $productCategory->clearMediaCollection('product-category');
                 $productCategory->addMediaFromRequest('image')->toMediaCollection('product-category');
             }
+
+            // Cached for half an hour; an edit to its SEO fields should show now.
+            CategoryMetaResolver::forget($categorySlug);
+
             return $productCategory;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());

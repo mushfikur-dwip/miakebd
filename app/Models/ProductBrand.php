@@ -17,14 +17,17 @@ class ProductBrand extends Model implements HasMedia
     use InteractsWithMedia;
     use ResolvesMediaUrls;
     protected $table = "product_brands";
-    protected $fillable = ['name', 'slug', 'is_default', 'description', 'status'];
+    protected $fillable = ['name', 'slug', 'is_default', 'description', 'status', 'seo_title', 'seo_description', 'seo_content'];
     protected $casts = [
-        'id'          => 'integer',
-        'name'        => 'string',
-        'slug'        => 'string',
-        'is_default'  => 'boolean',
-        'description' => 'string',
-        'status'      => 'integer',
+        'id'              => 'integer',
+        'name'            => 'string',
+        'slug'            => 'string',
+        'is_default'      => 'boolean',
+        'description'     => 'string',
+        'status'          => 'integer',
+        'seo_title'       => 'string',
+        'seo_description' => 'string',
+        'seo_content'     => 'string',
     ];
 
     public function getThumbAttribute(): string

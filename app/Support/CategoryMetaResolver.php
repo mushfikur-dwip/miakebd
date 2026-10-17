@@ -50,6 +50,15 @@ class CategoryMetaResolver
 
     private const MISS = '__no_category__';
 
+    /** Versioned: a page cached before the intro and questions existed has no `content`. */
+    private const CACHE_KEY = 'suglow_category_meta:v2:';
+
+    /**
+     * The tree's root. /product-category/all-product 301s to /product
+     * (routes/web.php), so it is never advertised or linked as a category.
+     */
+    public const ALL_PRODUCT_SLUG = 'all-product';
+
     /**
      * Extra keyword terms, added only when a category name matches. The
      * generic block is always included, so a category added later in the admin
@@ -105,7 +114,7 @@ class CategoryMetaResolver
         }
 
         try {
-            $key = 'suglow_category_meta:' . $slug;
+            $key = self::CACHE_KEY . $slug;
             $cached = Cache::get($key);
 
             if ($cached !== null) {
@@ -139,7 +148,8 @@ class CategoryMetaResolver
 
     public static function forget(string $slug): void
     {
-        Cache::forget('suglow_category_meta:' . $slug);
+        Cache::forget(self::CACHE_KEY . $slug);
+        Cache::forget('suglow_category_list');
     }
 
     /**
@@ -212,18 +222,10 @@ class CategoryMetaResolver
             return null;
         }
 
-        $name = self::clean($category->name);
+        $name = self::displayName($category->name);
 
-        if ($name === null || $name === '') {
+        if ($name === '') {
             return null;
-        }
-
-        // Category names are inconsistently cased in the database — "hair
-        // care", "moisturizer", "Men skin care". Left alone they land in the
-        // page title exactly like that. Title-case anything without an
-        // acronym, so deliberate capitalisation such as "SPF" survives.
-        if (!preg_match('/[A-Z]{2,}/', $name)) {
-            $name = Str::title($name);
         }
 
         // The listing this page renders matches on the category AND all of its
@@ -236,22 +238,31 @@ class CategoryMetaResolver
         $count = self::productCount($categoryIds);
         $sample = self::sampleProducts($categoryIds);
 
+        $products = self::onSale($categoryIds);
+        [$min, $max, $cheapest, $dearest] = $count > 0 ? CollectionSeo::prices($products) : [null, null, null, null];
+
         // A category-specific title is what turns nine identical pages into
         // nine separate ranking opportunities. Under 65 chars so Google does
-        // not truncate it.
-        $title = self::limit("{$name} Price in Bangladesh | Buy Online — Suglow", 65);
+        // not truncate it. The admin's own title wins.
+        $title = filled($category->seo_title)
+            ? SeoSchema::cleanName($category->seo_title)
+            : self::limit("{$name} Price in Bangladesh | Buy Online — Suglow", 65);
 
         $ownDescription = self::clean($category->description);
 
-        if ($ownDescription !== null && mb_strlen($ownDescription) > 60) {
+        if (filled($category->seo_description)) {
+            $description = self::limit(SeoSchema::plainText($category->seo_description), 158);
+        } elseif ($ownDescription !== null && mb_strlen($ownDescription) > 60) {
             $description = self::limit($ownDescription, 158);
+        } elseif ($count > 0) {
+            // The price range leads: "price in Bangladesh" is the search.
+            $description = CollectionSeo::description($name, $count, CollectionSeo::range($min, $max));
         } else {
             // Kept short enough that the phone number survives the 158-char
             // limit — it is the call to action, and the longer wording pushed
             // it past the cut, leaving descriptions ending in "Call…".
-            $countPhrase = $count > 0 ? "{$count} authentic" : 'authentic';
             $description = self::limit(
-                "Shop {$countPhrase} {$name} products at Suglow Bangladesh. "
+                "Shop authentic {$name} products at Suglow Bangladesh. "
                 . 'Imported from ' . self::SOURCES . '. '
                 . 'Cash on delivery. Call ' . self::PHONE . '.',
                 158
@@ -280,8 +291,157 @@ class CategoryMetaResolver
             // All nine were cancelling each other out.
             'url' => self::url($slug),
             'count' => $count,
+            'price_range' => CollectionSeo::range($min, $max),
             'products' => $sample,
+            'parents' => self::parents($category),
+            'content' => CollectionSeo::content([
+                'kind'         => CollectionSeo::CATEGORY,
+                'name'         => $name,
+                'count'        => $count,
+                'min'          => $min,
+                'max'          => $max,
+                'cheapest'     => $cheapest,
+                'dearest'      => $dearest,
+                'best_sellers' => $count > 0 ? CollectionSeo::bestSellers($products) : [],
+                'related'      => $count > 0 ? self::brandsOf($products) : [],
+                'own_text'     => $category->description,
+                'admin_text'   => $category->seo_content,
+            ]),
+            // An empty category still answers, so a menu link never 404s,
+            // but it is a thin page and stays out of the index - like an
+            // empty brand page.
+            'robots' => $count > 0 ? 'index, follow, max-image-preview:large' : 'noindex, follow',
         ];
+    }
+
+    /**
+     * A category name as pages show it: cleaned, and title-cased unless it
+     * carries an acronym. Names are inconsistently cased in the database -
+     * "hair care", "moisturizer", "Men skin care" - and left alone they land
+     * in titles exactly like that; deliberate capitals such as "SPF" survive.
+     */
+    public static function displayName(?string $value): string
+    {
+        $name = self::clean($value) ?? '';
+
+        return $name !== '' && !preg_match('/[A-Z]{2,}/', $name) ? Str::title($name) : $name;
+    }
+
+    /**
+     * Every category worth a page - active, with something on the website -
+     * for the sitemap, llms.txt and the crawler links on every page.
+     *
+     * @return array<int,array{name: string, slug: string, url: string, count: int, updated_at: mixed}>
+     */
+    public static function all(): array
+    {
+        try {
+            return Cache::remember('suglow_category_list', now()->addMinutes(self::CACHE_MINUTES), fn () => self::buildAll());
+        } catch (\Throwable $e) {
+            Log::warning('CategoryMetaResolver::all failed: ' . $e->getMessage());
+
+            return [];
+        }
+    }
+
+    /** No try/catch: a failure must reach all(), which then caches nothing. */
+    private static function buildAll(): array
+    {
+        $list = [];
+
+        $categories = ProductCategory::query()
+            ->where('status', Status::ACTIVE)
+            ->whereNotNull('slug')
+            ->where('slug', '<>', '')
+            ->where('slug', '<>', self::ALL_PRODUCT_SLUG)
+            ->orderBy('name')
+            ->get();
+
+        foreach ($categories as $category) {
+            $name  = self::displayName($category->name);
+            $count = self::productCount(self::descendantIds($category));
+
+            if ($name === '' || $count === 0) {
+                continue;
+            }
+
+            $list[] = [
+                'name'       => $name,
+                'slug'       => $category->slug,
+                'url'        => self::url($category->slug),
+                'count'      => $count,
+                'updated_at' => $category->updated_at,
+            ];
+        }
+
+        return $list;
+    }
+
+    /** What the listing sells: active, on the website, in these categories. */
+    private static function onSale(array $categoryIds): \Illuminate\Database\Eloquent\Builder
+    {
+        return Product::query()
+            ->whereIn('product_category_id', $categoryIds)
+            ->where('status', Status::ACTIVE)
+            ->storefront();
+    }
+
+    /**
+     * The category's ancestors, root first, as breadcrumb steps. The tree's
+     * "All Product" root is the shop listing, not a category page.
+     *
+     * @return array<int,array{name: string, url: string}>
+     */
+    private static function parents(ProductCategory $category): array
+    {
+        try {
+            return $category->ancestors()->get()
+                ->sortBy('depth')
+                ->map(fn ($parent) => $parent->slug === self::ALL_PRODUCT_SLUG
+                    ? ['name' => 'All products', 'url' => self::siteUrl() . '/product']
+                    : ['name' => self::displayName($parent->name), 'url' => self::url($parent->slug)])
+                ->filter(fn ($parent) => $parent['name'] !== '')
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * The brands this category carries, biggest first - "Sunscreen brands at
+     * Suglow", each a link to its brand page. The placeholder brand is not one.
+     *
+     * @return array<int,array{name: string, url: string, count: int}>
+     */
+    private static function brandsOf(\Illuminate\Database\Eloquent\Builder $products): array
+    {
+        $counts = (clone $products)
+            ->whereNotNull('product_brand_id')
+            ->selectRaw('product_brand_id, COUNT(*) as aggregate')
+            ->groupBy('product_brand_id')
+            ->pluck('aggregate', 'product_brand_id');
+
+        if ($counts->isEmpty()) {
+            return [];
+        }
+
+        return \App\Models\ProductBrand::query()
+            ->whereIn('id', $counts->keys())
+            ->where('status', Status::ACTIVE)
+            ->storefront()
+            ->whereNotNull('slug')
+            ->where('slug', '<>', '')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn ($brand) => [
+                'name'  => SeoSchema::cleanName($brand->name),
+                'url'   => BrandMetaResolver::url($brand->slug),
+                'count' => (int) $counts->get($brand->id),
+            ])
+            ->filter(fn ($brand) => $brand['name'] !== '')
+            ->sortBy([['count', 'desc'], ['name', 'asc']])
+            ->values()
+            ->all();
     }
 
     /**
@@ -295,32 +455,39 @@ class CategoryMetaResolver
     {
         $siteUrl = self::siteUrl();
 
+        // Home, then each parent category, then this one - the trail Google
+        // shows in place of the URL.
+        $trail = array_merge(
+            [['name' => 'Home', 'url' => $siteUrl . '/']],
+            $meta['parents'] ?? [],
+            [['name' => $meta['name'], 'url' => $meta['url']]]
+        );
+
+        $collection = [
+            '@type' => 'CollectionPage',
+            '@id' => $meta['url'] . '#collection',
+            'name' => $meta['name'],
+            'description' => $meta['description'],
+            'url' => $meta['url'],
+            'isPartOf' => ['@id' => $siteUrl . '/#website'],
+            'breadcrumb' => ['@id' => $meta['url'] . '#breadcrumb'],
+        ];
+
+        if (!empty($meta['products'])) {
+            $collection['mainEntity'] = ['@id' => $meta['url'] . '#products'];
+        }
+
         $graph = [
-            [
-                '@type' => 'CollectionPage',
-                '@id' => $meta['url'] . '#collection',
-                'name' => $meta['name'],
-                'description' => $meta['description'],
-                'url' => $meta['url'],
-                'isPartOf' => ['@id' => $siteUrl . '/#website'],
-            ],
+            $collection,
             [
                 '@type' => 'BreadcrumbList',
                 '@id' => $meta['url'] . '#breadcrumb',
-                'itemListElement' => [
-                    [
-                        '@type' => 'ListItem',
-                        'position' => 1,
-                        'name' => 'Home',
-                        'item' => $siteUrl . '/',
-                    ],
-                    [
-                        '@type' => 'ListItem',
-                        'position' => 2,
-                        'name' => $meta['name'],
-                        'item' => $meta['url'],
-                    ],
-                ],
+                'itemListElement' => array_map(fn ($step, $index) => [
+                    '@type' => 'ListItem',
+                    'position' => $index + 1,
+                    'name' => $step['name'],
+                    'item' => $step['url'],
+                ], $trail, array_keys($trail)),
             ],
         ];
 
@@ -343,6 +510,11 @@ class CategoryMetaResolver
                     array_keys($meta['products'])
                 )),
             ];
+        }
+
+        // The same questions the page shows, word for word.
+        if ($faq = CollectionSeo::faqNode($meta['url'], $meta['content']['faqs'] ?? [])) {
+            $graph[] = $faq;
         }
 
         return ['@context' => 'https://schema.org', '@graph' => $graph];

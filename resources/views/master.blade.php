@@ -568,23 +568,14 @@
                         @endforeach
                     </ul>
                 @endif
+                @include('partials.collection-seo', ['content' => $brandPage['content'] ?? null])
                 <p>100% authentic {{ $brandPage['name'] }}, sold by Suglow. Cash on delivery across Bangladesh.
                    Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
             @elseif (!empty($listingPage))
                 <h1>All Products — Authentic Cosmetics &amp; Skincare in Bangladesh</h1>
                 <p>{{ $controllerSeo['description'] ?? '' }}</p>
                 <h2>Shop by category</h2>
-                <ul>
-                    <li><a href="{{ $siteUrl }}/product-category/skin-care6">Skin Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/personal-care">Personal Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/fragrance">Fragrance</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/hair-care">Hair Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/sunscreen">Sunscreen</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/baby-care">Baby Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/moisturizer">Moisturizer</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/men-skin-care">Men's Skin Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/accessories">Accessories</a></li>
-                </ul>
+                @include('partials.category-links')
                 @if (!empty($listingPage['brands']))
                     <h2>Shop by brand</h2>
                     <ul>
@@ -598,6 +589,11 @@
                 {{-- A category's products as plain links: the SPA draws its
                      listing with JavaScript, so without these a crawler that
                      does not run it could not reach the products at all. --}}
+                <p><a href="{{ $siteUrl }}/">Home</a>
+                    @foreach ($category['parents'] ?? [] as $parentCategory)
+                        › <a href="{{ $parentCategory['url'] }}">{{ $parentCategory['name'] }}</a>
+                    @endforeach
+                    › {{ $category['name'] }}</p>
                 <h1>{{ $category['name'] }} Price in Bangladesh</h1>
                 <p>{{ $category['description'] }}</p>
                 @if (!empty($category['products']))
@@ -608,6 +604,7 @@
                         @endforeach
                     </ul>
                 @endif
+                @include('partials.collection-seo', ['content' => $category['content'] ?? null])
                 <p><a href="{{ $siteUrl }}/product">All products</a> ·
                    Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
             @elseif (!empty($cmsPage))
@@ -646,17 +643,17 @@
                 </p>
 
                 <h2>Product categories</h2>
-                <ul>
-                    <li><a href="{{ $siteUrl }}/product-category/skin-care6">Skin Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/personal-care">Personal Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/fragrance">Fragrance</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/hair-care">Hair Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/sunscreen">Sunscreen</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/baby-care">Baby Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/moisturizer">Moisturizer</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/men-skin-care">Men's Skin Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/accessories">Accessories</a></li>
-                </ul>
+                @include('partials.category-links')
+
+                @php($fallbackBrands = \App\Support\BrandMetaResolver::all())
+                @if (!empty($fallbackBrands))
+                    <h2>Brands at Suglow</h2>
+                    <ul>
+                        @foreach ($fallbackBrands as $fallbackBrand)
+                            <li><a href="{{ $fallbackBrand['url'] }}">{{ $fallbackBrand['name'] }}</a></li>
+                        @endforeach
+                    </ul>
+                @endif
 
                 <h2>Frequently asked questions</h2>
                 <h3>Where does Suglow import its cosmetics from?</h3>

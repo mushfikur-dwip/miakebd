@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\Status;
 use App\Models\Product;
 use App\Models\ProductBrand;
+use App\Models\ProductCategory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -35,6 +36,9 @@ class BrandMetaResolver
 
     private const MISS = '__no_brand__';
 
+    /** Versioned: a page cached before the intro and questions existed has no `content`. */
+    private const CACHE_KEY = 'suglow_brand_meta:v2:';
+
     public static function url(string $slug): string
     {
         return rtrim((string) config('app.url'), '/') . '/' . self::URL_PREFIX . '/' . rawurlencode($slug);
@@ -50,7 +54,7 @@ class BrandMetaResolver
         }
 
         try {
-            $key = 'suglow_brand_meta:' . $slug;
+            $key = self::CACHE_KEY . $slug;
             $cached = Cache::get($key);
 
             if ($cached !== null) {
@@ -162,18 +166,37 @@ class BrandMetaResolver
             ])
             ->all();
 
-        // "Price in Bangladesh" is how shoppers here phrase a brand search, and
-        // what the category titles already use.
-        $title = SeoSchema::limit("{$name} Price in Bangladesh — 100% Authentic {$name} | Suglow", 70);
+        [$min, $max, $cheapest, $dearest] = CollectionSeo::prices($products);
 
+        // "Price in Bangladesh" is how shoppers here phrase a brand search, and
+        // what the category titles already use. The admin's own title wins.
+        $title = filled($brand->seo_title)
+            ? SeoSchema::cleanName($brand->seo_title)
+            : SeoSchema::limit("{$name} Price in Bangladesh — 100% Authentic {$name} | Suglow", 70);
+
+        // The admin's own description first, then the brand's own words, then
+        // one built from live data with the price range leading.
         $ownDescription = SeoSchema::plainText($brand->description);
-        $description = mb_strlen($ownDescription) > 60
-            ? SeoSchema::limit($ownDescription, 158)
-            : SeoSchema::limit(
-                'Shop ' . ($count > 0 ? "{$count} " : '') . "authentic {$name} products at Suglow Bangladesh. "
-                . 'Original stock, cash on delivery nationwide. Call ' . self::PHONE . '.',
-                158
-            );
+        $description = match (true) {
+            filled($brand->seo_description) => SeoSchema::limit(SeoSchema::plainText($brand->seo_description), 158),
+            mb_strlen($ownDescription) > 60 => SeoSchema::limit($ownDescription, 158),
+            $count > 0                      => CollectionSeo::description($name, $count, CollectionSeo::range($min, $max)),
+            default                         => SeoSchema::limit("Shop authentic {$name} products at Suglow Bangladesh. Original stock, cash on delivery nationwide. Call " . self::PHONE . '.', 158),
+        };
+
+        $content = CollectionSeo::content([
+            'kind'         => CollectionSeo::BRAND,
+            'name'         => $name,
+            'count'        => $count,
+            'min'          => $min,
+            'max'          => $max,
+            'cheapest'     => $cheapest,
+            'dearest'      => $dearest,
+            'best_sellers' => CollectionSeo::bestSellers($products),
+            'related'      => self::categoriesOf($products),
+            'own_text'     => $brand->description,
+            'admin_text'   => $brand->seo_content,
+        ]);
 
         return [
             'name'        => $name,
@@ -184,11 +207,58 @@ class BrandMetaResolver
             'image'       => self::image($brand),
             'url'         => self::url($slug),
             'count'       => $count,
+            'price_range' => CollectionSeo::range($min, $max),
             'products'    => $sample,
+            'content'     => $content,
             // A brand with nothing on sale still answers, so a link or a tile
             // never 404s - but it is kept out of the index as a thin page.
             'robots'      => $count > 0 ? 'index, follow, max-image-preview:large' : 'noindex, follow',
         ];
+    }
+
+    public static function forget(?string $slug): void
+    {
+        if (filled($slug)) {
+            Cache::forget(self::CACHE_KEY . $slug);
+        }
+        Cache::forget('suglow_brand_list');
+    }
+
+    /**
+     * The category pages a brand's products sit in, busiest first - the
+     * "Shop CeraVe by category" links, so a brand page passes shoppers and
+     * crawlers on to the category pages and back.
+     *
+     * @return array<int,array{name: string, url: string, count: int}>
+     */
+    private static function categoriesOf($products): array
+    {
+        $counts = (clone $products)
+            ->whereNotNull('product_category_id')
+            ->selectRaw('product_category_id, COUNT(*) as aggregate')
+            ->groupBy('product_category_id')
+            ->pluck('aggregate', 'product_category_id');
+
+        if ($counts->isEmpty()) {
+            return [];
+        }
+
+        return ProductCategory::query()
+            ->whereIn('id', $counts->keys())
+            ->where('status', Status::ACTIVE)
+            ->whereNotNull('slug')
+            ->where('slug', '<>', '')
+            ->where('slug', '<>', CategoryMetaResolver::ALL_PRODUCT_SLUG)
+            ->get(['id', 'name', 'slug'])
+            ->map(fn ($category) => [
+                'name'  => CategoryMetaResolver::displayName($category->name),
+                'url'   => CategoryMetaResolver::url($category->slug),
+                'count' => (int) $counts->get($category->id),
+            ])
+            ->filter(fn ($category) => $category['name'] !== '')
+            ->sortByDesc('count')
+            ->values()
+            ->all();
     }
 
     /**
@@ -201,21 +271,38 @@ class BrandMetaResolver
     {
         $siteUrl = rtrim((string) config('app.url'), '/');
 
+        $collection = [
+            '@type'       => 'CollectionPage',
+            '@id'         => $meta['url'] . '#collection',
+            'name'        => $meta['name'] . ' products',
+            'description' => $meta['description'],
+            'url'         => $meta['url'],
+            'isPartOf'    => ['@id' => $siteUrl . '/#website'],
+            'about'       => ['@id' => $meta['url'] . '#brand'],
+            'breadcrumb'  => ['@id' => $meta['url'] . '#breadcrumb'],
+        ];
+
+        if (!empty($meta['products'])) {
+            $collection['mainEntity'] = ['@id' => $meta['url'] . '#products'];
+        }
+
+        // What the brand is, in the brand's own words when the admin wrote
+        // some, so an answer engine can say more than its name.
+        $brand = [
+            '@type'       => 'Brand',
+            '@id'         => $meta['url'] . '#brand',
+            'name'        => $meta['name'],
+            'url'         => $meta['url'],
+            'description' => $meta['content']['intro'][0] ?? $meta['description'],
+        ];
+
+        if (!empty($meta['image'])) {
+            $brand['logo'] = $meta['image'];
+        }
+
         $graph = [
-            [
-                '@type'       => 'CollectionPage',
-                '@id'         => $meta['url'] . '#collection',
-                'name'        => $meta['name'] . ' products',
-                'description' => $meta['description'],
-                'url'         => $meta['url'],
-                'isPartOf'    => ['@id' => $siteUrl . '/#website'],
-                'about'       => ['@id' => $meta['url'] . '#brand'],
-            ],
-            [
-                '@type' => 'Brand',
-                '@id'   => $meta['url'] . '#brand',
-                'name'  => $meta['name'],
-            ],
+            $collection,
+            $brand,
             [
                 '@type'           => 'BreadcrumbList',
                 '@id'             => $meta['url'] . '#breadcrumb',
@@ -244,6 +331,11 @@ class BrandMetaResolver
                     array_keys($meta['products'])
                 )),
             ];
+        }
+
+        // The same questions the page shows, word for word.
+        if ($faq = CollectionSeo::faqNode($meta['url'], $meta['content']['faqs'] ?? [])) {
+            $graph[] = $faq;
         }
 
         return ['@context' => 'https://schema.org', '@graph' => $graph];

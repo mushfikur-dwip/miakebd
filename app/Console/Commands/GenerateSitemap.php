@@ -8,7 +8,6 @@ use App\Models\BlogPost;
 use App\Models\BlogTag;
 use App\Models\Page;
 use App\Models\Product;
-use App\Models\ProductCategory;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use XMLWriter;
@@ -76,28 +75,13 @@ class GenerateSitemap extends Command
             });
 
         // Clean category URLs. /product?category={slug} 301s here, so only the
-        // canonical path is ever advertised.
-        //
-        // No whereNull('deleted_at') here: product_categories has no such
-        // column and the query would fail with SQLSTATE[42S22].
-        ProductCategory::query()
-            ->select(['id', 'slug', 'updated_at'])
-            ->where('status', Status::ACTIVE)
-            ->whereNotNull('slug')
-            ->where('slug', '<>', '')
-            ->orderBy('id')
-            ->chunkById(200, function ($categories) use ($writer, $baseUrl, &$count): void {
-                foreach ($categories as $category) {
-                    $this->writeUrl(
-                        $writer,
-                        "{$baseUrl}/product-category/".rawurlencode($category->slug),
-                        $category->updated_at,
-                        'weekly',
-                        '0.8'
-                    );
-                    $count++;
-                }
-            });
+        // canonical path is ever advertised. Only categories with something on
+        // the website: an empty one is served noindex, and "all-product" is a
+        // 301 to /product - listing either contradicted the page itself.
+        foreach (\App\Support\CategoryMetaResolver::all() as $category) {
+            $this->writeUrl($writer, $category['url'], $category['updated_at'] ?? now(), 'weekly', '0.8');
+            $count++;
+        }
 
         // Brand pages ("CeraVe price in Bangladesh"). Only brands with products
         // on the website - an empty brand page is served as noindex, so

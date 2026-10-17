@@ -6,6 +6,8 @@ namespace App\Services;
 use Exception;
 use Illuminate\Support\Str;
 use App\Models\ProductBrand;
+use App\Models\SlugRedirect;
+use App\Support\BrandMetaResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Requests\PaginateRequest;
@@ -75,7 +77,7 @@ class ProductBrandService
     public function store(ProductBrandRequest $request)
     {
         try {
-            $productBrand = ProductBrand::create($request->validated() + ['slug' => Str::slug($request->name)]);
+            $productBrand = ProductBrand::create($request->validated() + ['slug' => $this->uniqueSlug($request->name)]);
             if ($request->image) {
                 $productBrand->addMediaFromRequest('image')->toMediaCollection('product-brand');
             }
@@ -92,16 +94,53 @@ class ProductBrandService
     public function update(ProductBrandRequest $request, ProductBrand $productBrand): ProductBrand
     {
         try {
-            $productBrand->update($request->validated() + ['slug' => Str::slug($request->name)]);
+            // The page stays at its address unless the name itself changed.
+            // Every save used to rewrite the slug from the name, so a brand
+            // stored as "wishcare" but named "Wish Care" moved to /brand/wish-care
+            // on its next edit and its old address - the one Google ranked -
+            // went dead. A real rename now leaves a 301 behind.
+            $slug = $productBrand->slug;
+            if (blank($slug) || Str::slug($request->name) !== Str::slug($productBrand->name)) {
+                $slug = $this->uniqueSlug($request->name, $productBrand->id);
+
+                if (filled($productBrand->slug) && $productBrand->slug !== $slug) {
+                    SlugRedirect::remember(SlugRedirect::PRODUCT_BRAND, $productBrand->slug, $slug);
+                }
+            }
+
+            $oldSlug = $productBrand->slug;
+            $productBrand->update($request->validated() + ['slug' => $slug]);
             if ($request->image) {
                 $productBrand->clearMediaCollection('product-brand');
                 $productBrand->addMediaFromRequest('image')->toMediaCollection('product-brand');
             }
+
+            // The page is cached for half an hour; an edit should show now.
+            BrandMetaResolver::forget($oldSlug);
+            BrandMetaResolver::forget($slug);
+
             return $productBrand;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
+    }
+
+    /**
+     * The name's slug, or the name's slug with -2, -3... when another brand
+     * already has it, so two brands can never answer at the same address.
+     */
+    private function uniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name) ?: 'brand';
+        $slug = $base;
+        $n    = 2;
+
+        while (ProductBrand::where('slug', $slug)->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))->exists()) {
+            $slug = $base . '-' . $n++;
+        }
+
+        return $slug;
     }
 
     /**

@@ -32,10 +32,11 @@ class ScheduleFallbackTest extends TestCase
             'services.meta_pixel.token' => 'test-token',
         ]);
 
-        // Only the Meta job is under test: the feed and the sitemap would
-        // write into public/ from here.
+        // Only the Meta job is under test: the feed, the sitemap and llms.txt
+        // would write into public/ from here.
         Cache::put('schedule-fallback:product-feed', time(), 3600);
         Cache::put('schedule-fallback:sitemap', time(), 3600);
+        Cache::put('schedule-fallback:llms', time(), 3600);
 
         Http::fake(['graph.facebook.com/*' => Http::response(['events_received' => 1])]);
     }

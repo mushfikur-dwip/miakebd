@@ -215,6 +215,8 @@
                         :keep-length="false" />
                 </div>
             </div>
+
+            <CollectionSeoComponent :type="seoType" :slug="seoSlug" />
         </div>
     </section>
 </template>
@@ -233,11 +235,13 @@ import PaginationComponent from "../components/PaginationComponent";
 import LoadingContentComponent from "../components/LoadingContentComponent.vue";
 import ProductCardSkeleton from "../components/ProductCardSkeleton.vue";
 import CategoryBreadcrumbComponent from "../components/CategoryBreadcrumbComponent.vue";
+import CollectionSeoComponent from "./CollectionSeoComponent.vue";
 
 export default {
     name: "ProductComponent",
     components: {
         CategoryBreadcrumbComponent,
+        CollectionSeoComponent,
         LoadingContentComponent,
         ProductCardSkeleton,
         LoadingComponent,
@@ -313,6 +317,18 @@ export default {
         // The brand this listing is for, on /brand/:brandSlug only.
         pageBrand: function () {
             return this.$route.params.brandSlug ? this.$store.getters["frontendProduct/categoryWiseBrand"] : null;
+        },
+        // Which page's intro and questions to show under the products: a
+        // brand or category page only, never the plain /product listing (a
+        // ?category= link canonicalises to the clean path, so it gets none).
+        seoType: function () {
+            if (this.$route.params.brandSlug) {
+                return "brand";
+            }
+            return this.$route.params.slug ? "category" : null;
+        },
+        seoSlug: function () {
+            return this.$route.params.brandSlug || this.$route.params.slug || null;
         }
     },
     mounted() {

@@ -367,8 +367,10 @@ class TikTokEventsTest extends TestCase
 
     public function test_the_storefront_sends_them_when_the_cron_is_silent(): void
     {
+        // These would write into public/ from here.
         Cache::put('schedule-fallback:product-feed', time(), 3600);
         Cache::put('schedule-fallback:sitemap', time(), 3600);
+        Cache::put('schedule-fallback:llms', time(), 3600);
         Http::fake(['business-api.tiktok.com/*' => Http::response(['code' => 0, 'message' => 'OK'])]);
         $this->viewEvent('fb-1');
 

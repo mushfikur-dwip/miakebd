@@ -113,6 +113,9 @@ export default {
                     name: "",
                     description: "",
                     status: statusEnum.ACTIVE,
+                    seo_title: "",
+                    seo_description: "",
+                    seo_content: "",
                 },
                 search: {
                     paginate: 1,
@@ -166,6 +169,9 @@ export default {
                 name: productBrand.name,
                 description: productBrand.description,
                 status: productBrand.status,
+                seo_title: productBrand.seo_title || "",
+                seo_description: productBrand.seo_description || "",
+                seo_content: productBrand.seo_content || "",
             };
             this.loading.isActive = false;
         },

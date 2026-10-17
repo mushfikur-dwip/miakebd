@@ -33,7 +33,12 @@ class ProductBrandRequest extends FormRequest
             ],
             'description' => ['nullable', 'string', 'max:900'],
             'status'      => ['required', 'numeric', 'max:24'],
-            'image'       => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048']
+            'image'       => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            // The brand page's own title, search-result description and intro.
+            // Empty means "write it from live data" (App\Support\CollectionSeo).
+            'seo_title'       => ['nullable', 'string', 'max:190'],
+            'seo_description' => ['nullable', 'string', 'max:320'],
+            'seo_content'     => ['nullable', 'string', 'max:5000'],
         ];
     }
 }

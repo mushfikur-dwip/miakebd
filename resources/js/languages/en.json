@@ -534,6 +534,8 @@
         "on": "On",
         "damages": "Damages",
         "select_payment_method": "Select Payment Method",
+        "pay_when_it_arrives": "Pay when your order arrives",
+        "pay_online_now": "Pay online now",
         "order_history": "Order History",
         "order_id": "Order ID",
         "download": "Download",
@@ -985,6 +987,7 @@
         "add_order_area": "Add Order Area",
         "back_to_checkout": "Back to Checkout",
         "confirm_order": "Confirm Order",
+        "placing_order": "Placing order…",
         "download_receipt": "Download Receipt",
         "cancel_order": "Cancel Order",
         "return_request": "Return Request",
@@ -1201,6 +1204,9 @@
         "save_your_address": "Please add your delivery address first.",
         "order_placed_title": "Order placed!",
         "order_placed_thanks": "Thank you, {name}! We've received your order.",
-        "order_placed_thanks_plain": "Thank you! We've received your order."
+        "order_placed_thanks_plain": "Thank you! We've received your order.",
+        "placing_your_order": "Placing your order…",
+        "confirming_your_order": "Confirming your order…",
+        "dont_close_this_page": "Please don't close this page"
     }
 }

@@ -1,12 +1,17 @@
 <template>
     <!-- Shown once, when the customer lands here straight from placing the
-         order. Pure CSS: a ring that draws itself, a disc that pops, a tick that
-         draws, two ripples and a confetti burst, then the text settles in. No
-         library, nothing to download, and all of it collapses to a plain fade
-         for anyone who has asked their device for less motion. -->
+         order. Pure CSS: a ring that draws itself, a disc that settles in, a
+         tick that draws, a soft ripple and a confetti burst, then the text
+         rises in. No library, nothing to download, and all of it collapses to
+         a plain fade for anyone who has asked their device for less motion.
+
+         It takes over from the "Confirming your order..." screen painted while
+         the app loaded (see services/orderBridge.js). In that case its
+         backdrop is there from the first frame, so the two dark layers never
+         stack and flash. -->
     <Teleport to="body">
         <transition name="os-fade">
-            <div v-if="open" class="os-backdrop" @click.self="close">
+            <div v-if="open" class="os-backdrop" :class="bridged ? 'os-backdrop--instant' : ''" @click.self="close">
                 <div class="os-card" role="dialog" aria-modal="true" :aria-labelledby="titleId">
                     <button type="button" class="os-x" :aria-label="$t('button.close')" @click="close">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
@@ -17,15 +22,18 @@
 
                     <div class="os-hero" aria-hidden="true">
                         <span class="os-ripple"></span>
-                        <span class="os-ripple os-ripple--late"></span>
 
                         <span class="os-confetti">
                             <i v-for="piece in confetti" :key="piece.id" :class="'os-bit os-bit--' + piece.shape"
                                :style="piece.style"></i>
                         </span>
 
+                        <!-- The disc is an element of its own rather than part
+                             of the SVG: the browser can then scale it on the
+                             graphics card, where it stays smooth even while the
+                             page below is still busy. -->
+                        <span class="os-disc"></span>
                         <svg class="os-badge" viewBox="0 0 96 96">
-                            <circle class="os-disc" cx="48" cy="48" r="44" />
                             <circle class="os-ring" cx="48" cy="48" r="44" />
                             <path class="os-tick" d="M30 49.5 42.5 62 67 36" />
                         </svg>
@@ -39,24 +47,31 @@
                     </p>
 
                     <div class="os-meta os-in" style="--d: 2">
-                        <div v-if="order.order_serial_no" class="os-row">
-                            <span>{{ $t('label.order_id') }}</span>
-                            <b class="os-chip">#{{ order.order_serial_no }}</b>
-                        </div>
-                        <div v-if="order.total_currency_price" class="os-row">
-                            <span>{{ $t('label.total') }}</span>
-                            <b>{{ order.total_currency_price }}</b>
-                        </div>
-                        <div v-if="order.payment_method_name" class="os-row">
-                            <span>{{ $t('label.payment_method') }}</span>
-                            <b>{{ order.payment_method_name }}</b>
-                        </div>
-                        <!-- The order is fetched after this opens; hold its
-                             place so the card does not jump when it arrives. -->
-                        <template v-if="!order.order_serial_no">
-                            <span class="os-skel"></span>
-                            <span class="os-skel os-skel--short"></span>
-                        </template>
+                        <!-- Normally the order has arrived before this opens.
+                             If it is slow, placeholder lines the same height as
+                             the real ones hold its place, and the real ones
+                             fade in over them. -->
+                        <transition name="os-swap" mode="out-in">
+                            <div v-if="order.order_serial_no" key="rows" class="os-rows">
+                                <div class="os-row">
+                                    <span>{{ $t('label.order_id') }}</span>
+                                    <b class="os-chip">#{{ order.order_serial_no }}</b>
+                                </div>
+                                <div v-if="order.total_currency_price" class="os-row">
+                                    <span>{{ $t('label.total') }}</span>
+                                    <b>{{ order.total_currency_price }}</b>
+                                </div>
+                                <div v-if="order.payment_method_name" class="os-row">
+                                    <span>{{ $t('label.payment_method') }}</span>
+                                    <b>{{ order.payment_method_name }}</b>
+                                </div>
+                            </div>
+                            <div v-else key="placeholder" class="os-rows">
+                                <span class="os-skel"></span>
+                                <span class="os-skel"></span>
+                                <span class="os-skel os-skel--short"></span>
+                            </div>
+                        </transition>
                     </div>
 
                     <div class="os-actions os-in" style="--d: 3">
@@ -74,6 +89,8 @@
 </template>
 
 <script>
+import orderBridge from "../../../../services/orderBridge";
+
 // Brand colour first so it dominates, then a warm, festive spread.
 const COLOURS = ["rgb(var(--primary))", "#F5B83D", "#2AC769", "#FF8FA3", "#5AB2FF", "#A78BFA", "rgb(var(--primary))"];
 const SHAPES = ["rect", "dot", "strip"];
@@ -87,7 +104,7 @@ function buildConfetti(count) {
     for (let i = 0; i < count; i += 1) {
         const t = i / (count - 1);
         const angle = (-165 + t * 150) * (Math.PI / 180);
-        const reach = 95 + ((i * 37) % 70);
+        const reach = 90 + ((i * 37) % 70);
         const x = Math.cos(angle) * reach;
         const y = Math.sin(angle) * reach;
 
@@ -97,10 +114,10 @@ function buildConfetti(count) {
             style: {
                 "--x": x.toFixed(1) + "px",
                 "--y": y.toFixed(1) + "px",
-                "--fall": (y + 150 + ((i * 53) % 90)).toFixed(1) + "px",
-                "--r": ((i % 2 ? 1 : -1) * (180 + ((i * 71) % 360))) + "deg",
-                "--delay": (0.72 + ((i * 13) % 10) / 100).toFixed(2) + "s",
-                "--dur": (1.35 + ((i * 29) % 60) / 100).toFixed(2) + "s",
+                "--fall": (y + 170 + ((i * 53) % 90)).toFixed(1) + "px",
+                "--r": ((i % 2 ? 1 : -1) * (200 + ((i * 71) % 300))) + "deg",
+                "--delay": (0.62 + ((i * 13) % 10) / 100).toFixed(2) + "s",
+                "--dur": (1.6 + ((i * 29) % 60) / 100).toFixed(2) + "s",
                 background: COLOURS[i % COLOURS.length],
             },
         });
@@ -120,7 +137,9 @@ export default {
     data() {
         return {
             titleId: "os-title-" + Math.random().toString(36).slice(2, 8),
-            confetti: buildConfetti(34),
+            confetti: buildConfetti(28),
+            bridged: false,
+            scrollPadded: false,
         };
     },
     computed: {
@@ -132,6 +151,14 @@ export default {
         open: {
             immediate: true,
             handler: function (value) {
+                if (value) {
+                    // Decided before this renders, so the backdrop knows
+                    // whether to appear at once (taking over from the screen
+                    // that covered the page load) or to fade in itself.
+                    this.bridged = orderBridge.isShown();
+                    orderBridge.release(true);
+                }
+
                 this.lockScroll(value);
 
                 if (value) {
@@ -162,8 +189,29 @@ export default {
                 this.close();
             }
         },
+        /**
+         * Locking the page's scroll takes its scrollbar away, and on a desktop
+         * everything behind the card used to jump sideways by that width as it
+         * opened. The gap is padded back while it is open.
+         */
         lockScroll: function (lock) {
-            document.body.classList.toggle("overflow-hidden", !!lock);
+            const body = document.body;
+
+            if (lock) {
+                const gap = window.innerWidth - document.documentElement.clientWidth;
+                if (gap > 0 && !this.scrollPadded) {
+                    body.style.paddingRight = gap + "px";
+                    this.scrollPadded = true;
+                }
+                body.classList.add("overflow-hidden");
+                return;
+            }
+
+            body.classList.remove("overflow-hidden");
+            if (this.scrollPadded) {
+                body.style.paddingRight = "";
+                this.scrollPadded = false;
+            }
         },
     },
 };
@@ -182,9 +230,9 @@ export default {
     /* Confetti flies past the card's edges; on a narrow phone it would
        otherwise widen the scroll area for a moment and jolt the page. */
     overflow-x: hidden;
+    /* No backdrop blur: blurring the whole page behind a moving card is what
+       made the entrance stutter on lower-end phones. */
     background: rgb(17 17 34 / 0.55);
-    -webkit-backdrop-filter: blur(3px);
-    backdrop-filter: blur(3px);
 }
 
 .os-card {
@@ -197,7 +245,9 @@ export default {
     background: #ffffff;
     border-radius: 22px;
     box-shadow: 0 24px 60px -12px rgb(17 17 34 / 0.35);
-    animation: os-pop 0.55s cubic-bezier(0.2, 1.3, 0.35, 1) both;
+    /* Settles in without bouncing - an overshoot on the whole card read as a
+       jolt rather than a celebration. */
+    animation: os-card-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .os-x {
@@ -234,9 +284,20 @@ export default {
     margin: 4px auto 20px;
 }
 
+.os-disc {
+    position: absolute;
+    inset: 4px;
+    z-index: 2;
+    border-radius: 999px;
+    background: rgb(var(--primary));
+    transform: scale(0);
+    /* A little past full size and back - enough to feel alive, not a bounce. */
+    animation: os-disc 0.55s cubic-bezier(0.34, 1.3, 0.64, 1) 0.45s forwards;
+}
+
 .os-badge {
     position: relative;
-    z-index: 2;
+    z-index: 3;
     width: 96px;
     height: 96px;
     overflow: visible;
@@ -251,14 +312,7 @@ export default {
     stroke-dashoffset: 277;
     transform: rotate(-90deg);
     transform-origin: 48px 48px;
-    animation: os-draw 0.55s cubic-bezier(0.65, 0, 0.35, 1) 0.15s forwards;
-}
-
-.os-disc {
-    fill: rgb(var(--primary));
-    transform: scale(0);
-    transform-origin: 48px 48px;
-    animation: os-disc 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) 0.58s forwards;
+    animation: os-draw 0.5s cubic-bezier(0.65, 0, 0.35, 1) 0.1s forwards;
 }
 
 .os-tick {
@@ -269,7 +323,7 @@ export default {
     stroke-linejoin: round;
     stroke-dasharray: 60;
     stroke-dashoffset: 60;
-    animation: os-draw 0.36s cubic-bezier(0.65, 0, 0.35, 1) 0.8s forwards;
+    animation: os-draw 0.36s cubic-bezier(0.65, 0, 0.35, 1) 0.72s forwards;
 }
 
 .os-ripple {
@@ -277,13 +331,9 @@ export default {
     inset: 0;
     z-index: 1;
     border-radius: 999px;
-    border: 3px solid rgb(var(--primary) / 0.45);
+    border: 3px solid rgb(var(--primary) / 0.35);
     opacity: 0;
-    animation: os-ripple 1.1s cubic-bezier(0.2, 0.7, 0.3, 1) 0.8s forwards;
-}
-
-.os-ripple--late {
-    animation-delay: 1.05s;
+    animation: os-ripple 1.3s cubic-bezier(0.16, 1, 0.3, 1) 0.75s forwards;
 }
 
 /* ---- Confetti ----------------------------------------------------------- */
@@ -292,7 +342,7 @@ export default {
     position: absolute;
     top: 50%;
     left: 50%;
-    z-index: 3;
+    z-index: 4;
     width: 0;
     height: 0;
     pointer-events: none;
@@ -303,7 +353,8 @@ export default {
     top: 0;
     left: 0;
     opacity: 0;
-    animation: os-burst var(--dur) cubic-bezier(0.15, 0.6, 0.35, 1) var(--delay) forwards;
+    will-change: transform, opacity;
+    animation: os-burst var(--dur) linear var(--delay) forwards;
 }
 
 .os-bit--rect {
@@ -347,13 +398,12 @@ export default {
 
 .os-in {
     opacity: 0;
-    animation: os-rise 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) calc(0.78s + var(--d) * 0.08s) forwards;
+    /* Starts while the disc is still landing, so the card is never a large
+       blank white square waiting for its badge. */
+    animation: os-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) calc(0.48s + var(--d) * 0.07s) forwards;
 }
 
 .os-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 9px;
     margin-bottom: 20px;
     padding: 14px 15px;
     text-align: left;
@@ -361,11 +411,18 @@ export default {
     background: #f8f8fb;
 }
 
+.os-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
 .os-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    min-height: 22px;
     font-size: 13.5px;
     color: #6e7191;
 }
@@ -384,9 +441,12 @@ export default {
     letter-spacing: 0.02em;
 }
 
+/* As tall as a real row (22px), so the card does not change height when the
+   order arrives and replaces them. */
 .os-skel {
     display: block;
     height: 14px;
+    margin: 4px 0;
     border-radius: 6px;
     background: linear-gradient(90deg, #ececf2 0%, #f6f6fa 50%, #ececf2 100%);
     background-size: 200% 100%;
@@ -395,6 +455,16 @@ export default {
 
 .os-skel--short {
     width: 60%;
+}
+
+.os-swap-enter-active,
+.os-swap-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.os-swap-enter-from,
+.os-swap-leave-to {
+    opacity: 0;
 }
 
 .os-actions {
@@ -411,16 +481,17 @@ export default {
     color: #ffffff;
     background: rgb(var(--primary));
     box-shadow: 0 10px 22px -10px rgb(var(--primary) / 0.8);
-    transition: transform 0.2s ease, filter 0.2s ease;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease, box-shadow 0.25s ease;
 }
 
 .os-primary:hover {
     transform: translateY(-1px);
     filter: brightness(1.06);
+    box-shadow: 0 14px 26px -12px rgb(var(--primary) / 0.85);
 }
 
 .os-primary:active {
-    transform: scale(0.99);
+    transform: scale(0.985);
 }
 
 /* It is focused on open; the browser's default black ring looked like an
@@ -440,6 +511,7 @@ export default {
     font-size: 14px;
     font-weight: 600;
     color: #6e7191;
+    transition: color 0.2s ease;
 }
 
 .os-secondary:hover {
@@ -448,14 +520,10 @@ export default {
 
 /* ---- Keyframes ---------------------------------------------------------- */
 
-@keyframes os-pop {
+@keyframes os-card-in {
     from {
         opacity: 0;
-        transform: translateY(18px) scale(0.92);
-    }
-    to {
-        opacity: 1;
-        transform: none;
+        transform: translateY(16px) scale(0.96);
     }
 }
 
@@ -473,28 +541,36 @@ export default {
 
 @keyframes os-ripple {
     0% {
-        opacity: 0.9;
+        opacity: 0.85;
         transform: scale(1);
     }
     100% {
         opacity: 0;
-        transform: scale(1.9);
+        transform: scale(1.8);
     }
 }
 
-/* Out along its angle, then drops as it spins and fades - a cheap gravity. */
+/* A thrown arc: out fast and slowing to the top of the throw, then falling
+   faster and faster as it spins, fading only at the very end. Each stretch
+   has its own easing - one curve over the whole flight made every piece stop
+   dead at the top and then drop. */
 @keyframes os-burst {
     0% {
         opacity: 1;
-        transform: translate(0, 0) rotate(0deg) scale(0.4);
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(0.4);
+        animation-timing-function: cubic-bezier(0.12, 0.75, 0.35, 1);
     }
-    35% {
+    32% {
         opacity: 1;
-        transform: translate(var(--x), var(--y)) rotate(calc(var(--r) * 0.4)) scale(1);
+        transform: translate3d(var(--x), var(--y), 0) rotate(calc(var(--r) * 0.3)) scale(1);
+        animation-timing-function: cubic-bezier(0.45, 0, 0.85, 0.55);
+    }
+    82% {
+        opacity: 1;
     }
     100% {
         opacity: 0;
-        transform: translate(calc(var(--x) * 1.25), var(--fall)) rotate(var(--r)) scale(0.9);
+        transform: translate3d(calc(var(--x) * 1.2), var(--fall), 0) rotate(var(--r)) scale(0.85);
     }
 }
 
@@ -526,6 +602,15 @@ export default {
 .os-fade-enter-from,
 .os-fade-leave-to {
     opacity: 0;
+}
+
+/* Taking over from the page-load screen: there from the first frame. */
+.os-backdrop--instant.os-fade-enter-active {
+    transition: none;
+}
+
+.os-backdrop--instant.os-fade-enter-from {
+    opacity: 1;
 }
 
 @media (min-width: 640px) {

@@ -395,6 +395,57 @@
 </head>
 
 <body>
+    {{-- "Confirming your order..." - the second half of the screen the
+         payment step raises when Confirm Order is pressed (OrderPlacingComponent,
+         and the .ob styles in app.css; keep the three in step). Paying is a
+         server redirect, so the customer lands back on the order page with a
+         full page load; painting this before the app has loaded means they
+         never see a blank page between the tap and "Order placed!".
+
+         Built by script, and only on that landing: decided in the browser so a
+         cached copy of this page can never show it to anyone else, and kept
+         out of the markup so crawlers reading the raw HTML of every page do
+         not find the words in it. The app takes it down
+         (resources/js/services/orderBridge.js); the timer is the backstop for
+         when the app never gets that far. --}}
+    <script>
+        (function () {
+            if (!/^\/account\/order-details\/\d+\/?$/.test(location.pathname)
+                || !/[?&]status=success(&|$)/.test(location.search)) {
+                return;
+            }
+
+            var bn = false;
+            try {
+                var state = JSON.parse(localStorage.getItem('vuex') || '{}').globalState;
+                bn = !!(state && state.lists && state.lists.language_code === 'bn');
+            } catch (e) {}
+
+            var bridge = document.createElement('div');
+            bridge.id = 'order-bridge';
+            bridge.className = 'ob ob--static';
+            bridge.setAttribute('role', 'status');
+            bridge.setAttribute('aria-live', 'polite');
+            bridge.innerHTML = '<div class="ob-card">'
+                + '<span class="ob-badge" aria-hidden="true"><span class="ob-pulse"></span>'
+                + '<svg class="ob-spin" viewBox="0 0 76 76"><circle cx="38" cy="38" r="36"/></svg>'
+                + '<span class="ob-core"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+                + '<path d="M5.5 8h13l-1.1 12H6.6L5.5 8Z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/></svg></span></span>'
+                + '<b class="ob-title"></b><span class="ob-text"></span></div>';
+            bridge.querySelector('.ob-title').textContent = bn ? 'আপনার অর্ডার নিশ্চিত করা হচ্ছে…' : 'Confirming your order…';
+            bridge.querySelector('.ob-text').textContent = bn ? 'অনুগ্রহ করে পেজটি বন্ধ করবেন না' : "Please don't close this page";
+            document.body.appendChild(bridge);
+
+            setTimeout(function () {
+                if (bridge.parentNode && !bridge.dataset.leaving) {
+                    bridge.dataset.leaving = '1';
+                    bridge.classList.add('ob-leaving');
+                    setTimeout(function () { bridge.remove(); }, 260);
+                }
+            }, 10000);
+        })();
+    </script>
+
     @if (!blank($analytics))
         @foreach ($analytics as $analytic)
             @if (!blank($analytic->analyticSections))

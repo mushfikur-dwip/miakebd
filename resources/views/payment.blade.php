@@ -8,8 +8,26 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $company['company_name'] }}</title>
     <link rel="icon" href="{{ $faviconLogo->faviconLogo }}">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    {{-- The shop's own stylesheets, as the app pages load them, so normally
+         already in the browser's cache. They replace a link to css/app.css, a
+         file this build does not have: that 404 left the page unstyled, so
+         everything here meant to stay hidden - the list of gateways, a Confirm
+         button, "Back to payment" - flashed up while the form sent itself.
+         The app entry's own CSS is linked without its script; it carries the
+         shop font, so the card below reads the same as on the pages either
+         side of this one. --}}
+    @php
+        try {
+            $appCss = json_decode(file_get_contents(public_path('build/manifest.json')), true)['resources/js/app.js']['css'] ?? [];
+        } catch (\Throwable) {
+            $appCss = [];
+        }
+    @endphp
     <link rel="stylesheet" href="{{ asset('themes/default/css/custom.css') }}">
+    @foreach ($appCss as $css)
+        <link rel="stylesheet" href="{{ asset('build/' . $css) }}">
+    @endforeach
+    @vite(['resources/css/app.css'])
 </head>
 
 <body>
@@ -18,9 +36,41 @@
         <img class="w-full" src="{{ $logo->logo }}" alt="logo">
     </a>
 
-    <div id="loading-show" class="mx-auto w-80 {{ session()->has('error') ? 'hidden' : '' }}">
-        <img class="w-full" src="{{ asset('images/required/payment-loading.gif') }}">
+    {{-- "Placing your order..." - the same card the checkout raised when
+         Confirm Order was pressed, and the one the order page shows next
+         (OrderPlacingComponent, the bridge in master.blade.php and the .ob
+         styles in app.css), so the trip reads as one screen. It used to be the
+         logo over an 870 KB animated GIF. A gateway that needs a form of its
+         own here takes it down (paymentGateways/payment.js adds `hidden`). --}}
+    <div id="loading-show" class="ob ob--static {{ session()->has('error') ? 'hidden' : '' }}" role="status"
+         aria-live="polite">
+        <div class="ob-card">
+            <span class="ob-badge" aria-hidden="true">
+                <span class="ob-pulse"></span>
+                <svg class="ob-spin" viewBox="0 0 76 76"><circle cx="38" cy="38" r="36"/></svg>
+                <span class="ob-core">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5.5 8h13l-1.1 12H6.6L5.5 8Z"/>
+                        <path d="M9 8V7a3 3 0 0 1 6 0v1"/>
+                    </svg>
+                </span>
+            </span>
+            <b class="ob-title" data-bn="আপনার অর্ডার দেওয়া হচ্ছে…">Placing your order…</b>
+            <span class="ob-text" data-bn="অনুগ্রহ করে পেজটি বন্ধ করবেন না">Please don't close this page</span>
+        </div>
     </div>
+    <script>
+        // In the customer's language, as the shop remembers it in this browser.
+        try {
+            var shopState = JSON.parse(localStorage.getItem('vuex') || '{}').globalState;
+            if (shopState && shopState.lists && shopState.lists.language_code === 'bn') {
+                document.querySelectorAll('#loading-show [data-bn]').forEach(function (node) {
+                    node.textContent = node.getAttribute('data-bn');
+                });
+            }
+        } catch (e) {}
+    </script>
 
     @if ($errors->any())
         @foreach ($errors->all() as $error)

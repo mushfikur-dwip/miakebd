@@ -38,42 +38,32 @@
                 </div>
 
                 <div class="co-card-body">
-                    <div class="co-opts">
-                        <button v-if="Object.keys(cashOnDelivery).length > 0 && setting.site_cash_on_delivery === ActivityEnum.ENABLE"
-                                type="button" class="co-opt"
-                                :class="isSelected(cashOnDelivery) ? 'selected' : ''"
-                                @click.prevent="selectPaymentMethod(cashOnDelivery)">
-                            <span class="co-radio" aria-hidden="true"></span>
-                            <span class="co-opt-text">
-                                <img :src="cashOnDelivery.image" :alt="cashOnDelivery.name" />
-                                <b>{{ cashOnDelivery.name }}</b>
+                    <!-- A row per way to pay: picture, name, what happens
+                         next, and a tick. They rise in one after another as
+                         the list arrives, and the chosen one's picture pops. -->
+                    <div class="co-opts co-opts--pay" role="radiogroup"
+                         :aria-label="$t('label.select_payment_method')">
+                        <button v-for="(method, index) in paymentOptions" :key="method.id"
+                                type="button" class="co-opt co-pay" role="radio"
+                                :aria-checked="isSelected(method)"
+                                :class="isSelected(method) ? 'selected' : ''"
+                                :style="{ '--i': index }"
+                                @click.prevent="selectPaymentMethod(method)">
+                            <span class="co-pay-icon" :class="paymentArt(method) ? 'co-pay-icon--art' : ''">
+                                <img :src="paymentArt(method) || method.image" alt="" width="56" height="48"
+                                     decoding="async" />
+                            </span>
+                            <span class="co-pay-text">
+                                <b>{{ method.name }}</b>
+                                <span v-if="paymentHint(method)">{{ paymentHint(method) }}</span>
+                            </span>
+                            <span class="co-pay-check" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12.5l4.2 4.2L19 7" />
+                                </svg>
                             </span>
                         </button>
-
-                        <button v-if="appliedWalletAmount === 0 && walletStatus && Object.keys(credit).length > 0"
-                                type="button" class="co-opt"
-                                :class="isSelected(credit) ? 'selected' : ''"
-                                @click.prevent="selectPaymentMethod(credit)">
-                            <span class="co-radio" aria-hidden="true"></span>
-                            <span class="co-opt-text">
-                                <img :src="credit.image" :alt="credit.name" />
-                                <b>{{ credit.name }}</b>
-                                <span>{{ profile.balance }}</span>
-                            </span>
-                        </button>
-
-                        <template v-if="setting.site_online_payment_gateway === ActivityEnum.ENABLE">
-                            <button v-for="paymentGateway in paymentGateways" :key="paymentGateway.id"
-                                    type="button" class="co-opt"
-                                    :class="isSelected(paymentGateway) ? 'selected' : ''"
-                                    @click.prevent="selectPaymentMethod(paymentGateway)">
-                                <span class="co-radio" aria-hidden="true"></span>
-                                <span class="co-opt-text">
-                                    <img :src="paymentGateway.image" :alt="paymentGateway.name" />
-                                    <b>{{ paymentGateway.name }}</b>
-                                </span>
-                            </button>
-                        </template>
                     </div>
                 </div>
             </div>
@@ -111,9 +101,15 @@
                         <!-- Desktop keeps the action in the card; on a phone it
                              lives in the bar pinned to the bottom instead. -->
                         <div class="max-lg:hidden">
-                            <button type="button" class="co-place" :disabled="submitting"
-                                    @click.prevent="confirmOrder">
-                                {{ $t('button.confirm_order') }}
+                            <button type="button" class="co-place co-confirm" :class="submitting ? 'is-busy' : ''"
+                                    :disabled="submitting" @click.prevent="confirmOrder">
+                                <span v-if="submitting" class="co-spin" aria-hidden="true"></span>
+                                <span>{{ submitting ? $t('button.placing_order') : $t('button.confirm_order') }}</span>
+                                <svg v-if="!submitting" class="co-confirm-arrow" viewBox="0 0 24 24" fill="none"
+                                     stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+                                     stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M5 12h14M13 6l6 6-6 6" />
+                                </svg>
                             </button>
                             <router-link :to="{ name: 'frontend.checkout.checkout' }" class="co-back">
                                 {{ $t('button.back_to_checkout') }}
@@ -132,10 +128,18 @@
             <span>{{ $t('label.total') }}</span>
             <b>{{ money(total) }}</b>
         </div>
-        <button type="button" :disabled="submitting" @click.prevent="confirmOrder">
-            {{ $t('button.confirm_order') }}
+        <button type="button" class="co-confirm" :class="submitting ? 'is-busy' : ''" :disabled="submitting"
+                @click.prevent="confirmOrder">
+            <span v-if="submitting" class="co-spin" aria-hidden="true"></span>
+            <span>{{ submitting ? $t('button.placing_order') : $t('button.confirm_order') }}</span>
+            <svg v-if="!submitting" class="co-confirm-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
         </button>
     </div>
+
+    <OrderPlacingComponent :open="placing" />
 </template>
 
 <script>
@@ -153,10 +157,11 @@ import ENV from "../../../../config/env";
 import pixelService from "../../../../services/pixelService";
 import ActivityEnum from "../../../../enums/modules/activityEnum";
 import orderTypeEnum from "../../../../enums/modules/orderTypeEnum";
+import OrderPlacingComponent from "../OrderPlacingComponent.vue";
 
 export default {
     name: "PaymentComponent",
-    components: { ExtraComponent, SummeryComponent, LoadingComponent },
+    components: { ExtraComponent, SummeryComponent, LoadingComponent, OrderPlacingComponent },
     data() {
         return {
             loading: {
@@ -171,6 +176,9 @@ export default {
             // Reactive, so both the desktop and the mobile confirm button lock
             // together and Vue always owns the disabled state.
             submitting: false,
+            // The "Placing your order..." screen, from the moment the order is
+            // sent until the browser leaves for the payment step.
+            placing: false,
             agreed: true,
             form: {}
         }
@@ -199,6 +207,25 @@ export default {
         },
         paymentMethod: function () {
             return this.$store.getters['frontendCart/paymentMethod'];
+        },
+        // Every way to pay this order, in the order they are offered: cash on
+        // delivery, the wallet (only while it is not already applied), then
+        // the online gateways.
+        paymentOptions: function () {
+            const setting = this.setting || {};
+            const options = [];
+
+            if (Object.keys(this.cashOnDelivery).length > 0 && setting.site_cash_on_delivery === ActivityEnum.ENABLE) {
+                options.push(this.cashOnDelivery);
+            }
+            if (this.appliedWalletAmount === 0 && this.walletStatus && Object.keys(this.credit).length > 0) {
+                options.push(this.credit);
+            }
+            if (setting.site_online_payment_gateway === ActivityEnum.ENABLE) {
+                options.push(...this.paymentGateways);
+            }
+
+            return options;
         },
         subtotal: function () {
             return this.$store.getters['frontendCart/subtotal'];
@@ -273,6 +300,8 @@ export default {
         // who lands here directly. Once per basket either way.
         pixelService.initiateCheckoutOnce(this.products, this.total);
 
+        window.addEventListener('pageshow', this.onPageShow);
+
         this.loading.isActive = true;
         this.$store.dispatch('frontendPaymentGateway/lists', { status: this.statusEnum.ACTIVE }).then(res => {
             if (res.data.data.length > 0) {
@@ -295,6 +324,9 @@ export default {
             this.loading.isActive = false;
         });
     },
+    beforeUnmount() {
+        window.removeEventListener('pageshow', this.onPageShow);
+    },
     methods: {
         money(amount) {
             const setting = this.setting || {};
@@ -308,6 +340,50 @@ export default {
         },
         isSelected: function (gateway) {
             return Object.keys(this.paymentMethod || {}).length > 0 && this.paymentMethod.id === gateway.id;
+        },
+        /**
+         * The shop's own picture for cash on delivery and the wallet, in place
+         * of the stock ones the install came with (a flat blue "COD" tile and
+         * a clip-art card). Only while the stock picture is still the one in
+         * use: anything the admin uploads instead is shown as uploaded.
+         */
+        paymentArt: function (method) {
+            const image = String(method.image || '');
+            const stock = (file) => !image || new RegExp('/' + file + '\\.png(\\?.*)?$').test(image);
+
+            if (method.slug === 'cashondelivery' && stock('cashondelivery')) {
+                return ENV.API_URL + '/images/payment/cash-on-delivery.webp';
+            }
+            if (method.slug === 'credit' && stock('credit')) {
+                return ENV.API_URL + '/images/payment/wallet.webp';
+            }
+
+            return '';
+        },
+        /** The line under the name: what happens next, or the wallet's balance. */
+        paymentHint: function (method) {
+            if (method.slug === 'cashondelivery') {
+                return this.$t('label.pay_when_it_arrives');
+            }
+            if (method.slug === 'credit') {
+                const balance = (this.profile || {}).balance;
+
+                return balance === undefined || balance === null ? '' : this.$t('label.balance') + ': ' + balance;
+            }
+
+            return this.$t('label.pay_online_now');
+        },
+        /**
+         * Back from a payment gateway, the browser can restore this page
+         * exactly as it was left - "Placing your order..." still up and the
+         * buttons locked, with nothing left that would ever take them down.
+         * Hand it back in the state a reload would.
+         */
+        onPageShow: function (event) {
+            if (event.persisted) {
+                this.placing = false;
+                this.submitting = false;
+            }
         },
         selectPaymentMethod: function (paymentMethod) {
             this.$store.dispatch("frontendCart/paymentMethod", paymentMethod);
@@ -406,9 +482,9 @@ export default {
             // Locked only once the request is actually about to leave, so a
             // failure while assembling the payload cannot strand the button.
             this.submitting = true;
+            this.placing = true;
 
             pixelService.addPaymentInfo(this.products, this.remainingAmount);
-            this.loading.isActive = true;
 
             this.$store.dispatch('frontendOrder/save', this.form).then(orderResponse => {
                 const orderId = orderResponse.data.data.id;
@@ -443,7 +519,7 @@ export default {
             }).catch((err) => {
                 // Always release the button, whatever came back — leaving it
                 // disabled meant a reload was the only way to retry.
-                this.loading.isActive = false;
+                this.placing = false;
                 this.submitting = false;
                 this.notifyOrderError(err);
             });

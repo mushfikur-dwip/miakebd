@@ -505,6 +505,8 @@
         "on": "অন",
         "damages": "ক্ষতি",
         "select_payment_method": "পেমেন্ট মেথড নির্বাচন করুন",
+        "pay_when_it_arrives": "পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন",
+        "pay_online_now": "এখনই অনলাইনে পেমেন্ট করুন",
         "order_history": "অর্ডার হিস্ট্রি",
         "order_id": "অর্ডার আইডি",
         "download": "ডাউনলোড",
@@ -911,6 +913,7 @@
         "add_order_area": "অর্ডার এলাকা যোগ করুন",
         "back_to_checkout": "চেকআউটে ফিরে যান",
         "confirm_order": "অর্ডার নিশ্চিত করুন",
+        "placing_order": "অর্ডার করা হচ্ছে…",
         "download_receipt": "রশিদ ডাউনলোড করুন",
         "cancel_order": "অর্ডার বাতিল করুন",
         "return_request": "ফেরতের অনুরোধ",
@@ -1125,6 +1128,9 @@
         "save_your_address": "আগে আপনার ডেলিভারি ঠিকানা যোগ করুন।",
         "order_placed_title": "অর্ডার সম্পন্ন হয়েছে!",
         "order_placed_thanks": "ধন্যবাদ, {name}! আপনার অর্ডারটি আমরা পেয়েছি।",
-        "order_placed_thanks_plain": "ধন্যবাদ! আপনার অর্ডারটি আমরা পেয়েছি।"
+        "order_placed_thanks_plain": "ধন্যবাদ! আপনার অর্ডারটি আমরা পেয়েছি।",
+        "placing_your_order": "আপনার অর্ডার দেওয়া হচ্ছে…",
+        "confirming_your_order": "আপনার অর্ডার নিশ্চিত করা হচ্ছে…",
+        "dont_close_this_page": "অনুগ্রহ করে পেজটি বন্ধ করবেন না"
     }
 }

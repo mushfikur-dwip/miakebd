@@ -53,7 +53,10 @@ class PaymentService
                 $order->active         = Ask::YES;
                 $order->payment_status = PaymentStatus::PAID;
                 $order->save();
+                $placed = Stock::where(['model_id' => $order->id, 'model_type' => Order::class, 'status' => Status::INACTIVE])->get();
                 Stock::where(['model_id' => $order->id, 'model_type' => Order::class, 'status' => Status::INACTIVE])?->update(['status' => Status::ACTIVE]);
+                // Its units are off the shelf now: one down to its last is announced.
+                app(StockGuard::class)->settle(app(StockGuard::class)->changesOf($placed, 1, false), false);
 
                 SendOrderMail::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
                 SendOrderSms::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Ask;
+use App\Enums\OrderStatus;
 use App\Enums\Status;
 use App\Models\Concerns\HasOutletStock;
 use App\Models\Concerns\ResolvesMediaUrls;
@@ -338,9 +339,18 @@ class Product extends Model implements HasMedia
         return $this->hasMany(ProductTax::class);
     }
 
+    /**
+     * The units sold: lines of placed orders that still stand. A cancelled or
+     * rejected order sold nothing - even one cancelled before cancelling gave
+     * its stock back - and neither did an online order still waiting for its
+     * payment, whose lines stay inactive until it is paid.
+     */
     public function productOrders(): HasMany
     {
-        return $this->hasMany(Stock::class, 'product_id', 'id')->where('model_type', Order::class);
+        return $this->hasMany(Stock::class, 'product_id', 'id')
+            ->where('stocks.model_type', Order::class)
+            ->where('stocks.status', Status::ACTIVE)
+            ->whereNotIn('stocks.model_id', Order::select('id')->whereIn('status', [OrderStatus::CANCELED, OrderStatus::REJECTED]));
     }
 
     public function userReview(): \Illuminate\Database\Eloquent\Relations\hasOne

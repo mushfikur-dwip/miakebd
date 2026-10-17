@@ -13,6 +13,11 @@ export const stock = {
             temp_id: null,
             isEditing: false,
         },
+        // The "stock cannot be zero" switch. Starts on, the safe position, so
+        // the page never briefly offers the looser rule while it loads.
+        setup: {
+            stock_cannot_be_zero: true,
+        },
 },
     getters: {
         lists: function (state) {
@@ -27,6 +32,9 @@ export const stock = {
         },
         show: function (state) {
             return state.show;
+        },
+        setup: function (state) {
+            return state.setup;
         },
         temp: function (state) {
             return state.temp;
@@ -58,6 +66,29 @@ export const stock = {
         updateItem: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios.post('admin/stock/update-item', payload).then((res) => {
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
+        // The "stock cannot be zero" switch. Reading it is part of loading the
+        // page; changing it needs the branch PIN, so the caller handles the
+        // refusal (wrong PIN 422, locked out 429) itself.
+        setup: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.get('admin/stock/setup').then((res) => {
+                    context.commit('setup', res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
+        updateSetup: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.put('admin/stock/setup', payload).then((res) => {
+                    context.commit('setup', res.data.data);
                     resolve(res);
                 }).catch((err) => {
                     reject(err);
@@ -96,6 +127,11 @@ export const stock = {
         },
         show: function (state, payload) {
             state.show = payload;
+        },
+        setup: function (state, payload) {
+            if (typeof payload !== "undefined" && payload !== null) {
+                state.setup = payload;
+            }
         },
         temp: function (state, payload) {
             state.temp.temp_id = payload;

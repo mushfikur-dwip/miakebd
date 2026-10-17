@@ -3,11 +3,12 @@
 namespace App\Observers;
 
 use App\Enums\AddressType;
+use App\Enums\Ask;
 use App\Enums\OrderStatus;
-use App\Enums\OrderType;
 use App\Enums\PaymentStatus;
-use App\Enums\Source;
+use App\Enums\Status;
 use App\Models\Order;
+use App\Models\Stock;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WalletSetting;
@@ -113,7 +114,27 @@ class OrderObserver
 
     private function isTillOrder(Order $order): bool
     {
-        return (int) $order->source === Source::POS || (int) $order->order_type === OrderType::POS;
+        return $order->isTillOrder();
+    }
+
+    /**
+     * A cancelled or rejected order hands its units back to the branch, on
+     * whichever screen it was cancelled; taking the cancellation back takes
+     * them again. Only a placed order's lines come back - an online order
+     * still waiting for its payment never held any stock.
+     */
+    private function syncStock(Order $order): void
+    {
+        $closed     = [OrderStatus::CANCELED, OrderStatus::REJECTED];
+        $wasClosed  = in_array((int) $order->getOriginal('status'), $closed, true);
+        $isClosed   = in_array((int) $order->status, $closed, true);
+        $lines      = fn() => Stock::where('model_type', Order::class)->where('model_id', $order->id);
+
+        if ($isClosed && !$wasClosed) {
+            $lines()->where('status', Status::ACTIVE)->update(['status' => Status::INACTIVE]);
+        } elseif ($wasClosed && !$isClosed && (int) $order->active === Ask::YES) {
+            $lines()->where('status', Status::INACTIVE)->update(['status' => Status::ACTIVE]);
+        }
     }
 
     /**
@@ -123,6 +144,10 @@ class OrderObserver
     {
         if ($order->isDirty('status') && $order->status == OrderStatus::DELIVERED) {
             $this->handleCashback($order);
+        }
+
+        if ($order->isDirty('status')) {
+            $this->syncStock($order);
         }
 
         if ($order->wasChanged(['status', 'payment_status', 'pos_payment_method', 'total', 'outlet_id'])) {

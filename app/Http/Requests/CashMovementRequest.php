@@ -73,7 +73,9 @@ class CashMovementRequest extends FormRequest
             'reverse'   => ['note' => $note, 'pin' => $pin],
             'mfsToggle' => ['outlet_id' => $outlet, 'enabled' => ['required', 'boolean'], 'pin' => $pin],
             'reset'     => ['outlet_id' => $outlet, 'pin' => $pin],
-            'changePin' => [
+            // The branch PIN, or the shop's payment-method PIN; outlet_id is
+            // the branch a wrong try is counted against.
+            'changePin', 'methodPin' => [
                 'outlet_id'   => $outlet,
                 'current_pin' => $pin,
                 'new_pin'     => ['required', 'digits_between:5,8', 'confirmed'],

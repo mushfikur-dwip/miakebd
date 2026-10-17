@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\OrderType;
-use App\Enums\PaymentStatus;
 use App\Enums\Source;
 use App\Libraries\AppLibrary;
 use App\Libraries\QueryExceptionLibrary;
@@ -80,10 +79,12 @@ class StoreSalesReportService
     {
         $requests = $request->all();
 
+        // Paid till sales that still stand: a reversed (cancelled) sale is no
+        // longer a sale of the branch.
         return Order::with('user', 'outlet')
             ->where('order_type', OrderType::POS)
             ->where('source', Source::POS)
-            ->where('payment_status', PaymentStatus::PAID)
+            ->countedAsSale()
             ->whereNotNull('outlet_id')
             ->where(function ($query) use ($requests) {
                 if (isset($requests['from_date']) && isset($requests['to_date'])) {

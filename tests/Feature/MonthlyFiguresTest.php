@@ -9,13 +9,19 @@ use App\Enums\PaymentStatus;
 use App\Enums\Role as EnumRole;
 use App\Enums\Source;
 use App\Enums\Status;
+use App\Events\SendOrderMail;
+use App\Events\SendOrderPush;
+use App\Events\SendOrderSms;
 use App\Libraries\AppLibrary;
 use App\Models\Order;
+use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\Stock;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -45,7 +51,7 @@ class MonthlyFiguresTest extends TestCase
         foreach (['Admin', 'Customer', 'Manager', 'POS Operator', 'Stuff'] as $name) {
             Role::create(['name' => $name, 'guard_name' => 'sanctum']);
         }
-        $permissions = ['employees', 'employees_show', 'dashboard', 'products-report'];
+        $permissions = ['employees', 'employees_show', 'dashboard', 'products-report', 'store-sales-report', 'sales-report', 'online-orders'];
         foreach ($permissions as $permission) {
             Permission::findOrCreate($permission, 'sanctum');
         }
@@ -56,6 +62,26 @@ class MonthlyFiguresTest extends TestCase
         Sanctum::actingAs($owner);
 
         $this->customer = $this->user('Karim', EnumRole::CUSTOMER);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
+    private function outlet(string $name): Outlet
+    {
+        return Outlet::create([
+            'name'     => $name,
+            'email'    => str($name)->slug()->value() . '@example.test',
+            'phone'    => '01700000000',
+            'city'     => 'Dhaka',
+            'state'    => 'Dhaka',
+            'zip_code' => '1212',
+            'address'  => $name . ', Dhaka',
+            'status'   => Status::ACTIVE,
+        ]);
     }
 
     private function user(string $name, ?int $role = null): User
@@ -176,9 +202,9 @@ class MonthlyFiguresTest extends TestCase
     }
 
     /** One order and its stock lines, written the way OrderService records a sale. */
-    private function sell(string $datetime, array $lines): void
+    private function sell(string $datetime, array $lines, array $extra = [], int $lineStatus = Status::ACTIVE): Order
     {
-        $order = $this->order($datetime, 0);
+        $order = $this->order($datetime, 0, $extra);
         foreach ($lines as [$product, $quantity]) {
             Stock::forceCreate([
                 'product_id' => $product->id,
@@ -187,11 +213,19 @@ class MonthlyFiguresTest extends TestCase
                 'item_type'  => Product::class,
                 'item_id'    => $product->id,
                 'quantity'   => -$quantity,
-                'status'     => Status::ACTIVE,
+                'status'     => $lineStatus,
                 'created_at' => $datetime,
                 'updated_at' => $datetime,
             ]);
         }
+
+        return $order;
+    }
+
+    /** What the stock screen shows for a product: its active stock lines. */
+    private function stockOf(Product $product): int
+    {
+        return (int) Stock::where('product_id', $product->id)->where('status', Status::ACTIVE)->sum('quantity');
     }
 
     /** Soap and Cream sell in October, Oil only in November; Serum was added in October but never sold. */
@@ -240,5 +274,72 @@ class MonthlyFiguresTest extends TestCase
         $this->assertSame(['Soap' => 5, 'Cream' => 1, 'Oil' => 5, 'Serum' => 0], $this->productReportRows(''));
         $this->assertSame(['total_products' => 4, 'total_categories' => 2, 'total_sold_quantity' => 11],
             $this->getJson('/api/admin/products-report/overview')->assertOk()->json('data'));
+    }
+
+    // ------------------------------------------- cancelled and rejected
+
+    // A cancelled or rejected order is not a sale, even when it was paid:
+    // every money figure leaves it out, the same way the cash page does.
+    public function test_cancelled_and_rejected_sales_count_nowhere(): void
+    {
+        Carbon::setTestNow('2026-10-10 12:00:00');
+        $shop = ['outlet_id' => $this->outlet('RMC Plaza')->id];
+
+        $this->order('2026-10-10 10:00:00', 200, $shop);
+        $this->order('2026-10-10 10:00:00', 999, $shop + ['status' => OrderStatus::CANCELED]);
+        $this->order('2026-10-10 10:00:00', 555, $shop + ['status' => OrderStatus::REJECTED]);
+
+        $money  = AppLibrary::currencyAmountFormat(200);
+        $branch = $this->getJson('/api/admin/dashboard/branch-sales-summary')->assertOk()->json('data.0');
+
+        $this->assertSame($money, $this->getJson('/api/admin/dashboard/total-sales')->assertOk()->json('data.total_sales'));
+        $this->assertSame($money, $this->getJson('/api/admin/dashboard/sales-summary?first_date=2026-10-01&last_date=2026-10-31')
+            ->assertOk()->json('data.total_sales'));
+        $this->assertSame([$money, $money], [$branch['today_sales'], $branch['monthly_sales']]);
+        $this->assertSame($money, $this->getJson('/api/admin/store-sales-report/overview')->assertOk()->json('data.total_earnings'));
+        $this->assertSame($money, $this->getJson('/api/admin/sales-report/overview')->assertOk()->json('data.total_earnings'));
+    }
+
+    // Units "sold" are lines of orders that still stand: not those of a
+    // cancelled order (even one cancelled before its stock was released),
+    // nor of an online order still waiting for its payment.
+    public function test_cancelled_and_unplaced_orders_do_not_count_as_units_sold(): void
+    {
+        $skin = ProductCategory::create(['name' => 'Skin Care', 'slug' => 'skin-care', 'status' => Status::ACTIVE]);
+        $soap = $this->product('Soap', $skin, '2026-01-10 09:00:00');
+
+        $this->sell('2026-10-05 10:00:00', [[$soap, 3]]);
+        $cancelled = $this->sell('2026-10-06 10:00:00', [[$soap, 4]]);
+        Order::withoutEvents(fn() => $cancelled->update(['status' => OrderStatus::CANCELED]));
+        $this->sell('2026-10-07 10:00:00', [[$soap, 2]], ['status' => OrderStatus::PENDING, 'payment_status' => PaymentStatus::UNPAID], Status::INACTIVE);
+
+        $this->assertSame(['Soap' => 3], $this->productReportRows(''));
+        $this->assertSame(['Soap' => 3], $this->productReportRows('&' . self::OCTOBER));
+        $this->assertSame(3, $this->getJson('/api/admin/products-report/overview?' . self::OCTOBER)->assertOk()->json('data.total_sold_quantity'));
+    }
+
+    // An order cancelled from the admin gave nothing back until now: its
+    // units stayed off the shelf for good. Cancelling releases them, and
+    // taking the cancellation back takes them again.
+    public function test_an_admin_cancelling_an_order_gives_its_stock_back(): void
+    {
+        Event::fake([SendOrderMail::class, SendOrderSms::class, SendOrderPush::class]);
+        $skin  = ProductCategory::create(['name' => 'Skin Care', 'slug' => 'skin-care', 'status' => Status::ACTIVE]);
+        $soap  = $this->product('Soap', $skin, '2026-01-10 09:00:00');
+        $order = $this->sell('2026-10-05 10:00:00', [[$soap, 2]], [
+            'order_type'     => OrderType::DELIVERY,
+            'source'         => Source::WEB,
+            'status'         => OrderStatus::PENDING,
+            'payment_status' => PaymentStatus::UNPAID,
+            'active'         => Ask::YES,
+        ]);
+        $this->assertSame(-2, $this->stockOf($soap));
+
+        $this->postJson('/api/admin/online-order/change-status/' . $order->id, ['status' => OrderStatus::CANCELED, 'reason' => 'Fake order'])
+            ->assertOk();
+        $this->assertSame(0, $this->stockOf($soap), 'released by the cancel');
+
+        $this->postJson('/api/admin/online-order/change-status/' . $order->id, ['status' => OrderStatus::CONFIRMED])->assertOk();
+        $this->assertSame(-2, $this->stockOf($soap), 'taken again when the cancel is undone');
     }
 }

@@ -106,6 +106,7 @@ use App\Http\Controllers\Frontend\OverviewController;
 use App\Http\Controllers\Frontend\PageController as FrontendPageController;
 use App\Http\Controllers\Frontend\PaymentGatewayController as FrontendPaymentGatewayController;
 use App\Http\Controllers\Frontend\ProductBrandController as FrontendProductBrandController;
+use App\Http\Controllers\Frontend\CollectionSeoController as FrontendCollectionSeoController;
 use App\Http\Controllers\Frontend\ProductCategoryController as FrontendProductCategoryController;
 use App\Http\Controllers\Frontend\ProductController as FrontendProductController;
 use App\Http\Controllers\Frontend\ProductReviewController;
@@ -793,6 +794,9 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle
         Route::get('/export', [StockController::class, 'export']);
         Route::get('/item-quantity', [StockController::class, 'itemQuantity']);
         Route::post('/update-item', [StockController::class, 'updateItem']);
+        // The "stock cannot be zero" switch. Changing it needs the branch PIN.
+        Route::get('/setup', [StockController::class, 'setup']);
+        Route::match(['put', 'patch'], '/setup', [StockController::class, 'updateSetup']);
 
         Route::prefix('adjustment')->group(function () {
             Route::get('/', [StockAdjustmentController::class, 'index']);
@@ -822,6 +826,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle
             Route::post('/reset', [CashCalculationController::class, 'reset']);
         });
         Route::post('/pin', [CashCalculationController::class, 'changePin']);
+        Route::post('/method-pin', [CashCalculationController::class, 'methodPin']);
     });
 
     Route::prefix('reviews')->group(function () {
@@ -876,6 +881,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'staff', 'throttle
         Route::get('/export', [PosOrderController::class, 'export']);
         Route::post('/change-status/{order}', [PosOrderController::class, 'changeStatus']);
         Route::post('/change-payment-status/{order}', [PosOrderController::class, 'changePaymentStatus']);
+        // Corrections, behind PINs. Idempotent: a copy resent after a lost
+        // answer is not applied twice.
+        Route::middleware('idempotent')->group(function () {
+            Route::post('/reverse/{order}', [PosOrderController::class, 'reverse']);
+            Route::post('/change-method/{order}', [PosOrderController::class, 'changeMethod']);
+        });
     });
 
     Route::prefix('pos')->group(function () {
@@ -1014,6 +1025,12 @@ Route::group(['prefix' => 'frontend'], function () {
     Route::prefix('product-brand')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendProductBrandController::class, 'index']);
     });
+
+    // A brand or category page's intro, questions and related links - the
+    // same words as its crawler fallback and FAQPage markup.
+    Route::get('/collection-seo/{type}/{slug}', [FrontendCollectionSeoController::class, 'show'])
+        ->where(['type' => 'brand|category', 'slug' => '[A-Za-z0-9\-_.]{1,200}'])
+        ->middleware('cache.public:300,shared');
 
     Route::prefix('benefit')->middleware('cache.public:300,shared')->group(function () {
         Route::get('/', [FrontendBenefitController::class, 'index']);

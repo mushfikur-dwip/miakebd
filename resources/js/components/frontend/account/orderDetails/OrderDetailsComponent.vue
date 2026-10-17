@@ -278,7 +278,8 @@
             {{ $t('button.return_request') }}</router-link>
     </div>
 
-    <OrderSuccessComponent :open="justOrdered" :order="successOrder" :name="customerName" @close="reset" />
+    <OrderSuccessComponent :open="justOrdered && successReady" :order="successOrder" :name="customerName"
+        @close="reset" />
 </template>
 
 <script>
@@ -294,6 +295,7 @@ import { useRoute } from 'vue-router'
 import OrderReceiptComponent from "./OrderReceiptComponent";
 import GuestClaimComponent from "./GuestClaimComponent.vue";
 import OrderSuccessComponent from "./OrderSuccessComponent.vue";
+import orderBridge from "../../../../services/orderBridge";
 import orderTypeEnum from "../../../../enums/modules/orderTypeEnum";
 import askEnum from "../../../../enums/modules/askEnum";
 
@@ -314,6 +316,13 @@ export default {
             // "the cart has not been cleared yet" — so the cart could not be
             // cleared until the customer dismissed the modal.
             justOrdered: false,
+            // The success card waits for the order, so it opens complete -
+            // no placeholder lines jumping to real ones mid-animation - and
+            // after this page has drawn underneath it, so the animation has
+            // the browser to itself. The "Confirming your order..." screen
+            // (see orderBridge) covers the wait.
+            successReady: false,
+            successTimer: null,
             tracks: [
                 { step: 1, title: this.$t('label.order_pending') },
                 { step: 5, title: this.$t('label.order_confirmed') },
@@ -411,6 +420,10 @@ export default {
         if (placedNow) {
             this.justOrdered = true;
 
+            // Never wait for long: a slow or failed fetch opens the card with
+            // placeholders rather than keeping the customer on a spinner.
+            this.successTimer = setTimeout(this.showSuccess, orderBridge.isShown() ? 4000 : 1500);
+
             const paymentMethod = this.paymentMethod || {};
 
             if (this.cart.length > 0 && paymentMethod.slug === 'credit') {
@@ -435,13 +448,25 @@ export default {
                 // keeps the ids it has already sent).
                 if (placedNow) {
                     pixelService.purchase(res.data.data);
+                    // Next frame: the order has just been drawn underneath.
+                    this.$nextTick(() => requestAnimationFrame(this.showSuccess));
                 }
             }).catch((error) => {
                 this.loading.isActive = false;
+                if (placedNow) {
+                    this.showSuccess();
+                }
             });
         }
     },
+    beforeUnmount() {
+        clearTimeout(this.successTimer);
+    },
     methods: {
+        showSuccess: function () {
+            clearTimeout(this.successTimer);
+            this.successReady = true;
+        },
         onGuestClaimed: function () {
             // The order now belongs to a real account, so re-read it to pick up
             // the new owner before the customer navigates anywhere.

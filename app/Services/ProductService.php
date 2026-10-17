@@ -70,6 +70,10 @@ class ProductService
             // $storefrontOnly is the website asking for its own view: POS-only
             // products are stocked in the shop but must never be listed publicly.
             return Product::when($storefrontOnly, fn($query) => $query->storefront())
+                // The admin rows' units sold and variation check, as part of
+                // this one query: lazy-loaded, they cost two queries a product,
+                // which an "All" list of the catalogue cannot afford.
+                ->when(!$storefrontOnly, fn($query) => $query->withSum('productOrders', 'quantity')->withCount('variations'))
                 ->with('media', 'category', 'brand', 'taxes', 'tags', 'reviews')->with(['wishlist' => fn($query) => $query->where('user_id', Auth::check() ? Auth::user()->id : 0)])->withReviewRating()->withStockQuantity($request->get('outlet_id'))->where(function ($query) use ($requests) {
                 $this->applyFilters($query, $requests);
             })->orderBy($orderColumn, $orderType)->$method(

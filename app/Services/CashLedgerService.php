@@ -15,6 +15,8 @@ use App\Models\CashEntry;
 use App\Models\CashPinFailure;
 use App\Models\Order;
 use App\Models\Outlet;
+use App\Models\PosSaleChange;
+use App\Models\Stock;
 use App\Support\CashException;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -99,12 +101,15 @@ class CashLedgerService
     }
 
     /**
-     * The accounts a branch uses right now: the drawer and the till's card
-     * and MFS e-money always, plus the agent-service pots while that is on.
+     * The accounts staff can put money in, take it out of or count: the
+     * drawer always, plus the agent-service pots while that is on. The till's
+     * card and MFS accounts are not among them - that money goes to the bank
+     * and the merchant number, never through the branch, so it is shown as
+     * the day's and the month's sales (see sales()), not as a balance.
      */
     public function accounts(Outlet $outlet): array
     {
-        $accounts = [CashAccount::DRAWER, CashAccount::POS_CARD, CashAccount::POS_MFS];
+        $accounts = [CashAccount::DRAWER];
 
         if ($outlet->mfs_enabled) {
             foreach (self::MFS as $pair) {
@@ -179,18 +184,27 @@ class CashLedgerService
             $wanted[(int) $order->outlet_id . ':' . $account] = $target;
         }
 
+        $lines = [];
         foreach ($wanted as $key => $amount) {
             [$outletId, $postedAccount] = array_map('intval', explode(':', $key));
             $difference = round($amount - ($posted[$key] ?? 0), 2);
-            if (abs($difference) < 0.01) {
-                continue;
+            if (abs($difference) >= 0.01) {
+                $lines[$outletId][] = ['account' => $postedAccount, 'amount' => $difference];
             }
+        }
 
-            $this->post($outletId, [[
-                'account' => $postedAccount,
-                'type'    => $difference > 0 ? CashEntryType::POS_SALE : CashEntryType::POS_SALE_REVERSAL,
-                'amount'  => $difference,
-            ]], ['order_id' => $order->id, 'reference' => $order->order_serial_no]);
+        // Money leaving one account and arriving in another in the same save
+        // is the sale's own money moving - its payment method was corrected -
+        // not a sale taken back and another rung up.
+        $differences = array_column(array_merge([], ...array_values($lines)), 'amount');
+        $moved       = $differences && min($differences) < 0 && max($differences) > 0;
+
+        foreach ($lines as $outletId => $outletLines) {
+            $this->post($outletId, array_map(fn(array $line) => $line + [
+                'type' => $line['amount'] > 0
+                    ? ($moved ? CashEntryType::POS_METHOD_IN : CashEntryType::POS_SALE)
+                    : ($moved ? CashEntryType::POS_METHOD_OUT : CashEntryType::POS_SALE_REVERSAL),
+            ], $outletLines), ['order_id' => $order->id, 'reference' => $order->order_serial_no]);
         }
     }
 
@@ -467,6 +481,7 @@ class CashLedgerService
                 'opening'       => $opening,
                 'pos_sales'     => $sum(CashEntryType::POS_SALE),
                 'pos_reversals' => $sum(CashEntryType::POS_SALE_REVERSAL),
+                'pos_method'    => round($sum(CashEntryType::POS_METHOD_IN) + $sum(CashEntryType::POS_METHOD_OUT), 2),
                 'cash_in'       => $sum(CashEntryType::MFS_CASH_IN),
                 'cash_out'      => $sum(CashEntryType::MFS_CASH_OUT),
                 'recharge'      => $sum(CashEntryType::MFS_RECHARGE),
@@ -483,10 +498,8 @@ class CashLedgerService
         };
 
         $drawer = $account(CashAccount::DRAWER);
-        $card   = $account(CashAccount::POS_CARD);
-        $pos    = $account(CashAccount::POS_MFS);
         $notes  = $drawer['closing'];
-        $emoney = $card['closing'] + $pos['closing'];
+        $emoney = 0.0;
         $mfs    = [];
 
         if ($outlet->mfs_enabled) {
@@ -507,22 +520,102 @@ class CashLedgerService
 
         return [
             'drawer'      => $drawer,
-            // Till sales paid by card or by bKash/Nagad at the counter: money
-            // the shop has, but never as notes in the drawer.
-            'emoney'      => [
-                'card'          => $card,
-                'mfs'           => $pos,
-                'total_opening' => round($card['opening'] + $pos['opening'], 2),
-                'total_closing' => round($card['closing'] + $pos['closing'], 2),
-            ],
+            // The day's till sales and its month's, by payment method - card
+            // and MFS among them, as sales: that money is never the branch's
+            // to hold, so it has no balance and is not in the grand total.
+            'sales'       => $this->sales($outlet, $start),
             'mfs'         => $mfs,
+            // What the branch holds: notes, and e-money on its agent SIMs.
             'grand_total' => [
                 'notes'  => round($notes, 2),
                 'emoney' => round($emoney, 2),
                 'total'  => round($notes + $emoney, 2),
             ],
-            'pos_other'   => $this->otherSales($outlet, $start, $end),
             'counts'      => $this->counts($outlet, $start),
+        ];
+    }
+
+    /**
+     * What the branch sold at the till on one day and in that day's month so
+     * far: paid sales that still stand, by payment method, with what their
+     * units cost to buy and so the profit.
+     *
+     * Read from the orders, as every sales report is, so the figures agree
+     * with them: a sale taken back on a later day leaves the day it was sold
+     * (the drawer, which follows the notes, shows them leaving on the day
+     * they left).
+     */
+    public function sales(Outlet $outlet, Carbon $date): array
+    {
+        $start = $date->copy()->startOfDay();
+        $end   = $start->copy()->addDay();
+        $month = $start->copy()->startOfMonth();
+
+        // Sales taken back with Reverse during the day, whenever they were sold.
+        $reversed = PosSaleChange::where('outlet_id', $outlet->id)
+            ->where('action', PosSaleChange::REVERSE)
+            ->where('created_at', '>=', $start)
+            ->where('created_at', '<', $end)
+            ->selectRaw('COUNT(*) as count, SUM(amount) as total')
+            ->toBase()
+            ->first();
+
+        return [
+            'day'      => $this->salesBetween($outlet, $start, $end),
+            'month'    => $this->salesBetween($outlet, $month, $end) + [
+                'from' => $month->format('Y-m-d'),
+                'to'   => $start->format('Y-m-d'),
+            ],
+            'reversed' => ['count' => (int) $reversed->count, 'total' => round((float) $reversed->total, 2)],
+        ];
+    }
+
+    /**
+     * Profit is what was taken without the tax - tax is collected for the
+     * government - less each sold unit at its product's buying price. Only
+     * today's buying price is on record, so editing one changes past profit
+     * too; products sold with no buying price set are counted in
+     * missing_cost, because their whole price would otherwise show as profit.
+     */
+    private function salesBetween(Outlet $outlet, Carbon $start, Carbon $end): array
+    {
+        $orders = Order::where('outlet_id', $outlet->id)
+            ->where(fn($query) => $query->where('source', Source::POS)->orWhere('order_type', OrderType::POS))
+            ->countedAsSale()
+            ->where('order_datetime', '>=', $start->format('Y-m-d H:i:s'))
+            ->where('order_datetime', '<', $end->format('Y-m-d H:i:s'));
+
+        $byMethod = (clone $orders)
+            ->groupBy('pos_payment_method')
+            ->selectRaw('pos_payment_method, SUM(total) as total, SUM(tax) as tax, SUM(discount) as discount, COUNT(*) as orders')
+            ->toBase()
+            ->get()
+            ->keyBy(fn($row) => (int) $row->pos_payment_method);
+
+        $units = Stock::where('stocks.model_type', Order::class)
+            ->whereIn('stocks.model_id', (clone $orders)->select('id'))
+            ->join('products', 'products.id', '=', 'stocks.product_id')
+            ->selectRaw('SUM(-stocks.quantity * products.buying_price) as cost, COUNT(DISTINCT CASE WHEN products.buying_price <= 0 THEN products.id END) as missing')
+            ->toBase()
+            ->first();
+
+        $sum    = fn(string $field) => round((float) $byMethod->sum($field), 2);
+        $method = fn(int $method) => round((float) ($byMethod->get($method)?->total ?? 0), 2);
+        $cost   = round((float) ($units->cost ?? 0), 2);
+
+        return [
+            'total'        => $sum('total'),
+            'count'        => (int) $byMethod->sum('orders'),
+            'discount'     => $sum('discount'),
+            'cost'         => $cost,
+            'profit'       => round($sum('total') - $sum('tax') - $cost, 2),
+            'missing_cost' => (int) ($units->missing ?? 0),
+            'methods'      => [
+                'cash'  => $method(PosPaymentMethod::CASH),
+                'card'  => $method(PosPaymentMethod::CARD),
+                'mfs'   => $method(PosPaymentMethod::MOBILE_BANKING),
+                'other' => $method(PosPaymentMethod::OTHER),
+            ],
         ];
     }
 
@@ -587,24 +680,6 @@ class CashLedgerService
     }
 
     /**
-     * Till sales paid as "Other" for the day, for information only: the method
-     * names no place the money went, so it cannot be kept as a balance.
-     */
-    private function otherSales(Outlet $outlet, Carbon $start, Carbon $end): array
-    {
-        $total = Order::where('outlet_id', $outlet->id)
-            ->where(fn($query) => $query->where('source', Source::POS)->orWhere('order_type', OrderType::POS))
-            ->where('pos_payment_method', PosPaymentMethod::OTHER)
-            ->where('payment_status', PaymentStatus::PAID)
-            ->whereNotIn('status', [OrderStatus::CANCELED, OrderStatus::REJECTED])
-            ->where('order_datetime', '>=', $start->format('Y-m-d H:i:s'))
-            ->where('order_datetime', '<', $end->format('Y-m-d H:i:s'))
-            ->sum('total');
-
-        return ['other' => round((float) $total, 2)];
-    }
-
-    /**
      * What a balance viewer should look at: till sales taken back, wrong PIN
      * tries and counts that did not match - today, or over the last 7 days -
      * and a default PIN still in use.
@@ -629,19 +704,45 @@ class CashLedgerService
             ->selectRaw('order_id, MIN(created_at) as sold_at')
             ->pluck('sold_at', 'order_id');
 
+        // Why each was taken back, as given when it was reversed (a sale
+        // deleted before deleting was closed has no order left to ask).
+        $reasons = Order::whereIn('id', $reversals->pluck('order_id')->filter())->pluck('reason', 'id');
+
+        $methodChanges = PosSaleChange::with(['creator:id,name', 'order:id,order_serial_no'])
+            ->where('outlet_id', $outlet->id)
+            ->where('action', PosSaleChange::METHOD)
+            ->where('created_at', '>=', $since)
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
+
         return [
-            'period'        => $period === 'today' ? 'today' : 'week',
-            'default_pin'   => $this->pins->usesDefault($outlet->id),
-            'pos_reversals' => $reversals->map(fn(CashEntry $entry) => [
+            'period'         => $period === 'today' ? 'today' : 'week',
+            'default_pin'    => $this->pins->usesDefault($outlet->id),
+            'pos_reversals'  => $reversals->map(fn(CashEntry $entry) => [
                 'id'                 => $entry->id,
                 'amount'             => $entry->amount,
                 'order_id'           => $entry->order_id,
                 'reference'          => $entry->reference,
+                'reason'             => $reasons[$entry->order_id] ?? null,
                 'by'                 => $entry->creator?->name,
                 'at'                 => AppLibrary::datetime($entry->created_at),
                 'minutes_after_sale' => isset($soldAt[$entry->order_id])
                     ? (int) Carbon::parse($soldAt[$entry->order_id])->diffInMinutes($entry->created_at, true)
                     : null,
+            ])->values(),
+            // A sale's money moved to another payment method: right when the
+            // till was wrong, a way to hide cash when it was not.
+            'method_changes' => $methodChanges->map(fn(PosSaleChange $change) => [
+                'id'        => $change->id,
+                'order_id'  => $change->order_id,
+                'reference' => $change->order?->order_serial_no,
+                'amount'    => $change->amount,
+                'from'      => trans('posPaymentMethod.' . $change->from_method),
+                'to'        => trans('posPaymentMethod.' . $change->to_method),
+                'reason'    => $change->reason,
+                'by'        => $change->creator?->name,
+                'at'        => AppLibrary::datetime($change->created_at),
             ])->values(),
             'pin_failures'  => CashPinFailure::with('user:id,name')
                 ->where('outlet_id', $outlet->id)
@@ -750,6 +851,9 @@ class CashLedgerService
      */
     private function assertActive(Outlet $outlet, int $account): void
     {
+        if (in_array($account, [CashAccount::POS_CARD, CashAccount::POS_MFS], true)) {
+            throw new CashException(trans('all.message.cash_emoney_not_a_balance'));
+        }
         if (!in_array($account, $this->accounts($outlet), true)) {
             throw new CashException(trans('all.message.cash_account_off'));
         }

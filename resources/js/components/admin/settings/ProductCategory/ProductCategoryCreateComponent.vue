@@ -82,6 +82,43 @@
                             <small class="db-field-alert" v-if="errors.description">{{ errors.description[0] }}</small>
                         </div>
 
+                        <!-- The category page's search listing and intro. All
+                             optional: left empty, the page writes its own from
+                             live prices, brands and best sellers. -->
+                        <div class="form-col-12">
+                            <h4 class="text-base font-semibold mb-1">{{ $t("label.seo") }}</h4>
+                            <p class="text-xs text-gray-500">{{ $t("message.seo_fields_auto_hint") }}</p>
+                        </div>
+
+                        <div class="form-col-12">
+                            <label for="seo_title" class="db-field-title">{{ $t("label.meta_title") }}</label>
+                            <input v-model="props.form.seo_title" type="text" id="seo_title" maxlength="190"
+                                v-bind:class="errors.seo_title ? 'invalid' : ''" class="db-field-control" />
+                            <small class="text-xs" :class="(props.form.seo_title || '').length > 65 ? 'text-red-500' : 'text-gray-500'">
+                                {{ (props.form.seo_title || '').length }}/65 · {{ $t("message.meta_title_hint") }}
+                            </small>
+                            <small class="db-field-alert" v-if="errors.seo_title">{{ errors.seo_title[0] }}</small>
+                        </div>
+
+                        <div class="form-col-12">
+                            <label for="seo_description" class="db-field-title">{{ $t("label.meta_description") }}</label>
+                            <textarea v-model="props.form.seo_description" id="seo_description" rows="2" maxlength="320"
+                                :placeholder="$t('label.meta_description_placeholder')"
+                                v-bind:class="errors.seo_description ? 'invalid' : ''" class="db-field-control"></textarea>
+                            <small class="text-xs" :class="(props.form.seo_description || '').length > 158 ? 'text-red-500' : 'text-gray-500'">
+                                {{ (props.form.seo_description || '').length }}/158 · {{ $t("message.meta_description_hint") }}
+                            </small>
+                            <small class="db-field-alert" v-if="errors.seo_description">{{ errors.seo_description[0] }}</small>
+                        </div>
+
+                        <div class="form-col-12">
+                            <label for="seo_content" class="db-field-title">{{ $t("label.page_intro") }}</label>
+                            <textarea v-model="props.form.seo_content" id="seo_content" rows="4" maxlength="5000"
+                                v-bind:class="errors.seo_content ? 'invalid' : ''" class="db-field-control"></textarea>
+                            <small class="text-xs text-gray-500">{{ $t("message.page_intro_hint") }}</small>
+                            <small class="db-field-alert" v-if="errors.seo_content">{{ errors.seo_content[0] }}</small>
+                        </div>
+
                         <div class="form-col-12">
                             <div class="modal-btns">
                                 <button type="button" class="modal-btn-outline modal-close" @click="reset">
@@ -159,7 +196,10 @@ export default {
                 parent_id: null,
                 description: "",
                 status: statusEnum.ACTIVE,
-                is_featured: false
+                is_featured: false,
+                seo_title: "",
+                seo_description: "",
+                seo_content: "",
             }
             if (this.image) {
                 this.image = "";
@@ -174,6 +214,10 @@ export default {
                 fd.append('status', this.props.form.status);
                 fd.append('description', this.props.form.description);
                 fd.append('is_featured', this.props.form.is_featured ? 1 : 0);
+                // `|| ""`: FormData would send a missing value as the text "null".
+                fd.append('seo_title', this.props.form.seo_title || "");
+                fd.append('seo_description', this.props.form.seo_description || "");
+                fd.append('seo_content', this.props.form.seo_content || "");
                 if (this.image) {
                     fd.append('image', this.image);
                 }
@@ -193,6 +237,9 @@ export default {
                         description: "",
                         status: statusEnum.ACTIVE,
                         is_featured: false,
+                        seo_title: "",
+                        seo_description: "",
+                        seo_content: "",
                     }
                     this.image = "";
                     this.errors = {};

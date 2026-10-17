@@ -7,6 +7,8 @@
             <option value="100">{{ $t('number.100') }}</option>
             <option value="500">{{ $t('number.500') }}</option>
             <option value="1000">{{ $t('number.1000') }}</option>
+            <!-- Every row on one page; the server allows it for admin lists only. -->
+            <option value="100000">{{ $t('label.all') }}</option>
         </select>
     </div>
 </template>

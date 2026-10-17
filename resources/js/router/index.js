@@ -11,6 +11,7 @@ import ENV from "../config/env";
 import appService from "../services/appService";
 import store, { registerAdminModules } from "../store";
 import pixelService from "../services/pixelService";
+import orderBridge from "../services/orderBridge";
 import administratorRoutes from "./modules/administratorRoutes";
 import authRoutes from "./modules/authRoutes";
 import blogRoutes from "./modules/blogRoutes";
@@ -176,6 +177,13 @@ router.beforeEach(async (to, from, next) => {
 router.afterEach((to, from) => {
     if (from.name) {
         pixelService.pageView();
+    }
+
+    // The "Confirming your order..." screen painted before the app loaded is
+    // the order page's to take down, when its success card opens. Landing
+    // anywhere else - sent to log in, say - must not leave it standing.
+    if (to.name !== "frontend.account.orderDetails") {
+        orderBridge.release();
     }
 });
 

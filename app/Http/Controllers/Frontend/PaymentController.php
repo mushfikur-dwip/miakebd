@@ -14,6 +14,7 @@ use App\Events\SendOrderGotSms;
 use App\Events\SendOrderMail;
 use App\Events\SendOrderPush;
 use App\Events\SendOrderSms;
+use App\Events\SendOnlineOrderTelegram;
 use App\Http\Requests\PaymentRequest;
 use App\Libraries\AppLibrary;
 use App\Models\Currency;
@@ -195,6 +196,20 @@ class PaymentController extends Controller
                     });
                 }
 
+                // Only an order a gateway (or the wallet block above) actually
+                // committed is a real order. Idempotency alone stops the same
+                // id firing twice, but it does not tell a paid order from a
+                // checkout the customer abandoned at the gateway: walking
+                // order ids sent the shop a billable "new order" SMS for every
+                // abandoned one, and took the token of an order still at the
+                // gateway, so its real confirmation later sent nothing at all.
+                // The token is handed back, because the order may yet be paid.
+                if ((int) $order->active !== Ask::YES) {
+                    $this->releaseConfirmation($order);
+
+                    return redirect('/account/order-details/' . $order->id . '?status=success');
+                }
+
                 // After the response, not before it. The queue is `sync` on
                 // this host, so the six notifications - two mails over SMTP,
                 // two SMS and two pushes over HTTP - each ran inside this
@@ -227,6 +242,13 @@ class PaymentController extends Controller
             SendOrderGotPush::dispatch(['order_id' => $order->id]);
         } catch (\Exception $e) {
             $this->releaseConfirmation($order, $e);
+        } finally {
+            // The shop's Telegram chat, like the POS sale alerts. In finally:
+            // the mail and push listeners above can throw, and a broken mail
+            // server must not keep the shop from hearing about the order. It
+            // never throws itself, and sends once per order however often
+            // this runs (a failure above lets a refresh run it again).
+            SendOnlineOrderTelegram::dispatch(['order_id' => $order->id]);
         }
     }
 
@@ -236,9 +258,14 @@ class PaymentController extends Controller
      * permanently unconfirmed with no way to retry — a refresh would find the
      * token already taken and skip the work silently.
      */
-    private function releaseConfirmation(Order $order, \Exception $e): void
+    private function releaseConfirmation(Order $order, ?\Exception $e = null): void
     {
-        Log::error('Order confirmation failed for #' . $order->id . ': ' . $e->getMessage());
+        // No exception: the order simply was not committed yet (an abandoned
+        // checkout, or one still at the gateway). That is not a fault, and the
+        // token goes back so the real confirmation can still claim it.
+        if ($e !== null) {
+            Log::error('Order confirmation failed for #' . $order->id . ': ' . $e->getMessage());
+        }
 
         try {
             Cache::forget('order-confirmed-' . $order->id);

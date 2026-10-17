@@ -267,7 +267,7 @@ class RootController extends Controller
                 'canonical' => $meta['url'],
                 'image' => $meta['image'],
                 'type' => 'website',
-                'robots' => 'index, follow, max-image-preview:large',
+                'robots' => $meta['robots'] ?? 'index, follow, max-image-preview:large',
             ],
             'structuredData' => CategoryMetaResolver::structuredData($meta),
             'category' => $meta,
@@ -280,9 +280,15 @@ class RootController extends Controller
      * Vue renders the listing on the same path; this makes the raw HTML right
      * for crawlers. An unknown, inactive or placeholder brand 404s.
      */
-    public function brand(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function brand(string $slug): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\RedirectResponse
     {
         $meta = BrandMetaResolver::forSlug($slug);
+
+        // A renamed brand ("HIMALOYA" corrected to "Himalaya"): the old
+        // address passes its ranking on with a 301 instead of a dead end.
+        if ($meta === null && ($target = SlugRedirect::target(SlugRedirect::PRODUCT_BRAND, $slug))) {
+            return redirect()->to(BrandMetaResolver::url($target), 301);
+        }
 
         abort_if($meta === null, 404);
 

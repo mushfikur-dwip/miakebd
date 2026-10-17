@@ -9,9 +9,12 @@ use App\Events\SendOrderGotSms;
 use App\Events\SendOrderMail;
 use App\Events\SendOrderPush;
 use App\Events\SendOrderSms;
+use App\Events\SendOnlineOrderTelegram;
 use App\Events\SendPosCustomerSms;
 use App\Events\SendPosOrderSms;
 use App\Events\SendPosOrderTelegram;
+use App\Events\SendPosSaleChangeTelegram;
+use App\Events\SendLowStockTelegram;
 use App\Events\SendSmsCode;
 use App\Events\SendVerifyEmailCode;
 use App\Listeners\SendEmailCodeNotification;
@@ -21,9 +24,12 @@ use App\Listeners\SendOrderGotSmsNotification;
 use App\Listeners\SendOrderMailNotification;
 use App\Listeners\SendOrderPushNotification;
 use App\Listeners\SendOrderSmsNotification;
+use App\Listeners\SendOnlineOrderTelegramNotification;
 use App\Listeners\SendPosCustomerSmsNotification;
 use App\Listeners\SendPosOrderSmsNotification;
 use App\Listeners\SendPosOrderTelegramNotification;
+use App\Listeners\SendPosSaleChangeTelegramNotification;
+use App\Listeners\SendLowStockTelegramNotification;
 use App\Listeners\SendSmsCodeNotification;
 use App\Listeners\SendVerifyEmailCodeNotification;
 use App\Models\Order;
@@ -68,6 +74,15 @@ class EventServiceProvider extends ServiceProvider
         ],
         SendPosOrderTelegram::class => [
             SendPosOrderTelegramNotification::class,
+        ],
+        SendPosSaleChangeTelegram::class => [
+            SendPosSaleChangeTelegramNotification::class,
+        ],
+        SendLowStockTelegram::class => [
+            SendLowStockTelegramNotification::class,
+        ],
+        SendOnlineOrderTelegram::class => [
+            SendOnlineOrderTelegramNotification::class,
         ],
         SendPosOrderSms::class => [
             SendPosOrderSmsNotification::class,

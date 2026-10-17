@@ -36,6 +36,7 @@
                                 v-model="props.search.status" :options="[
                                     { id: enums.orderStatusEnum.CONFIRMED, name: $t('label.confirmed') },
                                     { id: enums.orderStatusEnum.DELIVERED, name: $t('label.delivered') },
+                                    { id: enums.orderStatusEnum.CANCELED, name: saleTr('reversed') },
                                 ]" label-by="name" value-by="id" :closeOnSelect="true" :searchable="true"
                                 :clearOnClose="true" placeholder="--" search-placeholder="--" />
                         </div>
@@ -119,9 +120,9 @@
                             </td>
                             <td class="db-table-body-td hidden-print" v-if="permissionChecker('pos-orders')">
                                 <div class="flex justify-start items-center sm:items-start sm:justify-start gap-1.5">
+                                    <!-- No delete: a sale is put right with Reverse on its page,
+                                         so it never disappears from the record. -->
                                     <SmIconViewComponent :link="'admin.pos.orders.show'" :id="order.id"
-                                        v-if="permissionChecker('pos-orders')" />
-                                    <SmIconDeleteComponent @click="destroy(order.id)"
                                         v-if="permissionChecker('pos-orders')" />
                                 </div>
                             </td>
@@ -164,7 +165,6 @@ import orderTypeEnum from "../../../enums/modules/orderTypeEnum";
 import TableLimitComponent from "../components/TableLimitComponent";
 import MonthFilterComponent from "../components/MonthFilterComponent";
 import monthService from "../../../services/monthService";
-import SmIconDeleteComponent from "../components/buttons/SmIconDeleteComponent";
 import SmIconViewComponent from "../components/buttons/SmIconViewComponent";
 import FilterComponent from "../components/buttons/collapse/FilterComponent";
 import ExportComponent from "../components/buttons/export/ExportComponent";
@@ -174,6 +174,7 @@ import Datepicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import statusEnum from "../../../enums/modules/statusEnum";
 import ENV from "../../../config/env";
+import { tr as saleTr } from "./posSaleText";
 
 export default {
     name: "PosOrderListComponent",
@@ -184,7 +185,6 @@ export default {
         PaginationBox,
         PaginationTextComponent,
         LoadingComponent,
-        SmIconDeleteComponent,
         SmIconViewComponent,
         FilterComponent,
         ExportComponent,
@@ -204,6 +204,9 @@ export default {
                 orderStatusEnumArray: {
                     [orderStatusEnum.CONFIRMED]: this.$t("label.confirmed"),
                     [orderStatusEnum.DELIVERED]: this.$t("label.delivered"),
+                    // A till sale is only ever cancelled by Reverse.
+                    [orderStatusEnum.CANCELED]: saleTr("reversed"),
+                    [orderStatusEnum.REJECTED]: saleTr("reversed"),
                 },
                 orderTypeEnumArray: {
                     [orderTypeEnum.POS]: this.$t("label.pos"),
@@ -269,6 +272,7 @@ export default {
         }
     },
     methods: {
+        saleTr: saleTr,
         permissionChecker(e) {
             return appService.permissionChecker(e);
         },
@@ -319,25 +323,6 @@ export default {
             }).catch((err) => {
                 this.loading.isActive = false;
             });
-        },
-        destroy: function (id) {
-            appService.destroyConfirmation().then((res) => {
-                try {
-                    this.loading.isActive = true;
-                    this.$store.dispatch('posOrder/destroy', { id: id, search: this.props.search }).then((res) => {
-                        this.loading.isActive = false;
-                        alertService.successFlip(null, this.$t('menu.pos_orders'));
-                    }).catch((err) => {
-                        this.loading.isActive = false;
-                        alertService.downloadError(err);
-                    })
-                } catch (err) {
-                    this.loading.isActive = false;
-                    alertService.downloadError(err);
-                }
-            }).catch((err) => {
-                this.loading.isActive = false;
-            })
         },
         xls: function () {
             this.loading.isActive = true;

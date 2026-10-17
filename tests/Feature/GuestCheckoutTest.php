@@ -70,6 +70,15 @@ class GuestCheckoutTest extends TestCase
             // The live catalogue's usual limit; the column's own default is 1.
             'maximum_purchase_quantity' => 100,
         ]);
+
+        // On the shelf: the website may not sell what the shop does not have
+        // while the "stock cannot be zero" switch is on, and it is on by
+        // default. This test is about guest checkout, not stock.
+        \App\Models\Stock::create([
+            'product_id' => $this->product->id, 'outlet_id' => null, 'model_type' => Product::class,
+            'model_id' => $this->product->id, 'item_type' => Product::class, 'item_id' => $this->product->id,
+            'quantity' => 500, 'status' => Status::ACTIVE,
+        ]);
     }
 
     private function startGuest(string $phone, string $name = 'Nusrat'): \Illuminate\Testing\TestResponse

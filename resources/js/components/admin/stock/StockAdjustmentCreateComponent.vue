@@ -208,8 +208,7 @@ export default {
             return [
                 { id: stockAdjustmentTypeEnum.TRANSFER, name: this.$t('label.transfer_stock') },
                 { id: stockAdjustmentTypeEnum.ADD, name: this.$t('label.add_stock') },
-                { id: stockAdjustmentTypeEnum.REMOVE, name: this.$t('label.remove_stock') },
-                { id: stockAdjustmentTypeEnum.RECALCULATE, name: this.$t('label.recalculate_stock') },
+                // Stock goes down only through sales: no Remove or Recalculate.
             ];
         },
         isRecalculate: function () {

@@ -7,28 +7,37 @@
                 dir="rtl"
                 :slides-per-view="1"
                 :speed="1000"
-                :loop="true"
-                :navigation="true"
-                :pagination="{ clickable: true }"
-                :autoplay="{ delay: 2500 }"
+                :loop="sliders.length > 1"
+                :navigation="sliders.length > 1"
+                :pagination="sliders.length > 1 ? { clickable: true } : false"
+                :autoplay="sliders.length > 1 ? { delay: 2500 } : false"
                 :modules="modules"
                 class="banner-swiper"
             >
-                <!-- The box has the slides' real shape: hero images are
-                     generated at exactly 1689x600 (Slider's `cover`
-                     conversion, and the size the admin form asks for). It
-                     used to be 4:3 on phones, so object-cover showed less
-                     than half of each banner's width and cut its offer text. -->
-                <SwiperSlide v-for="(slider, index) in sliders">
-                    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl aspect-[1689/600] isolate">
-                        <a v-if="safeLink(slider.link)" :href="safeLink(slider.link)" class="block w-full h-full">
-                            <img class="w-full h-full object-cover" :src="slider.image" :alt="slider.title || 'Suglow'"
-                                :loading="index === 0 ? 'eager' : 'lazy'"
-                                :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async">
-                        </a>
-                        <img v-else class="w-full h-full object-cover" :src="slider.image" :alt="slider.title || 'Suglow'"
-                            :loading="index === 0 ? 'eager' : 'lazy'"
-                            :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async">
+                <!-- Desktop: the slides' real shape, 1689x600 (Slider's
+                     `cover` conversion), so nothing is cut. Phones: 2:1
+                     (~183px tall) - the whole desktop banner fits only at
+                     ~130px, too small to read. A slide's phone image (a 2:1
+                     design uploaded in Admin -> Slider) is shown whole there;
+                     without one the desktop banner is cropped from the left,
+                     where hero banners carry their offer text. -->
+                <!-- Keyed by the slide's own id. Without a key Vue reused the
+                     slide nodes when the list arrived, and Swiper - which has
+                     its own copies of them while looping - was left showing
+                     blank slides. -->
+                <SwiperSlide v-for="(slider, index) in sliders" :key="slider.id">
+                    <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl aspect-[2/1] sm:aspect-[1689/600] isolate">
+                        <component :is="safeLink(slider.link) ? 'a' : 'div'" :href="safeLink(slider.link) || null"
+                            class="block w-full h-full">
+                            <picture class="block w-full h-full">
+                                <source v-if="slider.mobile_image" media="(max-width: 639px)" :srcset="slider.mobile_image">
+                                <img class="w-full h-full object-cover"
+                                    :class="slider.mobile_image ? '' : 'object-left sm:object-center'"
+                                    :src="slider.image" :alt="slider.title || 'Suglow'"
+                                    :loading="index === 0 ? 'eager' : 'lazy'"
+                                    :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async">
+                            </picture>
+                        </component>
 
                         <div v-if="slider.title"
                             class="absolute inset-0 z-10 flex flex-col items-start justify-end gap-2 sm:gap-3 p-3 sm:p-10 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none">
@@ -52,7 +61,7 @@
                  section let its margin collapse through, and everything below
                  jumped when the banner appeared. -->
             <div v-else-if="!fetched" aria-hidden="true"
-                class="aspect-[1689/600] rounded-2xl sm:rounded-3xl bg-gray-100 animate-pulse"></div>
+                class="aspect-[2/1] sm:aspect-[1689/600] rounded-2xl sm:rounded-3xl bg-gray-100 animate-pulse"></div>
         </div>
     </section>
 </template>

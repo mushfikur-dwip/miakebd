@@ -14,6 +14,9 @@ Schedule::call(fn () => \App\Support\ScheduleFallback::heartbeat())->name('sched
 
 Schedule::command('sitemap:generate')->dailyAt('02:00')->withoutOverlapping();
 
+// /llms.txt for answer engines, from the live catalogue. See GenerateLlmsTxt.
+Schedule::command('seo:llms')->dailyAt('02:10')->withoutOverlapping();
+
 // Meta Conversions API: the storefront only stores events; this sends them in
 // one batch a minute. See App\Services\MetaConversionsService.
 Schedule::command('meta:send-events')->everyMinute()->withoutOverlapping(5);

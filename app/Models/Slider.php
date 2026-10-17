@@ -59,10 +59,33 @@ class Slider extends Model implements HasMedia
         );
     }
 
+    /**
+     * The hero's phone version, or null when the slide has none.
+     *
+     * A hero banner is a 1689x600 desktop design, so on a phone the whole
+     * picture fits only at ~130px tall. The phone image is a separate 2:1
+     * design the storefront shows below 640px instead; slides without one
+     * show the desktop banner cropped to 2:1 from the left.
+     */
+    public function getMobileImageAttribute(): ?string
+    {
+        $media = $this->getMedia('slider-mobile')->last();
+
+        return $media ? $this->conversionUrl($media, 'mobile', 'images/default/slider.png') : null;
+    }
+
     public function registerMediaConversions(?Media $media = null): void
     {
-        $this->addMediaConversion('cover')->fit(Fit::Fill, 1689, 600)->keepOriginalImageFormat()->sharpen(10);
-        $this->addMediaConversion('tile')->fit(Fit::Fill, 540, 336)->keepOriginalImageFormat()->sharpen(10);
+        // Desktop sizes for the desktop upload only: a phone image never
+        // needs a 1689px cover or a grid tile.
+        $this->addMediaConversion('cover')->fit(Fit::Fill, 1689, 600)->keepOriginalImageFormat()->sharpen(10)
+            ->performOnCollections('slider');
+        $this->addMediaConversion('tile')->fit(Fit::Fill, 540, 336)->keepOriginalImageFormat()->sharpen(10)
+            ->performOnCollections('slider');
+        // Fill, like `cover`: an upload of the wrong shape is padded, never
+        // cut, so the words on a banner always survive.
+        $this->addMediaConversion('mobile')->fit(Fit::Fill, 1200, 600)->keepOriginalImageFormat()->sharpen(10)
+            ->performOnCollections('slider-mobile');
     }
 
     /** Every position except HERO belongs to the banner block. */

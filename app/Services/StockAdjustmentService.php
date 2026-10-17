@@ -114,6 +114,10 @@ class StockAdjustmentService
                         $this->writeStockRow($product, $this->stockAdjustment->to_outlet_id, $quantity);
                     }
                 }
+
+                // A transfer cannot take more than the source branch holds.
+                $guard = app(StockGuard::class);
+                $guard->settle($guard->changesOf($this->stockAdjustment->stocks()->get()));
             });
 
             return $this->stockAdjustment;
@@ -125,13 +129,13 @@ class StockAdjustmentService
     }
 
     /**
-     * Sets one product's stock at several branches in a single save - what the
-     * edit dialog on the stock screen submits.
+     * Adds stock to one product at several branches in a single save - what
+     * the edit dialog on the stock screen submits. What is typed is added to
+     * what the branch holds; stock is never reduced by hand.
      *
-     * Each branch that actually changed becomes its own RECALCULATE adjustment,
-     * so the history reads "Recalculate → Gulshan" per branch and deleting one
-     * reverses only that branch. Branches left at their current number produce
-     * no record at all.
+     * Each branch that got stock becomes its own ADD adjustment, so the
+     * history reads "Add → Gulshan" per branch. Branches given 0 produce no
+     * record at all.
      *
      * The item's SKU and variation label are resolved here rather than trusted
      * from the form, so a tampered payload cannot write a stock row that claims
@@ -161,15 +165,13 @@ class StockAdjustmentService
                         ? null
                         : (int) $entry['outlet_id'];
 
-                    $target  = (int) $entry['quantity'];
-                    $current = $this->currentQuantity($line, $outletId);
-
-                    if ($target - $current === 0) {
+                    $add = (int) $entry['add'];
+                    if ($add <= 0) {
                         continue;
                     }
 
                     $this->stockAdjustment = StockAdjustment::create([
-                        'type'         => StockAdjustmentType::RECALCULATE,
+                        'type'         => StockAdjustmentType::ADD,
                         'to_outlet_id' => $outletId,
                         'date'         => now(),
                         'note'         => trans('all.label.stock_edit'),
@@ -177,7 +179,7 @@ class StockAdjustmentService
                         'creator_id'   => Auth::id(),
                     ]);
 
-                    $this->writeStockRow($line, $outletId, $target - $current);
+                    $this->writeStockRow($line, $outletId, $add);
                 }
             });
         } catch (Exception $exception) {
@@ -191,14 +193,29 @@ class StockAdjustmentService
      * Deleting the adjustment deletes its stock rows, which reverses it -
      * the same way deleting a purchase reverses the goods it brought in.
      *
+     * Refused when that would take stock away by hand: undoing an add (or a
+     * recalculate that raised a count) lowers the shop's stock, which only a
+     * sale may do. Undoing a transfer moves the goods back, so it stays -
+     * as long as the branch they went to still holds them.
+     *
      * @throws Exception
      */
     public function destroy(StockAdjustment $stockAdjustment): void
     {
+        $rows    = $stockAdjustment->stocks()->get();
+        $lowered = $rows->groupBy(fn(Stock $row) => $row->item_type . '|' . $row->item_id)
+            ->contains(fn($itemRows) => $itemRows->sum('quantity') > 0);
+        if ($lowered) {
+            throw new Exception(trans('all.message.stock_adjustment_cannot_lower'), 422);
+        }
+
         try {
-            DB::transaction(function () use ($stockAdjustment) {
+            DB::transaction(function () use ($stockAdjustment, $rows) {
                 $stockAdjustment->stocks()->delete();
                 $stockAdjustment->delete();
+
+                $guard = app(StockGuard::class);
+                $guard->settle($guard->changesOf($rows, -1));
             });
         } catch (Exception $exception) {
             DB::rollBack();

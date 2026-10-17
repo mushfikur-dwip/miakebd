@@ -17,4 +17,8 @@ interface CashEntryType
     const REVERSAL          = 11;
     // Settings -> Reset: takes an account to zero, as a recorded entry.
     const RESET             = 12;
+    // A till sale's payment method was corrected: the same money moved from
+    // the account the old method points at (OUT) to the new one's (IN).
+    const POS_METHOD_OUT    = 13;
+    const POS_METHOD_IN     = 14;
 }

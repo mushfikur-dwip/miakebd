@@ -32,12 +32,18 @@ class StockExport implements FromCollection, WithHeadings
         $this->request->merge(['paginate' => 0]);
         $stocksArray = $this->stockService->list($this->request);
         foreach ($stocksArray as $stock) {
+            // With the "stock cannot be zero" switch off the figures here are
+            // never below zero, so what was sold past the shelf has to travel
+            // as its own column - the same remark the page shows - or the
+            // spreadsheet would claim those units never went anywhere.
             $stockArray[] = [
                 strlen((string) $stock['variation_names']) > 0 ?  $stock['product_name'] . '(' . $stock['variation_names'] . ')' : $stock['product_name'],
                 $stock['sku'] ?? '',
                 $stock['stock'],
+                $stock['billed_beyond'] ?? 0,
                 collect($stock['outlet_stocks'] ?? [])
-                    ->map(fn($outlet) => $outlet['outlet_name'] . ': ' . $outlet['quantity'])
+                    ->map(fn($outlet) => $outlet['outlet_name'] . ': ' . $outlet['quantity']
+                        . (($outlet['billed_beyond'] ?? 0) > 0 ? ' (-' . $outlet['billed_beyond'] . ')' : ''))
                     ->implode(', '),
                 trans('statuse.' . $stock['status'])
             ];
@@ -50,6 +56,7 @@ class StockExport implements FromCollection, WithHeadings
             trans('all.label.product_name'),
             trans('all.label.sku'),
             trans('all.label.stock'),
+            trans('all.label.billed_beyond_stock'),
             trans('all.label.branch_stock'),
             trans('all.label.status'),
         ];

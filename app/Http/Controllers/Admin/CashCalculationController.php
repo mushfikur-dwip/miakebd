@@ -40,7 +40,7 @@ class CashCalculationController extends AdminController implements HasMiddleware
         return [
             new Middleware('permission:cash-calculation', only: [
                 'page', 'outlets', 'employees', 'summary', 'entries', 'add', 'mfs', 'count',
-                'withdraw', 'transfer', 'reverse', 'mfsToggle', 'changePin', 'reset',
+                'withdraw', 'transfer', 'reverse', 'mfsToggle', 'changePin', 'methodPin', 'reset',
             ]),
             new Middleware('permission:cash-calculation_balance', only: ['alerts']),
         ];
@@ -251,6 +251,19 @@ class CashCalculationController extends AdminController implements HasMiddleware
         });
     }
 
+    /**
+     * The shop-wide PIN that corrects a till sale's payment method, changed
+     * with its current value.
+     */
+    public function methodPin(CashMovementRequest $request)
+    {
+        return $this->attempt(function () use ($request) {
+            $this->pins->changeMethodPin($request->integer('outlet_id'), (string) $request->current_pin, (string) $request->new_pin);
+
+            return response(['status' => true]);
+        });
+    }
+
     private function outletList()
     {
         return Outlet::where('status', Status::ACTIVE)
@@ -302,6 +315,10 @@ class CashCalculationController extends AdminController implements HasMiddleware
 
     private function entryPage(CashQueryRequest $request, Outlet $outlet, bool $full, array $filters)
     {
+        // On the request the resource is rendered with: the form request is a
+        // copy with attributes of its own, so a flag set only there never
+        // reached it and the owner's "Balance after" column came out empty.
+        request()->attributes->set('cash_full', $full);
         $request->attributes->set('cash_full', $full);
 
         return CashEntryResource::collection($this->ledger->entries($outlet, $filters, $full));

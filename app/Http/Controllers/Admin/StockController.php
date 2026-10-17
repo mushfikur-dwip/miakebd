@@ -9,7 +9,10 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Resources\StockResource;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Requests\StockItemUpdateRequest;
+use App\Http\Requests\StockSetupRequest;
 use App\Services\StockAdjustmentService;
+use App\Services\StockSetupService;
+use App\Support\CashException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -19,8 +22,11 @@ class StockController extends AdminController implements HasMiddleware
     public StockService $stockService;
     public StockAdjustmentService $stockAdjustmentService;
 
-    public function __construct(StockService $stockService, StockAdjustmentService $stockAdjustmentService)
-    {
+    public function __construct(
+        StockService $stockService,
+        StockAdjustmentService $stockAdjustmentService,
+        private readonly StockSetupService $stockSetup
+    ) {
         parent::__construct();
         $this->stockService = $stockService;
         $this->stockAdjustmentService = $stockAdjustmentService;
@@ -33,7 +39,32 @@ class StockController extends AdminController implements HasMiddleware
             new Middleware('permission:stock', only: ['export']),
             new Middleware('permission:stock', only: ['itemQuantity']),
             new Middleware('permission:stock', only: ['updateItem']),
+            // The switch that decides whether the shop may sell what it does
+            // not have. Reading it is part of the page; changing it needs the
+            // branch PIN as well (see StockSetupService).
+            new Middleware('permission:stock', only: ['setup', 'updateSetup']),
         ];
+    }
+
+    /** Is the shop allowed to sell past its stock? */
+    public function setup()
+    {
+        try {
+            return response(['status' => true, 'data' => $this->stockSetup->list()]);
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function updateSetup(StockSetupRequest $request)
+    {
+        try {
+            return response(['status' => true, 'data' => $this->stockSetup->update($request)]);
+        } catch (CashException $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], $exception->status());
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
     }
 
     public function index(PaginateRequest $request): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory

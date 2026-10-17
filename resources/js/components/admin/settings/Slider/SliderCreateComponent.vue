@@ -83,6 +83,29 @@
                                 }}</small>
                         </div>
 
+                        <!-- Hero only: a 1689x600 banner is ~130px tall on a
+                             phone, so phones can show a 2:1 design instead. -->
+                        <div v-if="props.form.position === enums.sliderPositionEnum.HERO" class="form-col-12 sm:form-col-6">
+                            <label for="mobile_image" class="db-field-title">
+                                {{ $t("label.mobile_image") }} (1200px, 600px)
+                            </label>
+                            <input @change="changeMobileImage" v-bind:class="errors.mobile_image ? 'invalid' : ''"
+                                id="mobile_image" type="file" class="db-field-control" ref="mobileImageProperty"
+                                accept="image/png, image/jpeg, image/jpg" />
+                            <small class="db-field-alert" v-if="errors.mobile_image">{{
+                                errors.mobile_image[0]
+                                }}</small>
+                            <small v-else class="block mt-1 text-xs text-slate-500">{{ $t("label.mobile_image_hint") }}</small>
+                            <div v-if="props.form.mobile_image" class="flex items-center gap-3 mt-2">
+                                <img :src="props.form.mobile_image" :alt="$t('label.mobile_image')"
+                                    class="w-20 h-10 object-cover rounded" />
+                                <label for="remove_mobile_image" class="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input v-model="removeMobileImage" id="remove_mobile_image" type="checkbox" />
+                                    {{ $t("label.remove_mobile_image") }}
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="form-col-12 sm:form-col-6">
                             <label class="db-field-title required" for="active">{{ $t("label.status") }}</label>
                             <div class="db-field-radio-group">
@@ -159,6 +182,8 @@ export default {
                 },
             },
             image: "",
+            mobileImage: "",
+            removeMobileImage: false,
             errors: {},
         };
     },
@@ -176,6 +201,17 @@ export default {
         changeImage: function (e) {
             this.image = e.target.files[0];
         },
+        changeMobileImage: function (e) {
+            this.mobileImage = e.target.files[0];
+        },
+        // The field only exists for hero slides, so its ref can be missing.
+        clearMobileImage: function () {
+            this.mobileImage = "";
+            this.removeMobileImage = false;
+            if (this.$refs.mobileImageProperty) {
+                this.$refs.mobileImageProperty.value = null;
+            }
+        },
         reset: function () {
             appService.modalHide();
             this.$store.dispatch("slider/reset").then().catch();
@@ -191,6 +227,7 @@ export default {
                 this.image = "";
                 this.$refs.imageProperty.value = null;
             }
+            this.clearMobileImage();
         },
 
         save: function () {
@@ -205,6 +242,15 @@ export default {
                 fd.append("description", this.props.form.description ?? "");
                 if (this.image) {
                     fd.append("image", this.image);
+                }
+                // Phone version: hero slides only. A new file replaces the old
+                // one; otherwise the box asks the server to drop it.
+                if (this.props.form.position === sliderPositionEnum.HERO) {
+                    if (this.mobileImage) {
+                        fd.append("mobile_image", this.mobileImage);
+                    } else if (this.removeMobileImage) {
+                        fd.append("remove_mobile_image", 1);
+                    }
                 }
 
                 const tempId = this.$store.getters["slider/temp"].temp_id;
@@ -231,6 +277,7 @@ export default {
                         this.image = "";
                         this.errors = {};
                         this.$refs.imageProperty.value = null;
+                        this.clearMobileImage();
                     })
                     .catch((err) => {
                         this.loading.isActive = false;

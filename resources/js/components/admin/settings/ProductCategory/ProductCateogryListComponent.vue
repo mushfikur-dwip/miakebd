@@ -143,6 +143,9 @@ export default {
                     parent_id: null,
                     status: statusEnum.ACTIVE,
                     is_featured: false,
+                    seo_title: "",
+                    seo_description: "",
+                    seo_content: "",
                 },
                 search: {
                     paginate: 1,
@@ -194,7 +197,10 @@ export default {
                 parent_id: productCategory.parent_id === 0 ? null : productCategory.parent_id,
                 status: productCategory.status,
                 description: productCategory.description,
-                is_featured: productCategory.is_featured || false
+                is_featured: productCategory.is_featured || false,
+                seo_title: productCategory.seo_title || "",
+                seo_description: productCategory.seo_description || "",
+                seo_content: productCategory.seo_content || "",
             };
             this.loading.isActive = false;
         },

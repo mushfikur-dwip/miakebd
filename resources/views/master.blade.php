@@ -168,6 +168,19 @@
     <meta name="author" content="Suglow">
     @if ($seoCanonical)
         <link rel="canonical" href="{{ $seoCanonical }}">
+
+        {{-- The same page in the shop's other languages. The storefront serves
+             one URL per page and switches language client-side (the
+             x-localization header), so every alternate is this same address -
+             which is exactly what Google asks for in that case, and it stops
+             the en/bn/ar variants being read as competing duplicates.
+             x-default names the version shown to a visitor whose language we
+             do not serve. Only on pages with a canonical: a noindex screen
+             must not advertise alternates. --}}
+        <link rel="alternate" hreflang="en" href="{{ $seoCanonical }}">
+        <link rel="alternate" hreflang="bn" href="{{ $seoCanonical }}">
+        <link rel="alternate" hreflang="bn-BD" href="{{ $seoCanonical }}">
+        <link rel="alternate" hreflang="x-default" href="{{ $seoCanonical }}">
     @endif
 
     {{-- geo.region is BD (whole country), NOT BD-55 (Rangpur division).
@@ -382,6 +395,57 @@
 </head>
 
 <body>
+    {{-- "Confirming your order..." - the second half of the screen the
+         payment step raises when Confirm Order is pressed (OrderPlacingComponent,
+         and the .ob styles in app.css; keep the three in step). Paying is a
+         server redirect, so the customer lands back on the order page with a
+         full page load; painting this before the app has loaded means they
+         never see a blank page between the tap and "Order placed!".
+
+         Built by script, and only on that landing: decided in the browser so a
+         cached copy of this page can never show it to anyone else, and kept
+         out of the markup so crawlers reading the raw HTML of every page do
+         not find the words in it. The app takes it down
+         (resources/js/services/orderBridge.js); the timer is the backstop for
+         when the app never gets that far. --}}
+    <script>
+        (function () {
+            if (!/^\/account\/order-details\/\d+\/?$/.test(location.pathname)
+                || !/[?&]status=success(&|$)/.test(location.search)) {
+                return;
+            }
+
+            var bn = false;
+            try {
+                var state = JSON.parse(localStorage.getItem('vuex') || '{}').globalState;
+                bn = !!(state && state.lists && state.lists.language_code === 'bn');
+            } catch (e) {}
+
+            var bridge = document.createElement('div');
+            bridge.id = 'order-bridge';
+            bridge.className = 'ob ob--static';
+            bridge.setAttribute('role', 'status');
+            bridge.setAttribute('aria-live', 'polite');
+            bridge.innerHTML = '<div class="ob-card">'
+                + '<span class="ob-badge" aria-hidden="true"><span class="ob-pulse"></span>'
+                + '<svg class="ob-spin" viewBox="0 0 76 76"><circle cx="38" cy="38" r="36"/></svg>'
+                + '<span class="ob-core"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+                + '<path d="M5.5 8h13l-1.1 12H6.6L5.5 8Z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/></svg></span></span>'
+                + '<b class="ob-title"></b><span class="ob-text"></span></div>';
+            bridge.querySelector('.ob-title').textContent = bn ? 'আপনার অর্ডার নিশ্চিত করা হচ্ছে…' : 'Confirming your order…';
+            bridge.querySelector('.ob-text').textContent = bn ? 'অনুগ্রহ করে পেজটি বন্ধ করবেন না' : "Please don't close this page";
+            document.body.appendChild(bridge);
+
+            setTimeout(function () {
+                if (bridge.parentNode && !bridge.dataset.leaving) {
+                    bridge.dataset.leaving = '1';
+                    bridge.classList.add('ob-leaving');
+                    setTimeout(function () { bridge.remove(); }, 260);
+                }
+            }, 10000);
+        })();
+    </script>
+
     @if (!blank($analytics))
         @foreach ($analytics as $analytic)
             @if (!blank($analytic->analyticSections))
@@ -504,23 +568,14 @@
                         @endforeach
                     </ul>
                 @endif
+                @include('partials.collection-seo', ['content' => $brandPage['content'] ?? null])
                 <p>100% authentic {{ $brandPage['name'] }}, sold by Suglow. Cash on delivery across Bangladesh.
                    Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
             @elseif (!empty($listingPage))
                 <h1>All Products — Authentic Cosmetics &amp; Skincare in Bangladesh</h1>
                 <p>{{ $controllerSeo['description'] ?? '' }}</p>
                 <h2>Shop by category</h2>
-                <ul>
-                    <li><a href="{{ $siteUrl }}/product-category/skin-care6">Skin Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/personal-care">Personal Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/fragrance">Fragrance</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/hair-care">Hair Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/sunscreen">Sunscreen</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/baby-care">Baby Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/moisturizer">Moisturizer</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/men-skin-care">Men's Skin Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/accessories">Accessories</a></li>
-                </ul>
+                @include('partials.category-links')
                 @if (!empty($listingPage['brands']))
                     <h2>Shop by brand</h2>
                     <ul>
@@ -534,6 +589,11 @@
                 {{-- A category's products as plain links: the SPA draws its
                      listing with JavaScript, so without these a crawler that
                      does not run it could not reach the products at all. --}}
+                <p><a href="{{ $siteUrl }}/">Home</a>
+                    @foreach ($category['parents'] ?? [] as $parentCategory)
+                        › <a href="{{ $parentCategory['url'] }}">{{ $parentCategory['name'] }}</a>
+                    @endforeach
+                    › {{ $category['name'] }}</p>
                 <h1>{{ $category['name'] }} Price in Bangladesh</h1>
                 <p>{{ $category['description'] }}</p>
                 @if (!empty($category['products']))
@@ -544,6 +604,7 @@
                         @endforeach
                     </ul>
                 @endif
+                @include('partials.collection-seo', ['content' => $category['content'] ?? null])
                 <p><a href="{{ $siteUrl }}/product">All products</a> ·
                    Call <a href="tel:{{ $suglowPhone }}">{{ $suglowPhoneText }}</a> — open 24/7.</p>
             @elseif (!empty($cmsPage))
@@ -582,17 +643,17 @@
                 </p>
 
                 <h2>Product categories</h2>
-                <ul>
-                    <li><a href="{{ $siteUrl }}/product-category/skin-care6">Skin Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/personal-care">Personal Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/fragrance">Fragrance</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/hair-care">Hair Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/sunscreen">Sunscreen</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/baby-care">Baby Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/moisturizer">Moisturizer</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/men-skin-care">Men's Skin Care</a></li>
-                    <li><a href="{{ $siteUrl }}/product-category/accessories">Accessories</a></li>
-                </ul>
+                @include('partials.category-links')
+
+                @php($fallbackBrands = \App\Support\BrandMetaResolver::all())
+                @if (!empty($fallbackBrands))
+                    <h2>Brands at Suglow</h2>
+                    <ul>
+                        @foreach ($fallbackBrands as $fallbackBrand)
+                            <li><a href="{{ $fallbackBrand['url'] }}">{{ $fallbackBrand['name'] }}</a></li>
+                        @endforeach
+                    </ul>
+                @endif
 
                 <h2>Frequently asked questions</h2>
                 <h3>Where does Suglow import its cosmetics from?</h3>

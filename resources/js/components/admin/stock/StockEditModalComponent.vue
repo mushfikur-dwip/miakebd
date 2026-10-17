@@ -20,19 +20,31 @@
                             <tr class="db-table-head-tr">
                                 <th class="db-table-head-th">{{ $t('label.branch') }}</th>
                                 <th class="db-table-head-th">{{ $t('label.current_stock') }}</th>
-                                <th class="db-table-head-th">{{ $t('label.new_stock') }}</th>
+                                <th class="db-table-head-th">{{ $t('label.add_quantity') }}</th>
+                                <th class="db-table-head-th">{{ $t('label.new_total') }}</th>
                             </tr>
                         </thead>
                         <tbody class="db-table-body">
                             <tr v-for="(row, index) of rows" :key="index" class="db-table-body-tr">
                                 <td class="db-table-body-td font-medium">{{ row.outlet_name }}</td>
-                                <td class="db-table-body-td">{{ row.current }}</td>
+                                <!-- Never a negative: a branch that was billed
+                                     past its stock reads 0, with the overdraft
+                                     spelled out underneath. -->
                                 <td class="db-table-body-td">
-                                    <input v-model="row.quantity" type="number" class="db-field-control max-w-32" />
+                                    {{ row.current }}
+                                    <span v-if="row.billed_beyond > 0" class="block text-[11px] text-amber-700">
+                                        {{ $t('message.stock_billed_beyond', { n: row.billed_beyond }) }}
+                                    </span>
                                 </td>
+                                <td class="db-table-body-td">
+                                    <input v-model="row.add" type="number" min="0" step="1" inputmode="numeric" class="db-field-control max-w-32" />
+                                </td>
+                                <!-- Off the real figure, not the shown one: 1
+                                     added to a branch at -1 is 0, not 1. -->
+                                <td class="db-table-body-td font-semibold">{{ newTotal(row) }}</td>
                             </tr>
                             <tr v-if="rows.length === 0" class="db-table-body-tr">
-                                <td class="db-table-body-td text-center" colspan="3">
+                                <td class="db-table-body-td text-center" colspan="4">
                                     {{ $t('message.no_branch_found') }}
                                 </td>
                             </tr>
@@ -78,8 +90,10 @@ export default {
         };
     },
     computed: {
+        // The real figures, so the footer agrees with "what the website shows"
+        // rather than quietly counting an overdraft as nothing.
         total: function () {
-            return this.rows.reduce((sum, row) => sum + (parseInt(row.quantity, 10) || 0), 0);
+            return this.rows.reduce((sum, row) => sum + this.newTotal(row), 0);
         },
     },
     mounted() {
@@ -94,15 +108,10 @@ export default {
         build: function () {
             const held = {};
             (this.item.outlet_stocks || []).forEach((entry) => {
-                held[entry.outlet_id === null ? 0 : entry.outlet_id] = entry.quantity;
+                held[entry.outlet_id === null ? 0 : entry.outlet_id] = entry;
             });
 
-            this.rows = this.outlets.map((outlet) => ({
-                outlet_id: outlet.id,
-                outlet_name: outlet.name,
-                current: held[outlet.id] || 0,
-                quantity: held[outlet.id] || 0,
-            }));
+            this.rows = this.outlets.map((outlet) => this.line(outlet.id, outlet.name, held[outlet.id]));
 
             // A branch that has since been deactivated still shows in the table
             // if it holds stock, so it needs a line here too - otherwise that
@@ -111,22 +120,34 @@ export default {
                 if (entry.outlet_id === null || this.rows.some(row => row.outlet_id === entry.outlet_id)) {
                     return;
                 }
-                this.rows.push({
-                    outlet_id: entry.outlet_id,
-                    outlet_name: entry.outlet_name,
-                    current: entry.quantity,
-                    quantity: entry.quantity,
-                });
+                this.rows.push(this.line(entry.outlet_id, entry.outlet_name, entry));
             });
 
             if (held[0]) {
-                this.rows.push({
-                    outlet_id: 0,
-                    outlet_name: this.$t('label.unassigned'),
-                    current: held[0],
-                    quantity: held[0],
-                });
+                this.rows.push(this.line(0, this.$t('label.unassigned'), held[0]));
             }
+        },
+        /**
+         * One branch's line. `current` is what the page shows (never below
+         * zero) and `real` is what is actually on record - the arithmetic runs
+         * on `real`, so adding onto an oversold branch lands on the right
+         * number instead of claiming stock that is still owed.
+         */
+        line: function (outletId, outletName, entry) {
+            const shown = entry ? entry.quantity : 0;
+            const real = entry && entry.real_quantity !== undefined ? entry.real_quantity : shown;
+
+            return {
+                outlet_id: outletId,
+                outlet_name: outletName,
+                current: shown,
+                real: real,
+                billed_beyond: entry ? (entry.billed_beyond || 0) : 0,
+                add: 0,
+            };
+        },
+        newTotal: function (row) {
+            return row.real + (parseInt(row.add, 10) || 0);
         },
         close: function () {
             this.modal.isShowModal = false;
@@ -134,7 +155,8 @@ export default {
         save: function () {
             this.error = "";
 
-            const invalid = this.rows.find(row => row.quantity === "" || row.quantity === null || isNaN(parseInt(row.quantity, 10)));
+            // Units that arrived, added on top: never negative, never a fraction.
+            const invalid = this.rows.find(row => row.add === "" || row.add === null || !/^[0-9]+$/.test(String(row.add)));
             if (invalid) {
                 this.error = this.$t('message.stock_edit_number_required');
                 return;
@@ -145,7 +167,7 @@ export default {
             fd.append('variation_id', this.item.variation_id || 0);
             fd.append('stocks', JSON.stringify(this.rows.map(row => ({
                 outlet_id: row.outlet_id,
-                quantity: parseInt(row.quantity, 10),
+                add: parseInt(row.add, 10),
             }))));
 
             this.$store.dispatch('stock/updateItem', fd).then(() => {

@@ -83,7 +83,7 @@ class BrandPageTest extends TestCase
         $this->assertStringContainsString('content="index, follow, max-image-preview:large"', $html);
 
         $types = array_column($this->graph($html), '@type');
-        $this->assertSame(['CollectionPage', 'Brand', 'BreadcrumbList', 'ItemList'], $types);
+        $this->assertSame(['CollectionPage', 'Brand', 'BreadcrumbList', 'ItemList', 'FAQPage'], $types);
 
         $text = $this->noscript($html);
         $this->assertStringContainsString('<h1>CeraVe Price in Bangladesh</h1>', $text);

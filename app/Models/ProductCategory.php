@@ -19,15 +19,18 @@ class ProductCategory extends Model implements HasMedia
     use HasRecursiveRelationships;
 
     protected $table = "product_categories";
-    protected $fillable = ['name', 'slug', 'description', 'status', 'parent_id', 'is_featured'];
+    protected $fillable = ['name', 'slug', 'description', 'status', 'parent_id', 'is_featured', 'seo_title', 'seo_description', 'seo_content'];
     protected $casts = [
-        'id'          => 'integer',
-        'name'        => 'string',
-        'slug'        => 'string',
-        'description' => 'string',
-        'status'      => 'integer',
-        'parent_id'   => 'integer',
-        'is_featured' => 'boolean',
+        'id'              => 'integer',
+        'name'            => 'string',
+        'slug'            => 'string',
+        'description'     => 'string',
+        'status'          => 'integer',
+        'parent_id'       => 'integer',
+        'is_featured'     => 'boolean',
+        'seo_title'       => 'string',
+        'seo_description' => 'string',
+        'seo_content'     => 'string',
     ];
     protected $appends = array('cover');
 

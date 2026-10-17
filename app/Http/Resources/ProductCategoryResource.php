@@ -25,7 +25,14 @@ class ProductCategoryResource extends JsonResource
             'parent_id'       => $this->parent_id,
             'is_featured'     => $this->is_featured,
             'thumb'           => $this->thumb,
-            'cover'           => $this->cover
+            'cover'           => $this->cover,
+            // For the admin's edit dialog only - the shop's menus would carry
+            // every category's intro text for nothing.
+            $this->mergeWhen($request->is('api/admin/*'), fn () => [
+                'seo_title'       => (string) $this->seo_title,
+                'seo_description' => (string) $this->seo_description,
+                'seo_content'     => (string) $this->seo_content,
+            ]),
         ];
     }
 }

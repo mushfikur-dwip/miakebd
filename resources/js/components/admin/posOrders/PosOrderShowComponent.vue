@@ -86,7 +86,9 @@
                 </div>
 
                 <div class="flex flex-wrap gap-3">
-                    <div class="relative">
+                    <!-- A POS sale is paid at the till: its payment status only
+                         ever goes back to Paid (an old sale marked unpaid). -->
+                    <div class="relative" v-if="!order.is_reversed && Number(order.payment_status) === enums.paymentStatusEnum.UNPAID">
                         <select v-model="payment_status" @change="changePaymentStatus($event)"
                             class="text-sm capitalize appearance-none pl-4 pr-10 h-[38px] rounded border border-primary bg-white text-primary">
                             <option v-for="paymentStatus in enums.paymentStatusObject" :value="paymentStatus.value">
@@ -97,7 +99,7 @@
                             class="lab lab-line-chevron-down lab-font-size-16 absolute top-1/2 right-3.5 -translate-y-1/2 text-primary"></i>
                     </div>
 
-                    <div class="relative">
+                    <div class="relative" v-if="!order.is_reversed">
                         <select v-model="order_status" @change="orderStatus($event)"
                             class="text-sm capitalize appearance-none pl-4 pr-10 h-[38px] rounded border border-primary bg-white text-primary">
                             <option v-for="orderStatus in enums.orderStatusObject" :value="orderStatus.value">
@@ -108,12 +110,53 @@
                             class="lab lab-line-chevron-down lab-font-size-16 absolute top-1/2 right-3.5 -translate-y-1/2 text-primary"></i>
                     </div>
 
+                    <!-- Putting a sale right: both behind a PIN, both recorded. -->
+                    <template v-if="order.id && !order.is_reversed">
+                        <button type="button" class="pos-change-method flex items-center justify-center gap-2 px-4 h-[38px] rounded border border-primary bg-white text-sm text-primary"
+                            @click="saleAction = 'method'">
+                            🔒 {{ saleTr('change_method') }}
+                        </button>
+                        <button type="button" class="pos-reverse flex items-center justify-center gap-2 px-4 h-[38px] rounded border border-red-500 bg-white text-sm text-red-600"
+                            @click="saleAction = 'reverse'">
+                            🔒 {{ saleTr('reverse_sale') }}
+                        </button>
+                    </template>
+
                     <button type="button" v-print="printObj"
                         class="flex items-center justify-center gap-2 px-4 h-[38px] rounded shadow-db-card bg-primary">
                         <i class="lab lab-line-printer lab-font-size-16 text-white"></i>
                         <span class="text-sm capitalize text-white">{{ $t('button.print_invoice') }}</span>
                     </button>
                 </div>
+            </div>
+            <div v-if="order.is_reversed" class="pos-reversed-banner mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                <b>{{ saleTr('reversed') }}.</b> {{ saleTr('reversed_banner') }}
+                <div v-if="order.reason" class="mt-1">{{ saleTr('reason') }}: {{ order.reason }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12" v-if="order.pos_changes && order.pos_changes.length">
+        <div class="db-card">
+            <div class="db-card-header">
+                <h3 class="db-card-title">{{ saleTr('history') }}</h3>
+            </div>
+            <div class="db-card-body">
+                <ul class="pos-changes space-y-2 text-sm">
+                    <li v-for="change in order.pos_changes" :key="change.id" class="rounded-md border border-gray-100 p-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="font-semibold" :class="change.action === 'reverse' ? 'text-red-600' : 'text-amber-700'">
+                                {{ change.action === 'reverse' ? saleTr('history_reverse') : saleTr('history_method') }}
+                                · {{ change.amount_currency }}
+                            </span>
+                            <span class="text-xs text-gray-500">{{ change.at }} · {{ saleTr('by') }}: {{ change.by }}</span>
+                        </div>
+                        <div v-if="change.action === 'method'" class="mt-1 text-gray-700">
+                            {{ methodText(change.from_method_name, change.from_note) }}
+                            → {{ methodText(change.to_method_name, change.to_note) }}
+                        </div>
+                        <div class="mt-1 text-gray-600">{{ saleTr('reason') }}: {{ change.reason }}</div>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
@@ -218,6 +261,8 @@
     </div>
 
     <PosOrderReceiptComponent :order="order" />
+    <PosSaleActionModalComponent v-if="saleAction" :action="saleAction" :order="order"
+        @close="saleAction = null" @saved="saleChanged" />
 </template>
 <script>
 import LoadingComponent from "../components/LoadingComponent";
@@ -231,7 +276,9 @@ import TableLimitComponent from "../components/TableLimitComponent";
 import paymentStatusEnum from "../../../enums/modules/paymentStatusEnum";
 import print from "vue3-print-nb";
 import PosOrderReceiptComponent from "./PosOrderReceiptComponent";
+import PosSaleActionModalComponent from "./PosSaleActionModalComponent";
 import posPaymentMethodEnum from "../../../enums/modules/posPaymentMethodEnum";
+import { tr as saleTr } from "./posSaleText";
 
 export default {
     name: "PosOrderShowComponent",
@@ -241,7 +288,8 @@ export default {
         PaginationBox,
         PaginationTextComponent,
         LoadingComponent,
-        PosOrderReceiptComponent
+        PosOrderReceiptComponent,
+        PosSaleActionModalComponent
     },
     directives: {
         print
@@ -267,6 +315,9 @@ export default {
                 orderStatusEnumArray: {
                     [orderStatusEnum.CONFIRMED]: this.$t("label.confirmed"),
                     [orderStatusEnum.DELIVERED]: this.$t("label.delivered"),
+                    // A till sale is only ever cancelled by Reverse.
+                    [orderStatusEnum.CANCELED]: saleTr("reversed"),
+                    [orderStatusEnum.REJECTED]: saleTr("reversed"),
                 },
                 paymentStatusEnumArray: {
                     [paymentStatusEnum.PAID]: this.$t("label.paid"),
@@ -294,18 +345,13 @@ export default {
                 ],
             },
             payment_status: null,
-            order_status: null
+            order_status: null,
+            // "reverse" or "method" while that dialog is open.
+            saleAction: null
         }
     },
     mounted() {
-        this.loading.isActive = true;
-        this.$store.dispatch('posOrder/show', this.$route.params.id).then(res => {
-            this.payment_status = res.data.data.payment_status;
-            this.order_status = res.data.data.status;
-            this.loading.isActive = false;
-        }).catch((error) => {
-            this.loading.isActive = false;
-        });
+        this.load();
     },
     computed: {
         order: function () {
@@ -319,6 +365,26 @@ export default {
         }
     },
     methods: {
+        saleTr: saleTr,
+        // "Card (9876)": the method with the card digits or TrxID it was paid with.
+        methodText: function (name, note) {
+            return note ? name + " (" + note + ")" : name;
+        },
+        load: function () {
+            this.loading.isActive = true;
+            this.$store.dispatch('posOrder/show', this.$route.params.id).then(res => {
+                this.payment_status = res.data.data.payment_status;
+                this.order_status = res.data.data.status;
+                this.loading.isActive = false;
+            }).catch((error) => {
+                this.loading.isActive = false;
+            });
+        },
+        // Reversed or moved: the page shows the sale as it now stands.
+        saleChanged: function () {
+            this.saleAction = null;
+            this.load();
+        },
         statusClass: function (status) {
             return appService.statusClass(status);
         },

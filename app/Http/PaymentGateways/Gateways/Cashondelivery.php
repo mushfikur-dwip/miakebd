@@ -11,6 +11,7 @@ use App\Enums\Activity;
 use App\Models\PaymentGateway;
 use App\Services\PaymentService;
 use App\Services\PaymentAbstract;
+use App\Services\StockGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Dipokhalder\Settings\Facades\Settings;
@@ -81,7 +82,10 @@ class Cashondelivery extends PaymentAbstract
                     if (!blank($token) && $order->id == $token->order_id) {
                         $order->active = Ask::YES;
                         $order->save();
+                        $placed = Stock::where(['model_id' => $order->id, 'model_type' => Order::class, 'status' => Status::INACTIVE])->get();
                         Stock::where(['model_id' => $order->id, 'model_type' => Order::class, 'status' => Status::INACTIVE])?->update(['status' => Status::ACTIVE]);
+                        // Its units are off the shelf now: one down to its last is announced.
+                        app(StockGuard::class)->settle(app(StockGuard::class)->changesOf($placed, 1, false), false);
                         $capturePaymentNotification->delete();
                         $this->response = true;
                     }

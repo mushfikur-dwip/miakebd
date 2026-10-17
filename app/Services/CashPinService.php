@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CashPin;
 use App\Models\CashPinFailure;
 use App\Support\CashException;
+use Closure;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
@@ -22,6 +23,11 @@ class CashPinService
 {
     public const DEFAULT_PIN = '51920';
 
+    // Correcting a till sale's payment method has a PIN of its own, one for
+    // the whole shop, kept in cash_pins under a branch id no branch has.
+    public const METHOD_PIN_DEFAULT = '112233';
+    public const METHOD_PIN_ROW     = 0;
+
     // Five wrong tries by one person, or ten by anyone on one branch (several
     // staff accounts guessing together), within the window lock PIN actions.
     public const USER_LIMIT     = 5;
@@ -33,12 +39,54 @@ class CashPinService
      */
     public function verify(int $outletId, ?string $pin, string $action): void
     {
+        $this->guard($outletId, $pin, $action, fn(string $pin) => $this->matches($outletId, $pin));
+    }
+
+    /**
+     * The payment-method PIN, tried on a sale of $outletId: a wrong one is
+     * logged and locked out against that branch like any other PIN.
+     *
+     * @throws CashException when locked (429) or the PIN is wrong (422).
+     */
+    public function verifyMethodPin(int $outletId, ?string $pin, string $action = 'method_change'): void
+    {
+        $this->guard($outletId, $pin, $action, fn(string $pin) => $this->matchesMethodPin($pin));
+    }
+
+    public function matchesMethodPin(string $pin): bool
+    {
+        $hash = $this->hash(self::METHOD_PIN_ROW);
+
+        return $hash === null ? hash_equals(self::METHOD_PIN_DEFAULT, $pin) : Hash::check($pin, $hash);
+    }
+
+    /**
+     * @throws CashException
+     */
+    public function changeMethodPin(int $outletId, string $currentPin, string $newPin): void
+    {
+        $this->verifyMethodPin($outletId, $currentPin, 'method_pin_change');
+
+        CashPin::updateOrCreate(
+            ['outlet_id' => self::METHOD_PIN_ROW],
+            ['pin_hash' => Hash::make($newPin), 'updated_by' => Auth::id()]
+        );
+    }
+
+    /**
+     * Lets the action through on a matching PIN; otherwise logs the try and
+     * refuses, locking PIN actions once there are too many.
+     *
+     * @throws CashException
+     */
+    private function guard(int $outletId, ?string $pin, string $action, Closure $matches): void
+    {
         $locked = $this->lockedMinutes($outletId);
         if ($locked > 0) {
             throw new CashException(trans('all.message.cash_pin_locked', ['minutes' => $locked]), 429);
         }
 
-        if ($pin !== null && $pin !== '' && $this->matches($outletId, $pin)) {
+        if ($pin !== null && $pin !== '' && $matches($pin)) {
             return;
         }
 

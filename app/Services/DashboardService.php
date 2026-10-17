@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Models\Order;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
-use App\Enums\PaymentStatus;
 use App\Enums\Source;
 use Illuminate\Http\Request;
 use App\Libraries\AppLibrary;
@@ -107,7 +106,7 @@ class DashboardService
         $date = date_diff(date_create($first_date), date_create($last_date), false);
         $date_diff = (int)$date->format("%a");
 
-        $total_sales     = AppLibrary::flatAmountFormat($order->whereDate('order_datetime', '>=', $first_date)->whereDate('order_datetime', '<=', $last_date)->where('payment_status', PaymentStatus::PAID)->sum('total'));
+        $total_sales     = AppLibrary::flatAmountFormat(Order::countedAsSale()->whereDate('order_datetime', '>=', $first_date)->whereDate('order_datetime', '<=', $last_date)->sum('total'));
 
         $dateRangeArray = [];
         for ($currentDate = strtotime($first_date); $currentDate <= strtotime($last_date); $currentDate += (86400)) {
@@ -118,7 +117,7 @@ class DashboardService
 
         $dateRangeValueArray = [];
         for ($i = 0; $i <= count($dateRangeArray) - 1; $i++) {
-            $per_day     = AppLibrary::flatAmountFormat($order->whereDate('order_datetime', $dateRangeArray[$i])->where('payment_status', PaymentStatus::PAID)->sum('total'));
+            $per_day     = AppLibrary::flatAmountFormat(Order::countedAsSale()->whereDate('order_datetime', $dateRangeArray[$i])->sum('total'));
             $dateRangeValueArray[] = floatval($per_day);
         }
 
@@ -178,11 +177,15 @@ class DashboardService
         }
     }
 
-    /** All-time, or only orders placed between first_date and last_date (the month view). */
+    /**
+     * All-time, or only orders placed between first_date and last_date (the
+     * month view). Paid and still standing: a cancelled or rejected order is
+     * not a sale, even when it had been paid.
+     */
     public function totalSales(Request $request)
     {
         try {
-            return Order::where('payment_status', PaymentStatus::PAID)
+            return Order::countedAsSale()
                 ->placedBetween($request->first_date, $request->last_date)->sum('total');
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
@@ -234,7 +237,7 @@ class DashboardService
             })->get()->map(function ($outlet) use ($todayStart, $monthStart, $monthEnd) {
                 $baseQuery = Order::where('order_type', OrderType::POS)
                     ->where('source', Source::POS)
-                    ->where('payment_status', PaymentStatus::PAID)
+                    ->countedAsSale()
                     ->where('outlet_id', $outlet->id);
 
                 return [

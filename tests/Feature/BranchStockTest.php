@@ -165,34 +165,35 @@ class BranchStockTest extends TestCase
     }
 
     /**
-     * The edit dialog on the stock screen: type the number each branch should
-     * have, save, and that becomes the branch's stock.
+     * The edit dialog on the stock screen: type how many units arrived at each
+     * branch, save, and they are added to what the branch holds. Stock is
+     * never lowered by hand.
      */
-    private function setStock(Product $product, array $perBranch): void
+    private function addStock(Product $product, array $perBranch): void
     {
         $request = \App\Http\Requests\StockItemUpdateRequest::create('/api/admin/stock/update-item', 'POST', [
             'product_id'   => $product->id,
             'variation_id' => 0,
             'stocks'       => json_encode($perBranch),
         ]);
-        $request->setContainer(app())->validateResolved();
+        $request->setContainer(app())->setRedirector(app('redirect'))->validateResolved();
 
         app(\App\Services\StockAdjustmentService::class)->updateItemStock($request);
     }
 
-    public function test_setting_a_branch_count_makes_it_exactly_that(): void
+    public function test_added_stock_goes_on_top_of_what_the_branch_holds(): void
     {
         $product = $this->product('Cleanser', 'SKU-CLEAN');
         $gulshan = $this->outlet('Gulshan');
 
         $this->move($product, $gulshan, 3);
 
-        $this->setStock($product, [['outlet_id' => $gulshan->id, 'quantity' => 25]]);
+        $this->addStock($product, [['outlet_id' => $gulshan->id, 'add' => 25]]);
 
-        $this->assertSame(25, $this->rows()[0]['stock']);
+        $this->assertSame(28, $this->rows()[0]['stock']);
     }
 
-    public function test_setting_the_same_number_again_writes_nothing(): void
+    public function test_adding_nothing_writes_nothing(): void
     {
         $product = $this->product('Mask', 'SKU-MASK');
         $gulshan = $this->outlet('Gulshan');
@@ -200,25 +201,25 @@ class BranchStockTest extends TestCase
         $this->move($product, $gulshan, 8);
         $before = Stock::count();
 
-        $this->setStock($product, [['outlet_id' => $gulshan->id, 'quantity' => 8]]);
+        $this->addStock($product, [['outlet_id' => $gulshan->id, 'add' => 0]]);
 
         // A no-op save must not litter the ledger with zero-quantity rows.
         $this->assertSame($before, Stock::count());
         $this->assertSame(8, $this->rows()[0]['stock']);
     }
 
-    public function test_a_branch_can_be_set_to_zero(): void
+    public function test_the_edit_cannot_lower_a_branch(): void
     {
         $product = $this->product('Scrub', 'SKU-SCRUB');
         $gulshan = $this->outlet('Gulshan');
-
         $this->move($product, $gulshan, 14);
-        $this->setStock($product, [['outlet_id' => $gulshan->id, 'quantity' => 0]]);
 
-        $this->assertSame(0, $this->rows()[0]['stock']);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $this->addStock($product, [['outlet_id' => $gulshan->id, 'add' => -14]]);
     }
 
-    public function test_setting_one_branch_leaves_the_others_alone(): void
+    public function test_adding_to_one_branch_leaves_the_others_alone(): void
     {
         $product = $this->product('Balm', 'SKU-BALM');
         $gulshan = $this->outlet('Gulshan');
@@ -227,12 +228,12 @@ class BranchStockTest extends TestCase
         $this->move($product, $gulshan, 10);
         $this->move($product, $dhanmondi, 4);
 
-        $this->setStock($product, [['outlet_id' => $gulshan->id, 'quantity' => 1]]);
+        $this->addStock($product, [['outlet_id' => $gulshan->id, 'add' => 1]]);
 
         $byBranch = collect($this->rows()[0]['outlet_stocks'])->pluck('quantity', 'outlet_name')->all();
-        $this->assertSame(1, $byBranch['Gulshan']);
+        $this->assertSame(11, $byBranch['Gulshan']);
         $this->assertSame(4, $byBranch['Dhanmondi']);
-        $this->assertSame(5, $this->rows()[0]['stock']);
+        $this->assertSame(15, $this->rows()[0]['stock']);
     }
 
     public function test_a_product_not_stock_controlled_still_reports_its_real_count(): void

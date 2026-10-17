@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Pagination\Paginator;
 use App\Http\Requests\PaginateRequest;
 use App\Libraries\QueryExceptionLibrary;
+use App\Support\StockPolicy;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class StockService
@@ -226,14 +227,60 @@ class StockService
             'variation_names' => $variationNames,
             'sku'             => $sku,
             'status'          => $product->status,
-            'stock'           => (int) $rows->sum('quantity'),
+            // What the page shows, and the truth behind it. With the "stock
+            // cannot be zero" switch off a sale may take a branch below zero;
+            // a negative count means nothing to a shopkeeper, so the page
+            // shows 0 and says how many units were billed beyond stock. The
+            // real figure still travels, because the edit dialog has to add
+            // onto it: 1 added to -1 is 0, not 1.
+            'stock'           => $this->shown($real = (int) $rows->sum('quantity'), $product),
+            'real_stock'      => $real,
+            'billed_beyond'   => $this->overdraft($real, $product),
             // can_purchasable = NO means the storefront ignores the count and
             // reports NON_PURCHASE_QUANTITY instead. This screen still shows
             // the real figure - you cannot correct a number you cannot see -
             // and flags it so the difference is not mistaken for a bug.
             'stock_tracked'   => $product->can_purchasable !== Ask::NO,
-            'outlet_stocks'   => $this->outletBreakdown($rows, $outletNames),
+            'outlet_stocks'   => $this->outletBreakdown($rows, $outletNames, $product),
         ];
+    }
+
+    /**
+     * The figure the page shows: never below zero while the switch is off.
+     *
+     * With the switch ON a negative is historical damage from before the rule
+     * existed, and the owner has to be able to see it to clear it with
+     * `stock:zero-negatives` - so it is shown as it really is.
+     */
+    private function shown(int $real, $product): int
+    {
+        if ($real >= 0 || !$this->overdraftApplies($product)) {
+            return $real;
+        }
+
+        return 0;
+    }
+
+    /** How many units were billed past what was on the shelf. */
+    private function overdraft(int $real, $product): int
+    {
+        return $this->overdraftApplies($product) ? max(0, -$real) : 0;
+    }
+
+    /**
+     * While the switch is off, for every product. With it on a tracked
+     * product's negative is damage from before the rule existed, and the
+     * owner has to see the real figure to clear it with `stock:zero-negatives`.
+     *
+     * Products the shop does not count (can_purchasable = NO) always get 0 and
+     * the remark. They are most of this catalogue and the till never refuses
+     * them, so they go below zero in either position - and the owner's rule
+     * (2026-10-17) is that the page never shows a negative for them.
+     */
+    private function overdraftApplies($product): bool
+    {
+        return (int) $product->can_purchasable === Ask::NO
+            || !app(StockPolicy::class)->cannotBeZero();
     }
 
     /**
@@ -245,7 +292,7 @@ class StockService
      * and gave the edit dialog no branches to offer. A zero is information;
      * an empty cell is not.
      */
-    private function outletBreakdown(Collection $rows, Collection $outletNames): array
+    private function outletBreakdown(Collection $rows, Collection $outletNames, $product): array
     {
         $byOutlet = $rows->groupBy(fn($row) => $row->outlet_id ?? 0)
             ->map(fn($outletRows) => (int) $outletRows->sum('quantity'));
@@ -253,10 +300,13 @@ class StockService
         $breakdown = [];
 
         foreach ($outletNames as $outletId => $outletName) {
-            $breakdown[] = [
-                'outlet_id'   => $outletId,
-                'outlet_name' => $outletName,
-                'quantity'    => $byOutlet->get($outletId, 0),
+            $real         = $byOutlet->get($outletId, 0);
+            $breakdown[]  = [
+                'outlet_id'     => $outletId,
+                'outlet_name'   => $outletName,
+                'quantity'      => $this->shown($real, $product),
+                'real_quantity' => $real,
+                'billed_beyond' => $this->overdraft($real, $product),
             ];
         }
 
@@ -265,9 +315,11 @@ class StockService
         $unassigned = $byOutlet->get(0, 0);
         if ($unassigned !== 0) {
             $breakdown[] = [
-                'outlet_id'   => null,
-                'outlet_name' => trans('all.label.unassigned'),
-                'quantity'    => $unassigned,
+                'outlet_id'     => null,
+                'outlet_name'   => trans('all.label.unassigned'),
+                'quantity'      => $this->shown($unassigned, $product),
+                'real_quantity' => $unassigned,
+                'billed_beyond' => $this->overdraft($unassigned, $product),
             ];
         }
 

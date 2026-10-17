@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Every .env write refuses values that would break or extend the file.
         $this->app->bind(\Dipokhalder\EnvEditor\EnvEditor::class, \App\Support\SafeEnvEditor::class);
+
+        // Shared, so the "stock cannot be zero" switch is read once per
+        // request rather than once per stock row.
+        $this->app->singleton(\App\Support\StockPolicy::class);
     }
 
     /**
